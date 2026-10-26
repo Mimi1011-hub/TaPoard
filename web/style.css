@@ -877,6 +877,107 @@ textarea {
   border-radius: 4px;
   font-size: 10px;
 }
+
+/* Local clock widgets: one low-frequency JavaScript timer updates all visible clocks. */
+.clock-widget {
+  padding: 5px !important;
+  gap: 3px !important;
+  color: #edf2ff;
+  cursor: default;
+  touch-action: none;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.clock-widget:active {
+  transform: none;
+}
+.clock-digital {
+  background:
+    radial-gradient(circle at 50% 18%, #23335f 0, transparent 55%),
+    linear-gradient(145deg, #171a23, #08090c);
+}
+.clock-time {
+  max-width: 100%;
+  color: #f2f5ff;
+  font-size: clamp(18px, 6.4vw, 48px);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-shadow: 0 0 12px #6d8dff70;
+  white-space: nowrap;
+}
+.clock-date {
+  color: #aebce2;
+  font-size: clamp(8px, 2.1vw, 16px);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.clock-face {
+  position: relative;
+  width: min(88%, 190px);
+  aspect-ratio: 1;
+  border: 2px solid #7488bc;
+  border-radius: 50%;
+  background: radial-gradient(circle, #19223b 0 8%, #0e1119 9% 68%, #181d2a 69% 100%);
+  box-shadow: inset 0 0 14px #000, 0 0 14px #5b76ca33;
+}
+.clock-marker {
+  position: absolute;
+  color: #aebce2;
+  font-size: clamp(7px, 1.8vw, 13px);
+  line-height: 1;
+}
+.clock-marker-12 { left: 50%; top: 4%; transform: translateX(-50%); }
+.clock-marker-3 { right: 6%; top: 50%; transform: translateY(-50%); }
+.clock-marker-6 { left: 50%; bottom: 4%; transform: translateX(-50%); }
+.clock-marker-9 { left: 6%; top: 50%; transform: translateY(-50%); }
+.clock-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 3px;
+  border-radius: 4px;
+  background: #dce5ff;
+  transform-origin: 50% 100%;
+  box-shadow: 0 0 5px #7797ff88;
+}
+.clock-hour { height: 25%; }
+.clock-minute { height: 36%; width: 2px; }
+.clock-second { height: 39%; width: 1px; background: #ff6675; box-shadow: none; }
+.clock-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f0f4ff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 5px #7896ff;
+}
+.preview-grid .clock-time { font-size: clamp(10px, 2.4vw, 23px); }
+.preview-grid .clock-date { font-size: clamp(5px, 0.9vw, 9px); }
+.preview-grid .clock-marker { font-size: clamp(4px, 0.7vw, 7px); }
+.clock-settings {
+  border: 1px solid #3d465b;
+  border-radius: 10px;
+  margin: 14px 0;
+  padding: 14px;
+}
+.clock-settings legend {
+  font-size: 13px;
+  color: #b5c9ff;
+}
+.clock-settings > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 14px 5px 0;
+}
+.clock-settings select {
+  margin-left: 6px;
+}
 .grid-settings,
 .admin-grid-settings {
   display: flex;

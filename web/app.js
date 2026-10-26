@@ -64,7 +64,8 @@
       micAvailable: true,
     },
     audioInteraction = false,
-    messageTimer = null;
+    messageTimer = null,
+    clockTimer = null;
   if (admin) {
     document.body.classList.add('admin-view');
     sessionStorage.setItem('tapoard-admin', key);
@@ -90,6 +91,15 @@
         ['audio-mic-mute', 'マイク ミュート', 'オン／オフ'],
         ['audio-mic-up', 'マイク音量 ＋', '5%上げる'],
         ['audio-mic-down', 'マイク音量 −', '5%下げる'],
+      ],
+    },
+    {
+      category: 'widget',
+      title: '時計・情報表示',
+      note: 'スマートフォン内で動く低負荷な表示部品',
+      items: [
+        ['widget-clock-digital', 'デジタル時計', '2×2・端末時刻'],
+        ['widget-clock-analog', 'アナログ時計', '2×2・端末時刻'],
       ],
     },
     {
@@ -714,6 +724,8 @@
                 ? '♪'
                 : category === 'browser'
                   ? '◎'
+                  : category === 'widget'
+                    ? '◷'
                   : category === 'custom'
                     ? '✦'
                     : category === 'clipstudio'
@@ -1116,6 +1128,120 @@
     return tile;
   }
   audioFader = audioFaderV104;
+
+  function clockOptions(a) {
+    var source = (a && a.options) || {};
+    return {
+      style: source.style === 'analog' ? 'analog' : 'digital',
+      showSeconds: source.showSeconds !== false,
+      showDate: source.showDate !== false,
+      showWeekday: source.showWeekday !== false,
+      hour12: source.hour12 === true,
+    };
+  }
+  function twoDigits(value) {
+    return value < 10 ? '0' + value : String(value);
+  }
+  function updateClockTile(tile, now) {
+    var options = tile._clockOptions || clockOptions(null),
+      hours = now.getHours(),
+      minutes = now.getMinutes(),
+      seconds = now.getSeconds();
+    if (options.style === 'analog') {
+      tile.querySelector('.clock-hour').style.transform = 'translateX(-50%) rotate(' + ((hours % 12) * 30 + minutes / 2) + 'deg)';
+      tile.querySelector('.clock-minute').style.transform = 'translateX(-50%) rotate(' + (minutes * 6 + seconds / 10) + 'deg)';
+      var secondHand = tile.querySelector('.clock-second');
+      if (secondHand) secondHand.style.transform = 'translateX(-50%) rotate(' + seconds * 6 + 'deg)';
+    } else {
+      var suffix = '';
+      if (options.hour12) {
+        suffix = hours < 12 ? ' AM' : ' PM';
+        hours %= 12;
+        if (!hours) hours = 12;
+      }
+      tile.querySelector('.clock-time').textContent =
+        twoDigits(hours) + ':' + twoDigits(minutes) + (options.showSeconds ? ':' + twoDigits(seconds) : '') + suffix;
+      var date = tile.querySelector('.clock-date');
+      if (date) {
+        var parts = [];
+        if (options.showDate) parts.push(now.getFullYear() + '/' + twoDigits(now.getMonth() + 1) + '/' + twoDigits(now.getDate()));
+        if (options.showWeekday) parts.push(['日', '月', '火', '水', '木', '金', '土'][now.getDay()] + '曜日');
+        date.textContent = parts.join(' ');
+      }
+    }
+    tile.setAttribute('aria-label', tile.title + ' ' + twoDigits(hours) + ':' + twoDigits(minutes));
+  }
+  function stopClockUpdates() {
+    if (clockTimer !== null) clearTimeout(clockTimer);
+    clockTimer = null;
+  }
+  function scheduleClockUpdates() {
+    stopClockUpdates();
+    if (document.hidden) return;
+    var clocks = Array.prototype.slice.call(document.querySelectorAll('.clock-widget'));
+    if (!clocks.length) return;
+    var now = new Date(),
+      showSeconds = false;
+    clocks.forEach(function (tile) {
+      updateClockTile(tile, now);
+      if (tile._clockOptions && tile._clockOptions.showSeconds) showSeconds = true;
+    });
+    var delay = showSeconds ? 1000 - now.getMilliseconds() + 10 : (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 10;
+    clockTimer = setTimeout(scheduleClockUpdates, Math.max(50, delay));
+  }
+  function clockTile(a, preview, index, slotIndex) {
+    var options = clockOptions(a),
+      tile = document.createElement('div');
+    tile.className = 'deck-key clock-widget clock-' + options.style;
+    tile.title = a.name || (options.style === 'analog' ? 'アナログ時計' : 'デジタル時計');
+    tile._clockOptions = options;
+    tile.dataset.appIndex = index;
+    tile.dataset.size = 2;
+    tile.dataset.width = 2;
+    tile.dataset.height = 2;
+    if (options.style === 'analog') {
+      var face = document.createElement('div');
+      face.className = 'clock-face';
+      [12, 3, 6, 9].forEach(function (number) {
+        var marker = document.createElement('span');
+        marker.className = 'clock-marker clock-marker-' + number;
+        marker.textContent = number;
+        face.appendChild(marker);
+      });
+      ['hour', 'minute'].concat(options.showSeconds ? ['second'] : []).forEach(function (hand) {
+        var node = document.createElement('span');
+        node.className = 'clock-hand clock-' + hand;
+        face.appendChild(node);
+      });
+      var pin = document.createElement('span');
+      pin.className = 'clock-pin';
+      face.appendChild(pin);
+      tile.appendChild(face);
+    } else {
+      var time = document.createElement('span');
+      time.className = 'clock-time';
+      tile.appendChild(time);
+      if (options.showDate || options.showWeekday) {
+        var date = document.createElement('span');
+        date.className = 'clock-date';
+        tile.appendChild(date);
+      }
+    }
+    updateClockTile(tile, new Date());
+    if (preview) {
+      tile.draggable = true;
+      tile.ondragstart = function (e) {
+        e.dataTransfer.setData('text/plain', 'tile:' + index);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      addDropTarget(tile, index, slotIndex);
+      tile.oncontextmenu = function (e) {
+        openDeckContextMenu(e, index, a);
+      };
+    }
+    return tile;
+  }
+
   function catalogItem(action) {
     for (var g = 0; g < catalog.length; g++)
       for (var i = 0; i < catalog[g].items.length; i++)
@@ -1129,6 +1255,45 @@
     if (action === 'custom-audio-output') return 'audio-output';
     if (action === 'custom-audio-input') return 'audio-input';
     return action === 'custom-url' ? 'url' : action === 'custom-clipboard' ? 'clipboard' : '';
+  }
+  function widgetFromAction(action) {
+    if (action !== 'widget-clock-digital' && action !== 'widget-clock-analog') return null;
+    var analog = action === 'widget-clock-analog';
+    return {
+      name: analog ? 'アナログ時計' : 'デジタル時計',
+      type: 'clock',
+      category: 'widget',
+      size: 2,
+      width: 2,
+      height: 2,
+      hideLabel: true,
+      options: { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false },
+    };
+  }
+  function addWidgetEditor(action, index) {
+    var item = widgetFromAction(action);
+    if (!item) return null;
+    if (
+      rows.filter(function (r) {
+        return r.orientation === previewOrientation;
+      }).length >= 40
+    ) {
+      desiredPlacement = null;
+      message('ボタンはこの向きで40個以内です。');
+      return null;
+    }
+    try {
+      var fields = editor(
+        item,
+        typeof index === 'number' ? Math.min(index, rows.length) : Math.min(rows.length, (page + 1) * appsPerPage),
+      );
+      fields.box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return fields;
+    } catch (e) {
+      desiredPlacement = null;
+      message(e.message);
+      return null;
+    }
   }
   function addCustomEditor(type, index) {
     if (type === 'audio-output' || type === 'audio-input')
@@ -1197,15 +1362,18 @@
       var found = catalogItem(value);
       if (!found) return;
       var control = controlFromAction(value),
-        custom = customTypeFromAction(value);
+        custom = customTypeFromAction(value),
+        widget = widgetFromAction(value),
+        width = widget ? widget.width : 1,
+        height = widget ? widget.height : 1;
       if (control) {
         moveAudioControl(control, slotIndex);
         return;
       }
       if (
-        !canPlace(rows.map(rowData), -1, positionAt(page, slotIndex, displayGrid(true).columns), 1, 1, previewOrientation)
+        !canPlace(rows.map(rowData), -1, positionAt(page, slotIndex, displayGrid(true).columns), width, height, previewOrientation)
       ) {
-        message('空き枠へドロップしてください。');
+        message(widget ? '時計を置ける2×2の空き枠へドロップしてください。' : '空き枠へドロップしてください。');
         return;
       }
       desiredPlacement = {
@@ -1214,6 +1382,10 @@
       };
       if (custom) {
         addCustomEditor(custom, rows.length);
+        return;
+      }
+      if (widget) {
+        if (addWidgetEditor(value, rows.length)) persistRows(widget.name + 'を追加して自動保存しました。');
         return;
       }
       if (
@@ -1239,6 +1411,7 @@
     });
   }
   function appTile(a, preview, index, slotIndex) {
+    if (a.type === 'clock') return clockTile(a, preview, index, slotIndex);
     var b = document.createElement(preview ? 'div' : 'button');
     b.className = 'deck-key';
     b.title = a.name;
@@ -1369,6 +1542,7 @@
     $('empty').hidden = deckApps.some(function (a) {
       return a.orientation === orientation;
     });
+    scheduleClockUpdates();
   }
   function renderPreview() {
     if (!admin) return;
@@ -1383,6 +1557,7 @@
     $('preview-page-label').textContent = page + 1 + ' / ' + pageCount;
     $('preview-prev').disabled = page === 0;
     $('preview-next').disabled = page === pageCount - 1;
+    scheduleClockUpdates();
   }
   function updatePhoneStatus(active) {
     if (!admin) return;
@@ -1852,15 +2027,18 @@
             ? 'コピーテキスト'
             : a.type === 'audioDevice'
               ? '音声機器切替'
+              : a.type === 'clock'
+                ? '時計ウィジェット'
               : 'アプリ';
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
-    menu.appendChild(
-      contextButton('アイコンを選ぶ', '', function () {
-        if (rows[index]) openIconPicker(rows[index]);
-      }),
-    );
+    if (a.type !== 'clock')
+      menu.appendChild(
+        contextButton('アイコンを選ぶ', '', function () {
+          if (rows[index]) openIconPicker(rows[index]);
+        }),
+      );
     var pos = a[previewOrientation],
       cols = displayGrid(true).columns;
     [
@@ -1995,6 +2173,7 @@
   };
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
+      stopClockUpdates();
       if (key) api('view', { viewId: viewId, visibleIds: [] }).catch(function () {});
       announcedViewSignature = '';
       release();
@@ -2002,7 +2181,7 @@
     } else if (key) {
       refresh();
       wake();
-    }
+    } else scheduleClockUpdates();
   });
   document.addEventListener(
     'pointerdown',
@@ -2172,6 +2351,63 @@
     if (e.target === this) closeIconPicker();
   };
 
+  function buildClockSettings(fields, box) {
+    fields.options = clockOptions({ options: fields.options });
+    var area = document.createElement('fieldset');
+    area.className = 'clock-settings';
+    var legend = document.createElement('legend');
+    legend.textContent = '時計の表示';
+    area.appendChild(legend);
+    var styleLabel = document.createElement('label');
+    styleLabel.textContent = '種類';
+    var style = document.createElement('select');
+    [['digital', 'デジタル'], ['analog', 'アナログ']].forEach(function (pair) {
+      var option = document.createElement('option');
+      option.value = pair[0];
+      option.textContent = pair[1];
+      style.appendChild(option);
+    });
+    style.value = fields.options.style;
+    styleLabel.appendChild(style);
+    area.appendChild(styleLabel);
+    var digitalOnly = [];
+    function check(name, text, onlyDigital) {
+      var label = document.createElement('label'),
+        input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = fields.options[name];
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(text));
+      area.appendChild(label);
+      if (onlyDigital) digitalOnly.push(label);
+      input.onchange = function () {
+        fields.options[name] = input.checked;
+        deckApps = rows.map(rowData);
+        renderPreview();
+      };
+      return input;
+    }
+    check('showSeconds', '秒を表示');
+    check('showDate', '日付を表示', true);
+    check('showWeekday', '曜日を表示', true);
+    check('hour12', '12時間表示（AM / PM）', true);
+    function syncStyle() {
+      fields.options.style = style.value;
+      digitalOnly.forEach(function (label) {
+        label.hidden = style.value !== 'digital';
+      });
+      deckApps = rows.map(rowData);
+      renderPreview();
+    }
+    style.onchange = syncStyle;
+    syncStyle();
+    var note = document.createElement('p');
+    note.className = 'editor-feedback';
+    note.textContent = 'スマートフォンの時刻を使います。時計のためのPC通信は行いません。';
+    area.appendChild(note);
+    box.appendChild(area);
+  }
+
   function createEditor(a) {
     var box = document.createElement('div');
     box.className = 'editor';
@@ -2222,6 +2458,8 @@
             ? 'COPY'
             : fields.type === 'audioDevice'
               ? 'AUDIO'
+              : fields.type === 'clock'
+                ? 'CLOCK'
               : 'APP';
     heading.appendChild(kind);
     box.appendChild(heading);
@@ -2248,6 +2486,7 @@
       fields[f[0]] = input;
     });
     if (fields.type === 'audioDevice') buildDeviceSelector(fields, box);
+    if (fields.type === 'clock') buildClockSettings(fields, box);
     buildAppearance(fields, box);
     if (fields.type === 'hotkey' && fields.action.indexOf('audio-') !== 0) buildHotkey(fields, box);
     ['path', 'args', 'url', 'text'].forEach(function (name) {
@@ -2258,14 +2497,16 @@
       refreshEditorIcon(fields);
     };
     refreshEditorIcon(fields);
-    var iconButton = document.createElement('button');
-    iconButton.type = 'button';
-    iconButton.className = 'subtle icon-select-button';
-    iconButton.textContent = '▦ アイコンを選ぶ';
-    iconButton.onclick = function () {
-      openIconPicker(fields);
-    };
-    box.appendChild(iconButton);
+    if (fields.type !== 'clock') {
+      var iconButton = document.createElement('button');
+      iconButton.type = 'button';
+      iconButton.className = 'subtle icon-select-button';
+      iconButton.textContent = '▦ アイコンを選ぶ';
+      iconButton.onclick = function () {
+        openIconPicker(fields);
+      };
+      box.appendChild(iconButton);
+    }
     [-1, 1].forEach(function (direction) {
       var move = document.createElement('button');
       move.textContent = direction < 0 ? '← 左へ移動' : '右へ移動 →';
@@ -2399,7 +2640,8 @@
         label.innerHTML = '<strong>' + item[1] + '</strong><kbd>' + item[2] + '</kbd>';
         var add = document.createElement('button'),
           control = controlFromAction(item[0]),
-          custom = customTypeFromAction(item[0]);
+          custom = customTypeFromAction(item[0]),
+          widget = widgetFromAction(item[0]);
         add.textContent = control ? '標準位置へ' : '追加';
         add.onclick = function () {
           if (control) {
@@ -2408,6 +2650,10 @@
           }
           if (custom) {
             addCustomEditor(custom);
+            return;
+          }
+          if (widget) {
+            if (addWidgetEditor(item[0])) persistRows(widget.name + 'を追加して自動保存しました。');
             return;
           }
           if (
@@ -2862,10 +3108,16 @@
       label.appendChild(input);
       area.appendChild(label);
     }
-    select('ボタンの大きさ', 'size', [
-      [1, '1マス（1×1）'],
-      [2, '4マス（2×2）'],
-    ]);
+    select(
+      fields.type === 'clock' ? '時計の大きさ' : 'ボタンの大きさ',
+      'size',
+      fields.type === 'clock'
+        ? [[2, '4マス（2×2）']]
+        : [
+            [1, '1マス（1×1）'],
+            [2, '4マス（2×2）'],
+          ],
+    );
     select('文字サイズ', 'fontSize', [
       [8, '小さめ 8'],
       [11, '標準 11'],
