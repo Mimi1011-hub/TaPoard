@@ -227,6 +227,12 @@ partial class Program
             config.devices = new List<PairedDevice>();
         SplitOrientationApps();
         DeckLayout.Migrate(config);
+        foreach (var app in config.apps)
+        {
+            if (String.IsNullOrWhiteSpace(app.type))
+                app.type = "app";
+            WidgetRegistry.ValidateAndNormalize(app);
+        }
         DeckLayout.Validate(config);
         Save();
     }

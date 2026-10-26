@@ -28,6 +28,7 @@ class AppEntry
     public int? labelOpacity { get; set; }
     public bool hideLabel { get; set; }
     public string hotkey { get; set; }
+    public Dictionary<string, object> options { get; set; }
 }
 
 class Settings
