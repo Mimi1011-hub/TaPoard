@@ -123,6 +123,16 @@ partial class Program
             );
             ReplyJson(s, 200, ack);
         }
+        else if (path == "/api/input/keepalive" || path == "/api/input/release")
+        {
+            object rawSession, rawView;
+            if (!input.TryGetValue("sessionId", out rawSession) || !input.TryGetValue("viewId", out rawView))
+                throw new Exception("入力要求が正しくありません。");
+            string owner = ViewIdentity(r, Convert.ToString(rawView));
+            if (path == "/api/input/keepalive") InputSessions.Keepalive(owner, Convert.ToString(rawSession));
+            else InputSessions.Release(owner, Convert.ToString(rawSession));
+            Reply(s, 200, JsonType, "{\"ok\":true}");
+        }
         else if (path == "/api/settings" && r.isAdmin)
         {
             SaveSettings(json);
@@ -262,7 +272,8 @@ partial class Program
             TouchPhone(r.local);
             if (known == revision)
                 Monitor.Wait(Gate, 15000);
-            var inputSessions = UpdateRuntimeSessions(r, false, true);
+            // The visible IDs were sent before the wait and may be stale: only renew, never re-plan.
+            RenewRuntimeSessions(r);
             if (!r.local)
                 phoneLastSeen = DateTime.UtcNow;
             ReplyJson(
@@ -293,7 +304,6 @@ partial class Program
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
                     phoneConnected = PhoneConnected(),
-                    inputSessions = inputSessions,
                 }
             );
         }
@@ -363,6 +373,16 @@ partial class Program
         if (String.IsNullOrEmpty(viewId)) return new InputSessions.PublicSession[0];
         string raw = QueryValue(r.target, "visibleIds") ?? "";
         return UpdateRuntimeSessions(r, viewId, raw.Length == 0 ? new string[0] : raw.Split(','), renewMetrics, renewWeather);
+    }
+
+    static void RenewRuntimeSessions(Request r)
+    {
+        string viewId = QueryValue(r.target, "viewId");
+        if (String.IsNullOrEmpty(viewId)) return;
+        string raw = QueryValue(r.target, "visibleIds") ?? "";
+        string identity = ViewIdentity(r, viewId);
+        DisplaySubscriptions.Update(identity, config.apps, raw.Length == 0 ? new string[0] : raw.Split(','), false, true);
+        InputSessions.Touch(identity);
     }
 
     static InputSessions.PublicSession[] UpdateRuntimeSessions(Request r, string viewId, string[] ids, bool renewMetrics, bool renewWeather)

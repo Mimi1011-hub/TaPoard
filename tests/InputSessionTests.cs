@@ -30,6 +30,7 @@ class InputSessionTests
         if (type == "wheel")
         {
             options["ctrl"] = true; options["shift"] = false; options["alt"] = false; options["middleClick"] = true;
+            options["multiplier"] = 1; options["reverse"] = false;
         }
         else if (type == "touchpad")
         {
@@ -100,7 +101,7 @@ class InputSessionTests
             prepared = InputSessions.Prepare("owner-a:view-a", apps, new[] { "wheel-1" });
             first = prepared[0].sessionId;
             Reject(
-                delegate { InputSessions.Execute("owner-a:view-a", first, 2, new[] { Event("wheel", null, 0, 0, 120) }); },
+                delegate { InputSessions.Execute("owner-a:view-a", first, 2, new[] { Event("steps", null, 0, 0, 1) }); },
                 "sequence gaps are rejected"
             );
             Check(InputSessions.Current().sessions == 0, "sequence gap terminates the unsafe session");
@@ -109,13 +110,65 @@ class InputSessionTests
             string ownerB = InputSessions.Prepare("owner-b:view-b", apps, new[] { "wheel-1" })[0].sessionId;
             InputSessions.Execute("owner-a:view-a", ownerA, 1, new[] { Event("buttonDown", "left", 0, 0, 0) });
             int beforeTransfer = sent.Count;
-            InputSessions.Execute("owner-b:view-b", ownerB, 1, new[] { Event("wheel", null, 0, 0, 120) });
-            Check(sent.Count == beforeTransfer + 2, "operation ownership transfer releases held input before the next device runs");
-            Check(sent[beforeTransfer][0].type == "buttonUp" && sent[beforeTransfer][0].control == "left", "ownership transfer releases the held mouse button");
+            string busy = null;
+            try { InputSessions.Execute("owner-b:view-b", ownerB, 1, new[] { Event("steps", null, 0, 0, 1) }); }
+            catch (Exception e) { busy = e.Message; }
+            Check(busy == InputSessions.BusyMessage && sent.Count == beforeTransfer, "another device cannot take over while the owner is operating");
+            Check(InputSessions.Current().sessions == 2, "a refused device keeps its session for a later retry");
+            InputSessions.Execute("owner-a:view-a", ownerA, 2, new[] { Event("move", null, 4, 4, 0) });
+            Check(sent.Count == beforeTransfer + 1, "the owner keeps operating after a refused takeover");
+            now = now.AddMilliseconds(1500);
+            InputSessions.Keepalive("owner-a:view-a", ownerA);
+            now = now.AddMilliseconds(1500);
             Reject(
-                delegate { InputSessions.Execute("owner-a:view-a", ownerB, 2, new[] { Event("wheel", null, 0, 0, 120) }); },
+                delegate { InputSessions.Execute("owner-b:view-b", ownerB, 1, new[] { Event("steps", null, 0, 0, 1) }); },
+                "keepalive holds ownership during a motionless drag"
+            );
+            Reject(
+                delegate { InputSessions.Keepalive("owner-b:view-b", ownerB); },
+                "a device without ownership cannot extend it"
+            );
+            now = now.AddMilliseconds(600);
+            InputSessions.PruneNow();
+            Check(InputSessions.Current().activeSessionId == null && sent[sent.Count - 1][0].type == "buttonUp", "ownership ends two seconds after the last input or keepalive and releases held input");
+            Check(InputSessions.Current().sessions == 2, "ownership expiry keeps both prepared sessions");
+            InputSessions.Execute("owner-b:view-b", ownerB, 1, new[] { Event("steps", null, 0, 0, 1) });
+            Check(InputSessions.Current().activeSessionId == ownerB, "another device operates after ownership has expired");
+            InputSessions.Release("owner-b:view-b", ownerB);
+            Check(InputSessions.Current().activeSessionId == null, "an explicit release hands ownership back immediately");
+            InputSessions.Execute("owner-a:view-a", ownerA, 3, new[] { Event("move", null, 1, 1, 0) });
+            InputSessions.Release("owner-a:view-a", ownerA);
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", ownerB, 2, new[] { Event("steps", null, 0, 0, 1) }); },
                 "a different authenticated view cannot use another view's session"
             );
+
+            InputSessions.ClearAll(); sent.Clear();
+            var settingsApps = new List<AppEntry> { Widget("wheel-2", "wheel") };
+            settingsApps[0].options["shift"] = true; settingsApps[0].options["multiplier"] = 3; settingsApps[0].options["reverse"] = true;
+            string configured = InputSessions.Prepare("owner-a:view-a", settingsApps, new[] { "wheel-2" })[0].sessionId;
+            InputSessions.Execute("owner-a:view-a", configured, 1, new[] { Event("steps", null, 0, 0, 2) });
+            var wheelInput = sent[sent.Count - 1];
+            Check(
+                wheelInput.Length == 5 && wheelInput[0].type == "keyDown" && wheelInput[0].control == "ctrl"
+                    && wheelInput[1].control == "shift" && wheelInput[2].type == "wheel" && wheelInput[2].delta == -720
+                    && wheelInput[3].type == "keyUp" && wheelInput[3].control == "shift" && wheelInput[4].control == "ctrl",
+                "the server derives wheel amount, direction and modifiers from the saved options"
+            );
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", configured, 2, new[] { Event("wheel", null, 0, 0, -1200) }); },
+                "a wheel device cannot send its own wheel amount"
+            );
+            configured = InputSessions.Prepare("owner-a:view-a", settingsApps, new[] { "wheel-2" })[0].sessionId;
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", configured, 1, new[] { Event("keyDown", "alt", 0, 0, 0) }); },
+                "a wheel device cannot press modifiers itself"
+            );
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", configured, 1, new[] { Event("steps", null, 0, 0, 21) }); },
+                "wheel steps per request are bounded"
+            );
+            InputSessions.Release("owner-a:view-a", configured);
 
             string restricted = InputSessions.Prepare("owner-c:view-c", apps, new[] { "wheel-1" })[0].sessionId;
             Reject(
@@ -126,10 +179,16 @@ class InputSessionTests
             InputSessions.ClearAll(); sent.Clear();
             string expiring = InputSessions.Prepare("owner-a:view-a", apps, new[] { "touch-1" })[0].sessionId;
             InputSessions.Execute("owner-a:view-a", expiring, 1, new[] { Event("buttonDown", "left", 0, 0, 0) });
-            now = now.AddSeconds(6);
+            Check(InputSessions.Current().activeRemainingMs == 2000, "the one-shot timer is armed for ownership expiry");
+            now = now.AddSeconds(29);
+            InputSessions.Touch("owner-a:view-a");
+            now = now.AddSeconds(29);
             InputSessions.PruneNow();
-            Check(InputSessions.Current().sessions == 0 && !InputSessions.Current().timerArmed, "idle active session expires and stops the one-shot timer");
-            Check(sent[sent.Count - 1][0].type == "buttonUp", "session expiry releases held mouse buttons");
+            Check(InputSessions.Current().sessions == 1, "long-poll renewal keeps prepared sessions without re-planning them");
+            now = now.AddSeconds(31);
+            InputSessions.PruneNow();
+            Check(InputSessions.Current().sessions == 0 && !InputSessions.Current().timerArmed, "idle session expires and stops the one-shot timer");
+            Check(sent[sent.Count - 1][0].type == "buttonUp", "expiry releases held mouse buttons");
 
             sent.Clear();
             string hidden = InputSessions.Prepare("owner-a:view-a", apps, new[] { "touch-1" })[0].sessionId;
@@ -141,7 +200,8 @@ class InputSessionTests
             string interrupted = InputSessions.Prepare("owner-a:view-a", apps, new[] { "touch-1" })[0].sessionId;
             InputSessions.Execute("owner-a:view-a", interrupted, 1, new[] { Event("buttonDown", "left", 0, 0, 0) });
             InputSessions.ReleaseActive();
-            Check(InputSessions.Current().sessions == 0 && sent[sent.Count - 1][0].type == "buttonUp", "legacy shortcut safely releases an active pointer session first");
+            Check(InputSessions.Current().activeSessionId == null && sent[sent.Count - 1][0].type == "buttonUp", "legacy shortcut safely releases an active pointer session first");
+            InputSessions.Prepare("owner-a:view-a", apps, new string[0]);
 
             string changed = InputSessions.Prepare("owner-a:view-a", apps, new[] { "wheel-1" })[0].sessionId;
             InputSessions.RemoveUnknown(new[] { Widget("wheel-1", "clock") });
