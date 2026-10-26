@@ -7,7 +7,7 @@ let apps = [];
 let revision = 1;
 let version = '1';
 let busy = false;
-let nextSequence = 1;
+const nextSequence = {};
 const inputs = [];
 const releases = [];
 const syncWaiters = new Set();
@@ -18,7 +18,7 @@ const controls = {
 };
 function sessions(ids) {
   return apps.filter(app => app.type === 'wheel' && ids.includes(app.id))
-    .map(app => ({ widgetId: app.id, sessionId: 'session-' + app.id, nextSequence, expiresInMs: 30000 }));
+    .map(app => ({ widgetId: app.id, sessionId: 'session-' + app.id, nextSequence: nextSequence[app.id] || 1, expiresInMs: 30000 }));
 }
 function state(ids) {
   return {
@@ -71,8 +71,9 @@ const server = http.createServer(async (req, res) => {
     const input = JSON.parse(body);
     inputs.push(input);
     if (busy) { res.writeHead(400); res.end(JSON.stringify({ error: '他の端末が操作中です。' })); return; }
-    assert.equal(input.sequence, nextSequence, 'the device sends consecutive sequences');
-    nextSequence++;
+    const widgetId = input.sessionId.slice('session-'.length);
+    assert.equal(input.sequence, nextSequence[widgetId] || 1, 'the device sends consecutive sequences');
+    nextSequence[widgetId] = input.sequence + 1;
     await new Promise(resolve => setTimeout(resolve, 30));
     res.end(JSON.stringify({ ok: true, acknowledged: input.sequence, duplicate: false, serverElapsedMs: 0 }));
     return;
@@ -163,8 +164,49 @@ function sumSteps(list) {
     assert.equal(await phone.locator('#deck .wheel-widget .input-busy-label').innerText(), '他端末が操作中');
     busy = false;
     await phone.locator('#deck .wheel-widget.input-busy').waitFor({ state: 'detached', timeout: 3000 });
+
+    if (!(await group.evaluate(node => node.open))) await group.locator('summary').click();
+    await group.locator('.shortcut-row[data-action="widget-wheel-rotary"]').getByRole('button', { name: '追加', exact: true }).click();
+    await admin.locator('#preview-deck .wheel-rotary').waitFor();
+    await admin.waitForFunction(() => document.querySelector('#message').textContent.includes('追加して自動保存'));
+    const rotaryApp = apps.find(app => app.options.style === 'rotary');
+    assert.equal(rotaryApp.width, 2);
+    assert.equal(rotaryApp.height, 2);
+    assert.equal(rotaryApp.options.sensitivity, 18);
+    assert.equal(await admin.locator('#preview-deck .wheel-rotary').evaluate(node => node.style.gridColumn.includes('span 2')), true);
+
+    await phone.reload();
+    const rotary = phone.locator('#deck .wheel-rotary');
+    await rotary.waitFor();
+    const dial = await rotary.boundingBox();
+    const cx = dial.x + dial.width / 2, cy = dial.y + dial.height / 2, radius = Math.min(dial.width, dial.height) * 0.38;
+    const rotaryInputs = () => inputs.filter(input => input.sessionId === 'session-' + rotaryApp.id);
+    // Clockwise from 150 deg to 280 deg crosses the 180/-180 boundary: 130 deg / 18 = 7 steps down.
+    const at = degrees => [cx + radius * Math.cos(degrees * Math.PI / 180), cy + radius * Math.sin(degrees * Math.PI / 180)];
+    await phone.mouse.move(...at(150));
+    await phone.mouse.down();
+    for (let degrees = 155; degrees <= 280; degrees += 5) await phone.mouse.move(...at(degrees));
+    await phone.mouse.up();
+    const releasesBefore = releases.length;
+    for (let i = 0; i < 40 && sumSteps(rotaryInputs()) !== -7; i++) await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(sumSteps(rotaryInputs()), -7, 'clockwise rotation scrolls down by swept angle across the 180 degree boundary');
+    const turned = rotaryInputs().length;
+    await phone.mouse.move(...at(280));
+    await phone.mouse.down();
+    for (let degrees = 275; degrees >= 185; degrees -= 5) await phone.mouse.move(...at(degrees));
+    await phone.mouse.up();
+    for (let i = 0; i < 40 && sumSteps(rotaryInputs().slice(turned)) !== 5; i++) await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(sumSteps(rotaryInputs().slice(turned)), 5, 'counter-clockwise rotation scrolls up');
+    const beforeCenter = rotaryInputs().length;
+    await phone.mouse.move(cx, cy);
+    await phone.mouse.down();
+    await phone.mouse.move(cx + 3, cy + 2);
+    await phone.mouse.up();
+    await new Promise(resolve => setTimeout(resolve, 300));
+    assert.equal(rotaryInputs().length, beforeCenter, 'the centre is a dead zone and middle click is off by default');
+    assert(releases.length > releasesBefore);
     assert.deepEqual(errors, []);
-    console.log('PASS wheel UI: vertical wheel settings, swipe steps, middle-click tap, release and busy indicator');
+    console.log('PASS wheel UI: vertical and rotary wheels, settings, steps, middle-click tap, release and busy indicator');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();
