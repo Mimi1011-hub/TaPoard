@@ -6,6 +6,8 @@ using System.Threading;
 
 // Ordered, authenticated input sessions. Requests are executed serially and an
 // acknowledged sequence can be retried without sending the input twice.
+// Only one session owns the pointer at a time; another session is refused until
+// the owner releases it or stays silent for OwnershipSeconds (no takeover).
 static class InputSessions
 {
     internal sealed class PublicSession
@@ -29,6 +31,7 @@ static class InputSessions
         internal int sessions;
         internal string activeSessionId;
         internal bool timerArmed;
+        internal int activeRemainingMs;
     }
 
     sealed class Session
@@ -41,19 +44,23 @@ static class InputSessions
         internal DateTime expires;
         internal int lastSequence;
         internal string lastDigest;
-        internal bool active;
         internal HashSet<string> heldKeys = new HashSet<string>(StringComparer.Ordinal);
         internal HashSet<string> heldButtons = new HashSet<string>(StringComparer.Ordinal);
     }
 
     const int MaxSessions = 16;
     const int MaxEvents = 32;
+    const int MaxWheelSteps = 20;
+    const int LifetimeSeconds = 30;
+    internal const int OwnershipSeconds = 2;
+    internal const string BusyMessage = "他の端末が操作中です。";
     static readonly object Sync = new object();
     static readonly Dictionary<string, Session> Sessions = new Dictionary<string, Session>(StringComparer.Ordinal);
     static readonly Timer ExpiryTimer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
     internal static Func<DateTime> Clock = delegate { return DateTime.UtcNow; };
     internal static Func<string> IdFactory = delegate { return Guid.NewGuid().ToString("N"); };
     static string activeSessionId;
+    static DateTime activeUntil;
     static bool timerArmed;
 
     internal static PublicSession[] Prepare(string owner, IEnumerable<AppEntry> configured, IEnumerable<string> visibleIds)
@@ -99,7 +106,7 @@ static class InputSessions
                 session.options = app.options == null
                     ? new Dictionary<string, object>()
                     : new Dictionary<string, object>(app.options, StringComparer.Ordinal);
-                if (!session.active) session.expires = now.AddSeconds(30);
+                session.expires = now.AddSeconds(LifetimeSeconds);
                 result.Add(Public(session, now));
             }
             ArmLocked(now);
@@ -126,7 +133,6 @@ static class InputSessions
             if (sequence == session.lastSequence)
             {
                 if (session.lastDigest != digest) { RemoveLocked(session, true); ArmLocked(now); throw new Exception("同じ連番の内容が一致しません。"); }
-                session.expires = now.AddSeconds(5);
                 ArmLocked(now);
                 return new Ack { ok = true, acknowledged = sequence, duplicate = true, serverElapsedMs = watch.ElapsedMilliseconds };
             }
@@ -138,19 +144,19 @@ static class InputSessions
 
             if (activeSessionId != null && activeSessionId != session.id)
             {
-                Session previous;
-                if (Sessions.TryGetValue(activeSessionId, out previous)) RemoveLocked(previous, true);
-                else activeSessionId = null;
+                // The owner keeps the pointer; the other device retries after it is released.
+                ArmLocked(now);
+                throw new Exception(BusyMessage);
             }
+            NativeInputEvent[] native = Expand(session, events);
             activeSessionId = session.id;
-            session.active = true;
 
             var keys = new HashSet<string>(session.heldKeys, StringComparer.Ordinal);
             var buttons = new HashSet<string>(session.heldButtons, StringComparer.Ordinal);
             try
             {
-                ApplyHeldState(events, keys, buttons);
-                NativeInput.Send(events);
+                ApplyHeldState(native, keys, buttons);
+                NativeInput.Send(native);
             }
             catch
             {
@@ -163,9 +169,59 @@ static class InputSessions
             session.heldButtons = buttons;
             session.lastSequence = sequence;
             session.lastDigest = digest;
-            session.expires = now.AddSeconds(5);
+            session.expires = now.AddSeconds(LifetimeSeconds);
+            activeUntil = now.AddSeconds(OwnershipSeconds);
             ArmLocked(now);
             return new Ack { ok = true, acknowledged = sequence, duplicate = false, serverElapsedMs = watch.ElapsedMilliseconds };
+        }
+    }
+
+    // Keeps ownership while a drag or press is held without movement.
+    internal static void Keepalive(string owner, string sessionId)
+    {
+        ValidateOwner(owner);
+        lock (Sync)
+        {
+            DateTime now = Clock();
+            PruneLocked(now);
+            Session session;
+            if (sessionId == null || !Sessions.TryGetValue(sessionId, out session) || session.owner != owner)
+                throw new Exception("入力セッションの有効期限が切れています。");
+            if (activeSessionId != session.id) { ArmLocked(now); throw new Exception("操作権がありません。"); }
+            activeUntil = now.AddSeconds(OwnershipSeconds);
+            session.expires = now.AddSeconds(LifetimeSeconds);
+            ArmLocked(now);
+        }
+    }
+
+    // Ends the owner's operation now: held input is released and the session stays usable.
+    internal static void Release(string owner, string sessionId)
+    {
+        ValidateOwner(owner);
+        lock (Sync)
+        {
+            DateTime now = Clock();
+            PruneLocked(now);
+            Session session;
+            if (sessionId != null && Sessions.TryGetValue(sessionId, out session) && session.owner == owner
+                && activeSessionId == session.id)
+                EndOwnershipLocked();
+            ArmLocked(now);
+        }
+    }
+
+    // Long-poll renewal: extends the owner's prepared sessions without adding or removing any,
+    // because the visible IDs of a waiting request may already be stale.
+    internal static void Touch(string owner)
+    {
+        if (String.IsNullOrEmpty(owner)) return;
+        lock (Sync)
+        {
+            DateTime now = Clock();
+            PruneLocked(now);
+            foreach (var session in Sessions.Values)
+                if (session.owner == owner) session.expires = now.AddSeconds(LifetimeSeconds);
+            ArmLocked(now);
         }
     }
 
@@ -211,7 +267,7 @@ static class InputSessions
         lock (Sync)
         {
             foreach (var session in new List<Session>(Sessions.Values)) ReleaseLocked(session);
-            Sessions.Clear(); activeSessionId = null; timerArmed = false;
+            Sessions.Clear(); activeSessionId = null; activeUntil = DateTime.MinValue; timerArmed = false;
             ExpiryTimer.Change(Timeout.Infinite, Timeout.Infinite);
         }
     }
@@ -220,9 +276,7 @@ static class InputSessions
     {
         lock (Sync)
         {
-            Session active;
-            if (activeSessionId != null && Sessions.TryGetValue(activeSessionId, out active)) RemoveLocked(active, true);
-            else activeSessionId = null;
+            EndOwnershipLocked();
             ArmLocked(Clock());
         }
     }
@@ -237,7 +291,13 @@ static class InputSessions
         lock (Sync)
         {
             DateTime now = Clock(); PruneLocked(now); ArmLocked(now);
-            return new Snapshot { sessions = Sessions.Count, activeSessionId = activeSessionId, timerArmed = timerArmed };
+            return new Snapshot
+            {
+                sessions = Sessions.Count,
+                activeSessionId = activeSessionId,
+                timerArmed = timerArmed,
+                activeRemainingMs = activeSessionId == null ? 0 : (int)Math.Max(0, (activeUntil - now).TotalMilliseconds),
+            };
         }
     }
 
@@ -264,6 +324,10 @@ static class InputSessions
             {
                 if (e.delta == 0 || Math.Abs(e.delta) > 1200) throw new Exception("ホイール量が範囲外です。");
             }
+            else if (e.type == "steps")
+            {
+                if (e.delta == 0 || Math.Abs(e.delta) > MaxWheelSteps) throw new Exception("ホイール量が範囲外です。");
+            }
             else if (e.type == "buttonDown" || e.type == "buttonUp")
             {
                 if (e.control != "left" && e.control != "right" && e.control != "middle")
@@ -284,8 +348,8 @@ static class InputSessions
         {
             if (String.Equals(session.widgetType, "wheel", StringComparison.OrdinalIgnoreCase))
             {
-                if (e.type == "wheel") continue;
-                if ((e.type == "keyDown" || e.type == "keyUp") && Option(session, e.control, false)) continue;
+                // Wheel amount and modifiers come from the saved options; the device sends only steps.
+                if (e.type == "steps") continue;
                 if ((e.type == "buttonDown" || e.type == "buttonUp") && e.control == "middle" && Option(session, "middleClick", false)) continue;
                 throw new Exception("このホイール設定では許可されていない入力です。");
             }
@@ -295,12 +359,42 @@ static class InputSessions
                 if (e.type == "wheel" && Option(session, "twoFingerScroll", true)) continue;
                 if ((e.type == "buttonDown" || e.type == "buttonUp") && e.control == "left"
                     && (Option(session, "tapToClick", true) || OptionText(session, "longPress", "none") == "drag")) continue;
+                // Two-finger tap is a right click when tapping is enabled.
                 if ((e.type == "buttonDown" || e.type == "buttonUp") && e.control == "right"
-                    && OptionText(session, "longPress", "none") == "rightClick") continue;
+                    && (Option(session, "tapToClick", true) || OptionText(session, "longPress", "none") == "rightClick")) continue;
                 throw new Exception("このタッチパッド設定では許可されていない入力です。");
             }
             throw new Exception("入力部品の種類が正しくありません。");
         }
+    }
+
+    // Turns validated device events into native input using the saved widget options.
+    static NativeInputEvent[] Expand(Session session, NativeInputEvent[] events)
+    {
+        var result = new List<NativeInputEvent>();
+        bool wheel = String.Equals(session.widgetType, "wheel", StringComparison.OrdinalIgnoreCase);
+        int sign = Option(session, wheel ? "reverse" : "reverseScroll", false) ? -1 : 1;
+        foreach (NativeInputEvent e in events)
+        {
+            if (e.type == "steps")
+            {
+                int multiplier = Math.Max(1, Math.Min(10, OptionNumber(session, "multiplier", 1)));
+                var modifiers = new List<string>();
+                foreach (string name in new[] { "ctrl", "shift", "alt" }) if (Option(session, name, false)) modifiers.Add(name);
+                foreach (string name in modifiers) result.Add(new NativeInputEvent { type = "keyDown", control = name });
+                result.Add(new NativeInputEvent { type = "wheel", delta = sign * e.delta * multiplier * 120 });
+                for (int i = modifiers.Count - 1; i >= 0; i--) result.Add(new NativeInputEvent { type = "keyUp", control = modifiers[i] });
+            }
+            else if (e.type == "wheel") result.Add(new NativeInputEvent { type = "wheel", delta = sign * e.delta });
+            else result.Add(e);
+        }
+        return result.ToArray();
+    }
+
+    static int OptionNumber(Session session, string name, int fallback)
+    {
+        object value;
+        return session.options != null && session.options.TryGetValue(name, out value) ? Convert.ToInt32(value) : fallback;
     }
 
     static bool Option(Session session, string name, bool fallback)
@@ -361,11 +455,19 @@ static class InputSessions
     static void ReleaseLocked(Session session)
     {
         NativeInput.Release(session.heldKeys, session.heldButtons);
-        session.heldKeys.Clear(); session.heldButtons.Clear(); session.active = false;
+        session.heldKeys.Clear(); session.heldButtons.Clear();
+    }
+
+    static void EndOwnershipLocked()
+    {
+        Session active;
+        if (activeSessionId != null && Sessions.TryGetValue(activeSessionId, out active)) ReleaseLocked(active);
+        activeSessionId = null;
     }
 
     static void PruneLocked(DateTime now)
     {
+        if (activeSessionId != null && activeUntil <= now) EndOwnershipLocked();
         var expired = new List<Session>();
         foreach (var session in Sessions.Values) if (session.expires <= now) expired.Add(session);
         foreach (var session in expired) RemoveLocked(session, true);
@@ -375,6 +477,7 @@ static class InputSessions
     {
         DateTime earliest = DateTime.MaxValue;
         foreach (var session in Sessions.Values) if (session.expires < earliest) earliest = session.expires;
+        if (activeSessionId != null && activeUntil < earliest) earliest = activeUntil;
         if (earliest == DateTime.MaxValue)
         {
             timerArmed = false; ExpiryTimer.Change(Timeout.Infinite, Timeout.Infinite); return;
