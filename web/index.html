@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+ <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+ <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+ <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+ <link rel="manifest" href="/manifest.webmanifest">
+ <meta name="theme-color" content="#101114">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="mobile-web-app-capable" content="yes">
+ <title>TaPoard</title>
+ <link rel="stylesheet" href="/style.css">
+ <script defer src="/nosleep.min.js"></script>
+ <script defer src="/app.js"></script>
+</head>
+<body>
+<main>
+ <header><div><small>PERSONAL CONTROL PANEL</small><h1>TaP<span>oard</span></h1></div><div id="status">未接続</div></header>
+ <section id="pair"><h2>PCと接続する</h2><p>ホーム画面から初めて開いた場合は、PCで接続を承認できます。次回からは自動で接続します。</p><label>この端末の名前<input id="pair-name" maxlength="60" value="スマートフォン" autocomplete="off"></label><button id="pair-request">PCに接続をリクエスト</button><p id="pair-progress" role="status"></p><hr><p>PC設定画面のQRコードをカメラで読み取るか、表示された接続キーを入力してください。</p><input id="key" type="password" placeholder="接続キー" autocomplete="off"><button id="connect">接続</button></section>
+ <section id="controls" hidden>
+  <div class="deck-toolbar"><span>DEFAULT PROFILE</span><div><button id="prev-page" class="page-button" aria-label="前のページ">‹</button><span id="page-label">1 / 1</span><button id="next-page" class="page-button" aria-label="次のページ">›</button><button id="device-menu-button" class="hamburger" aria-label="画面と接続の設定" aria-expanded="false"><span></span><span></span><span></span></button></div></div>
+  <div class="deck-frame"><div id="deck" class="deck-grid"></div></div>
+  <p id="empty">PCの設定画面からボタンを追加してください。</p>
+  <div id="device-menu-backdrop" class="menu-backdrop" hidden><section class="device-menu" role="dialog" aria-modal="true" aria-labelledby="device-menu-title"><div class="device-menu-head"><div><small>TAPOARD OPTIONS</small><h2 id="device-menu-title">画面と接続</h2></div><button id="device-menu-close" class="menu-close" aria-label="設定を閉じる">×</button></div><label class="menu-switch"><span><strong>画面を維持</strong><small>PC接続中は自動ロックを止めます</small></span><input type="checkbox" id="awake" checked><i></i></label><div class="menu-card"><strong>ボタンの枠数</strong><p>画面に合わせて横と縦の数を選べます。</p><div class="grid-settings"><label>横<select id="grid-columns"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option></select></label><label>縦<select id="grid-rows"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label></div></div><button id="disconnect" class="menu-disconnect">この端末の接続を解除</button></section></div>
+ </section>
+ <section id="settings" hidden>
+  <section id="connection-panel" class="settings-body settings-section connection-panel">
+   <div class="section-heading"><div><small>PHONE CONNECTION</small><h2>PCとスマートフォンの接続</h2></div><span class="connection-hint">未接続時はここに表示されます</span></div>
+   <p>PCと同じルーターのWi-Fiに接続し、端末に合うQRコードを読み取ってください。VPNアプリは不要です。</p>
+   <div class="pair-approval"><h3>スマートフォンの接続承認</h3><p id="pair-admin-status" role="status"></p><div id="pair-pending"></div><button id="pair-refresh" class="subtle">接続待ちを更新</button><details><summary>承認済みの端末</summary><div id="paired-devices"></div></details></div><div class="pairing-devices">
+    <article class="pairing-device iphone"><strong>新しいスマートフォン用</strong><span>`.local`で接続・IPが変わっても使いやすい</span><canvas id="pair-qr-iphone" width="220" height="220" aria-label="新しいスマートフォン接続用QRコード"></canvas><small id="qr-status-iphone">QRコードを準備しています</small></article>
+    <article class="pairing-device android"><strong>左のQRが使えない場合</strong><span>現在のIPアドレスへ直接接続・全端末共通</span><canvas id="pair-qr-android" width="220" height="220" aria-label="直接IP接続用QRコード"></canvas><small id="qr-status-android">QRコードを準備しています</small></article>
+    <div class="pairing-key"><label>接続キー（手入力・コピー用）<input id="token" readonly></label><p>QRコードを使えない場合は、下のURLを開いてこのキーを入力してください。</p><button id="copy">キーをコピー</button><button id="rotate" class="subtle">キーを再発行</button></div>
+   </div>
+   <div class="connection-urls"><div><strong>新しいスマートフォン向け・IPが変わっても使えるURL</strong><a id="lan-url"></a></div><div><strong>左のURLが使えない場合・現在のIPアドレス</strong><div id="ip-urls"></div></div></div>
+   <div class="home-icon-guide"><img src="/icon-192.png" width="72" height="72" alt="TaPoardアイコン"><div><strong>ホーム画面にTaPoardアイコンを追加</strong><p>AndroidはChromeのメニューから「ホーム画面に追加」、iPhoneはSafariの共有ボタンから「ホーム画面に追加」を選びます。追加したアイコンから開いてキー入力画面になったら、「PCに接続をリクエスト」を押し、PCで同じ番号を確認して許可してください。</p><a href="/icon-512.png" download="TaPoard-icon.png">アイコン画像を保存</a></div></div>
+   <p id="network-status"></p><p>右側で使うIPが変わった場合は、この設定画面を開き直して新しいQRコードを読み取ってください。どちらもiPhone・Android共通で使える、自宅LAN専用のHTTP接続です。</p><p>このPCの操作画面：<a href="/" target="_blank">開く</a></p>
+  </section>
+  <div id="studio" class="studio">
+   <section id="phone-panel" class="phone-panel">
+    <div class="panel-heading"><div><small>LIVE MOBILE VIEW</small><h2>スマートフォン画面</h2></div><div class="preview-heading-actions"><div class="orientation-switch" aria-label="プレビューの向き"><button id="preview-landscape" type="button" aria-pressed="true">横</button><button id="preview-portrait" type="button" aria-pressed="false">縦</button></div><span id="phone-status" class="phone-status">未接続</span></div></div>
+    <div id="phone-shell" class="phone-shell landscape"><div class="phone-speaker"></div><div class="phone-screen"><div class="preview-toolbar"><span>DEFAULT PROFILE</span><div><button id="preview-add" class="preview-add" title="アプリを追加" aria-label="アプリを追加">＋</button><span id="preview-page-label">1 / 1</span></div></div><div id="preview-deck" class="deck-grid preview-grid"></div><div id="preview-offline" class="preview-offline"><strong>スマートフォン未接続</strong><span>ChromeまたはSafariでTaPoardを開くと同期します</span></div></div><div class="phone-home"></div></div>
+    <div class="preview-controls"><button id="preview-prev" class="subtle">‹ 前のページ</button><button id="preview-next" class="subtle">次のページ ›</button><button id="preview-new-page" class="subtle">＋ ページ</button><span class="admin-grid-settings"><label>横<select id="admin-columns"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option></select></label><label>縦<select id="admin-rows"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label></span></div>
+    <div class="quick-guide"><strong>かんたんな使い方</strong><div><span><b>1</b>ショートカットは右の一覧から空き枠へドラッグ</span><span><b>2</b>アプリは上の「＋」または空き枠から追加</span><span><b>3</b>URL・コピーテキストは右の一覧から追加</span></div><small>上の「横／縦」で編集する向きを選びます。ボタンの登録内容・位置・大きさ・表示設定は向きごとに別々に保存します。登録済みボタンは空き枠へドラッグして移動でき、右クリックで詳細設定・削除できます。</small><p id="import-status" role="status">「＋」または空き枠から、ショートカット・実行ファイルを追加できます。</p></div>
+   </section>
+   <aside class="shortcut-library">
+    <div class="panel-heading"><div><small>ACTION LIBRARY</small><h2>ショートカット</h2></div></div>
+    <p>項目を左のスマートフォン画面へドラッグ＆ドロップしてください。「追加」でも現在のページへ自動保存します。</p>
+    <div id="shortcut-groups"></div>
+   </aside>
+  </div>
+  <section id="app-registration-panel" class="settings-body settings-section app-registration-panel">
+   <h2>アイコンの詳細設定</h2>
+   <p>上の「横／縦」で選択中の向きに登録されたボタンだけを表示します。名前、位置、アイコンなどを調整し、変更後は「設定を保存」を押してください。</p>
+   <div class="editor-actions" role="toolbar" aria-label="アイコン詳細設定の操作"><button id="add" class="subtle">＋ アプリを手入力</button><button id="add-url" class="subtle">＋ URL</button><button id="add-text" class="subtle">＋ コピー用テキスト</button><button id="save">設定を保存</button></div><div id="editors"></div>
+  </section>
+ </section>
+ <p id="message" role="status"></p><footer>TAPOARD <span><b id="app-version">Version 1.04</b>　軽く、すぐに、手元から。</span></footer>
+</main>
+<div id="deck-context-menu" class="deck-context-menu" role="menu" hidden></div>
+<div id="icon-picker-backdrop" class="icon-picker-backdrop" hidden><section class="icon-picker" role="dialog" aria-modal="true" aria-labelledby="icon-picker-title"><div class="icon-picker-head"><div><small>ICON LIBRARY</small><h2 id="icon-picker-title">アイコンを選ぶ</h2><p id="icon-picker-current"></p></div><button id="icon-picker-close" type="button" class="menu-close" aria-label="アイコン選択を閉じる">×</button></div><div class="custom-icon-upload"><div><strong>オリジナルアイコン</strong><p>PNG・JPEG・WebP画像を選ぶと、正方形に収まるよう縮小して保存します。</p></div><label class="custom-icon-button">画像を選ぶ<input id="custom-icon-file" type="file" accept="image/png,image/jpeg,image/webp"></label></div><div class="icon-colors-panel"><strong>アイコンの背景色</strong><p>背景色を選んでからアイコンを押すと保存します。アプリの画像・オリジナル画像には適用されません。</p><div id="icon-colors" class="icon-colors"></div></div><div id="icon-preset-groups"></div></section></div>
+<div id="offline" hidden><p>接続が切れました</p><button id="retry">再接続</button><small>自動ロックは端末の設定に従います</small></div>
+</body>
+</html>

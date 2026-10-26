@@ -1,0 +1,54 @@
+# TaPoard verification
+
+- Build and JavaScript syntax: passed.
+- API authorization, registered-only launch checks, local admin restrictions: passed.
+- Import API rejected for ordinary remote-control tokens: passed.
+- Import metadata: exe, Japanese shortcut name, absolute path and rejection of unsupported/missing files passed.
+- mDNS multicast query/reply on UDP 5353: passed outside development sandbox.
+- HTTP via the TaPoard `.local` hostname: passed (200); the old StreamDeck hostname remains an mDNS compatibility alias.
+- TaPoard.exe LAN firewall rules: present and point to the new executable.
+- Existing settings and long connection key retained in dist/data/settings.json; a 12-character short pairing key is generated for new iPhone connections and both keys authenticate.
+- Native drag/drop window and file-picker import are available only while adding apps.
+- EXE and LNK icon extraction to PNG data URLs: passed.
+- API state contains an icon for the existing registered app; unchanged-version polling omits the repeated icon payload.
+- Served page contains the 5x3 deck grid and app import controls; CSP permits only local/data images.
+- PC settings markup contains the live iPhone preview, drag/drop targets, quick-add buttons, and grouped Discord, Windows, media, browser, and CLIP STUDIO shortcut library.
+- Shortcut allowlist contains 109 unique actions, including the Discord game-overlay Soundboard opener, 51 CLIP STUDIO commands, speaker/microphone controls, common editing commands, Print Screen, and window management actions, and rejects unknown action ids.
+- Discord actions alone use temporary Discord foreground targeting; other shortcut categories keep their normal active-window behavior.
+- Shortcut drop, app import, reorder, and delete save immediately and notify the iPhone through the existing state revision channel.
+- Windows Core Audio speaker and microphone endpoints accept absolute volume values from a full-tile vertical swipe; icon taps toggle mute through the same endpoints.
+- Grid columns (3-8), rows (2-5), and screen-awake preference persist and synchronize between PC and iPhone.
+- Portrait iPhone layout swaps wide grids into a vertical arrangement, constrains the PC badge, and uses responsive two-line labels; options open from the hamburger drawer.
+- PC iPhone preview has persistent landscape and portrait buttons and uses the same orientation-aware grid arrangement as the physical iPhone.
+- TaPoard application, tray icon, browser favicon, iPhone home-screen icon, and installer use the generated TaPoard grid-and-tap icon.
+- The standalone installer embeds a clean payload, extracts every file byte-for-byte, installs per-user, registers an uninstaller, and contains no settings, pairing keys, app registrations, network identity, or logs.
+- Installer options independently control desktop shortcut, Start Menu registration, and Windows logon startup; startup defaults off and uses `--silent` when enabled.
+- Release 1.01 installer stops other running TaPoard copies before first launch, waits for `network.json`, recreates stale firewall rules, packages PowerShell scripts as Windows PowerShell-compatible UTF-8 with BOM, distinguishes UAC cancellation from app/script failures, and writes detailed errors to `%TEMP%\TaPoard-install.log` for diagnosis.
+- A clean installer extraction launched successfully, generated a new 12-character pairing key and unique `tapoard-*.local` hostname, and served both web icons as PNG.
+- PC preview app buttons expose a custom right-click menu for delete, reorder, and editor navigation; mutations use automatic persistence.
+- Speaker and microphone fader positions persist independently and can be dragged from the shortcut library to any PC preview slot or moved in four directions from the context menu, swapping when they meet.
+- Screen-awake uses the native API when available and the bundled MIT-licensed NoSleep.js fallback on the iPhone 8 HTTP connection; disconnect releases it.
+- PC settings render a local QR code containing the `.local` URL and 192-bit connection key; iPhone stores the key from the URL fragment and immediately removes it from the address bar. Existing 12-character keys remain accepted for compatibility.
+- Android Chrome is supported by the same responsive touch interface and has a web app manifest with 192 px and 512 px home-screen icons.
+- PC settings show a “new smartphone” `.local` QR on the left and a clearly labeled “if the left QR does not work” direct-IP fallback on the right; both support iPhone and Android. The connection panel moves to the top while no phone is connected and to the bottom after connection; app registration remains a separate panel and the live preview contains a three-step quick guide.
+- Each registered app or shortcut can select from 76 local preset icons grouped by purpose, with the browser list checked against a server-side allowlist; automatic extracted/category icons remain available.
+- Each button can also use a browser-resized PNG, JPEG, or WebP custom icon. The server validates its data URL and size before persistence, and the release version is exposed through the state API and browser footer.
+- Page-change long polling woke after a state revision change and returned the synchronized page.
+
+Launch the LAN-facing TaPoard executable outside the development sandbox. Sandbox launches can suppress outgoing multicast. Stop any existing instance before replacing the executable.
+
+- Release 1.02 adds direct audio endpoint buttons keyed by endpoint ID, validates output/input direction, and rejects unavailable devices. Tests switch two outputs and two inputs, then restore all six original default roles. No history feature is included.
+- Headset/earbud/audio-device SVG icons bring the preset count to 92. Nine custom background colors plus the default persist through save/reload. Browser tests cover registration, phone actions, unavailable state, and color persistence.
+- Release 1.02 UI fix: background colors remain staged in the open picker until a preset is chosen; choosing the icon saves both and closes the picker. Closing without choosing discards the staged color. Browser regression covers repeated color changes, different icon selection, persistence after reload, and speaker/microphone faders at the top of the catalog.
+- Release 1.03 splits each existing button into independent landscape and portrait entries on first launch. Registration, shortcut, position, size, label, icon, and hotkey edits apply only to the selected orientation; independent browser and phone layouts are covered. It also supports empty cells, explicit per-orientation pages, 1x1/2x2 tiles, and rejects invalid overlap, overflow, unsupported keys, and Ctrl+Alt+Delete without changing saved settings.
+- Home-screen clients without Safari local storage can request approval with a six-digit, three-minute code. Approved devices receive independent 192-bit credentials; only SHA-256 hashes are persisted. Tests cover wrong secrets/codes, expiry, per-address rate limiting, approval after independent browser storage, reload, management API isolation, and revocation.
+- Release 1.03 keeps the detail-editor action bar, including Save, visible while scrolling through registered buttons; browser regression verifies the Save button remains inside the viewport.
+- Speaker and microphone faders can independently use 1x1 or 2x2 cells from their PC-preview context menus. Server and browser reject overlap or orientation-specific overflow, and the phone renders the persisted span.
+- Release 1.03 distinguishes copy-only library drags from move-only registered-tile drags, so the browser accepts both operations after the free-layout change. Browser regression performs each drag type and verifies persistence.
+- Release 1.04 sends speaker and microphone volume while the pointer is moving with an 80 ms throttle, coalesces overlapping requests, and always sends the final value. Browser regression verifies that the first request arrives before pointer release and that a later final value is applied.
+- Release 1.04 maps the pointer against the fader track's absolute bounds, supports a touch-event fallback for older Safari, and merges only the endpoint returned by each audio request. Regression coverage verifies live intermediate requests and that moving the speaker leaves the microphone value unchanged.
+- Release 1.04 retries replacement of the installed uninstaller when antivirus scanning temporarily locks it, clears a read-only attribute, and stops a stale installed setup process. Unit coverage verifies read-only and temporary exclusive-lock cases.
+- Release 1.04 stores independent column and row counts for landscape and portrait. Grid reduction keeps valid positions, relocates overflowing 2x2 items, and rejects geometrically impossible layouts without changing saved settings.
+- Release 1.04 adds per-button label-background opacity from 0 to 100 percent and automatically removes success/error notices after their respective display periods.
+- Landscape and portrait entries retain independent preset/custom icon fields. Enlarging a 1x1 button at an edge automatically finds a free 2x2 area in that same orientation; the other orientation is unchanged.
+- Speaker and microphone fader position and 1x1/2x2 size are stored independently for landscape and portrait. Moving or resizing one orientation leaves the other unchanged; legacy shared settings are copied to both once.

@@ -1,0 +1,31 @@
+# Build and release output
+/dist/
+/release/*
+!/release/*ご案内.txt
+/tests/bin/
+/tools/bin/
+/node_modules/
+**/bin/
+**/obj/
+
+# Browser test profiles and reports
+/tests/.android-chrome-*/
+/tests/.chrome-*/
+/playwright-report/
+/test-results/
+
+# Private runtime state and diagnostics
+**/data/
+settings.json
+network.json
+network-status.txt
+*.log
+.env
+.env.*
+
+# Local editor settings and temporary files
+*.user
+*.suo
+.vs/
+*.tmp
+*.bak
