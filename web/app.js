@@ -17,6 +17,14 @@
       sessionStorage.getItem('streamdeck-admin') ||
       ''
     : scannedKey || localStorage.getItem('tapoard-key') || localStorage.getItem('streamdeck-key') || '';
+  var viewId = sessionStorage.getItem('tapoard-view-id');
+  if (!/^[a-zA-Z0-9_-]{8,64}$/.test(viewId || '')) {
+    viewId =
+      window.crypto && window.crypto.getRandomValues
+        ? Array.prototype.map.call(window.crypto.getRandomValues(new Uint8Array(12)), function (value) { return ('0' + value.toString(16)).slice(-2); }).join('')
+        : String(Date.now()) + Math.random().toString(36).slice(2);
+    sessionStorage.setItem('tapoard-view-id', viewId);
+  }
   var timer,
     lock = null,
     noSleep = null,
@@ -1438,13 +1446,47 @@
     } else if (!audioInteraction) renderDeck();
   }
 
+  function visibleWidgetIds() {
+    if (document.hidden) return [];
+    var orientation = admin ? previewOrientation : currentOrientation(false);
+    return deckApps
+      .filter(function (app) {
+        var position = app[orientation];
+        return (
+          app.orientation === orientation &&
+          position &&
+          position.page === page &&
+          (app.type === 'metrics' || app.type === 'weather')
+        );
+      })
+      .map(function (app) { return app.id; })
+      .slice(0, 40);
+  }
+
+  function viewQuery() {
+    return '&viewId=' + encodeURIComponent(viewId) + '&visibleIds=' + encodeURIComponent(visibleWidgetIds().join(','));
+  }
+
+  var announcedViewSignature = '';
+  function announceView() {
+    if (!key || document.hidden) return Promise.resolve();
+    var ids = visibleWidgetIds();
+    var signature = ids.join(',');
+    if (signature === announcedViewSignature) return Promise.resolve();
+    announcedViewSignature = signature;
+    return api('view', { viewId: viewId, visibleIds: ids }).catch(function () {
+      announcedViewSignature = '';
+    });
+  }
+
   function refresh() {
     if (!key) return Promise.resolve();
-    return api('state?version=' + encodeURIComponent(deckVersion))
+    return api('state?version=' + encodeURIComponent(deckVersion) + viewQuery())
       .then(function (s) {
         var was = connected;
         connected = true;
         applyState(s);
+        announceView();
         if (!admin) {
           $('status').textContent = '● ' + s.computer;
           $('status').title = s.computer;
@@ -1475,10 +1517,11 @@
       watchStarted = false;
       return;
     }
-    api('sync?revision=' + deckRevision, undefined, 22000)
+    api('sync?revision=' + deckRevision + viewQuery(), undefined, 22000)
       .then(function (s) {
         if (s.version && s.version !== deckVersion) return refresh();
         applyState(s);
+        announceView();
       })
       .catch(function () {
         if (!admin) {
@@ -1502,6 +1545,7 @@
         deckRevision = s.revision;
         if (admin) renderPreview();
         else renderDeck();
+        announceView();
       })
       .catch(function (e) {
         message(e.message);
@@ -1543,6 +1587,7 @@
     syncGridControls();
     renderEditorOrder();
     renderPreview();
+    announceView();
   }
   $('preview-landscape').onclick = function () {
     setPreviewOrientation('landscape');
@@ -1898,6 +1943,8 @@
   };
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
+      if (key) api('view', { viewId: viewId, visibleIds: [] }).catch(function () {});
+      announcedViewSignature = '';
       release();
       watchStarted = false;
     } else if (key) {
@@ -2378,7 +2425,7 @@
     document.head.appendChild(script);
   }
   function settings() {
-    return api('settings')
+    return api('settings?' + viewQuery().slice(1))
       .then(function (s) {
         $('token').value = s.token;
         drawPairQr(s.iphoneQrUrl || s.qrUrl, 'pair-qr-iphone', 'qr-status-iphone');
@@ -2401,6 +2448,7 @@
         });
         renderEditorOrder();
         applyState(s);
+        announceView();
         refreshDeviceSelectors();
         renderCatalog();
         startWatch();

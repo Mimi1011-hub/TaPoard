@@ -82,6 +82,28 @@ partial class Program
             SetLayout(r, input);
         else if (path == "/api/audio")
             SetAudio(r, input);
+        else if (path == "/api/view")
+        {
+            object rawViewId;
+            if (!input.TryGetValue("viewId", out rawViewId))
+                throw new Exception("表示セッションが正しくありません。");
+            string viewId = Convert.ToString(rawViewId);
+            var visible = new List<string>();
+            object rawVisible;
+            if (input.TryGetValue("visibleIds", out rawVisible))
+            {
+                var list = rawVisible as System.Collections.IEnumerable;
+                if (list == null || rawVisible is string || rawVisible is Dictionary<string, object>)
+                    throw new Exception("表示部品が正しくありません。");
+                foreach (object id in list) visible.Add(Convert.ToString(id));
+            }
+            lock (Gate)
+            {
+                UpdateDisplaySubscriptions(r, viewId, visible.ToArray(), true, true);
+                TouchPhone(r.local);
+            }
+            Reply(s, 200, JsonType, "{\"ok\":true}");
+        }
         else if (path == "/api/settings" && r.isAdmin)
         {
             SaveSettings(json);
@@ -132,7 +154,10 @@ partial class Program
         {
             string id = Convert.ToString(input["id"]);
             if (input.ContainsKey("revoke"))
+            {
                 Pairing.Revoke(config, id);
+                DisplaySubscriptions.ClearAll();
+            }
             else
                 Pairing.Decide(config, id, Convert.ToString(input["code"]), Convert.ToBoolean(input["approve"]));
             Save();
@@ -157,6 +182,7 @@ partial class Program
     {
         lock (Gate)
         {
+            UpdateDisplaySubscriptions(r, true, true);
             TouchPhone(r.local);
             // Skip the app list (with its icons) when the phone already has this version.
             var apps =
@@ -210,6 +236,7 @@ partial class Program
         long.TryParse(QueryValue(r.target, "revision"), out known);
         lock (Gate)
         {
+            UpdateDisplaySubscriptions(r, false, true);
             TouchPhone(r.local);
             if (known == revision)
                 Monitor.Wait(Gate, 15000);
@@ -250,6 +277,7 @@ partial class Program
     {
         lock (Gate)
         {
+            UpdateDisplaySubscriptions(r, true, true);
             int landscapePages = DeckLayout.Pages(config, "landscape"),
                 portraitPages = DeckLayout.Pages(config, "portrait");
             string lanUrl = "http://" + lan.HostName + ":" + Port + "/";
@@ -293,9 +321,26 @@ partial class Program
                     lanUrl = lanUrl,
                     ipUrls = ipUrls,
                     networkStatus = lan.Status,
+                    displaySubscriptionCount = DisplaySubscriptions.Current().sessions,
                 }
             );
         }
+    }
+
+    static void UpdateDisplaySubscriptions(Request r, bool renewMetrics, bool renewWeather)
+    {
+        string viewId = QueryValue(r.target, "viewId");
+        if (String.IsNullOrEmpty(viewId)) return;
+        string raw = QueryValue(r.target, "visibleIds") ?? "";
+        UpdateDisplaySubscriptions(r, viewId, raw.Length == 0 ? new string[0] : raw.Split(','), renewMetrics, renewWeather);
+    }
+
+    static void UpdateDisplaySubscriptions(Request r, string viewId, string[] ids, bool renewMetrics, bool renewWeather)
+    {
+        if (String.IsNullOrEmpty(viewId) || viewId.Length < 8 || viewId.Length > 64 || !System.Text.RegularExpressions.Regex.IsMatch(viewId, "\\A[a-zA-Z0-9_-]+\\z"))
+            throw new Exception("表示セッションが正しくありません。");
+        string identity = Pairing.Hash(r.auth ?? r.remote.ToString()) + ":" + viewId;
+        DisplaySubscriptions.Update(identity, config.apps, ids, renewMetrics, renewWeather);
     }
 
     // Opens the drag-and-drop window on the UI thread; the browser polls GET /api/import for the result.
@@ -553,6 +598,7 @@ partial class Program
                 if (!ids.Add(a.id))
                     throw new Exception("ボタンIDが重複しています。");
             config = next;
+            DisplaySubscriptions.RemoveUnknown(config.apps);
             Save();
             version = NewId();
             ShrinkCurrentPages(DeckLayout.Pages(config, "landscape"), DeckLayout.Pages(config, "portrait"));
@@ -711,6 +757,7 @@ partial class Program
             config.token = RandomKey();
             config.pairingKey = ShortKey();
             config.devices.Clear();
+            DisplaySubscriptions.ClearAll();
             Pairing.Pending.Clear();
             Pairing.Revision++;
             Save();

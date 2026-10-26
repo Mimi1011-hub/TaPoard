@@ -13,22 +13,23 @@ if(path==='/api/sync'){const requested=Number(new URL(req.url,'http://127.0.0.1'
 if(path==='/api/settings'){if(req.method==='POST'){apps=JSON.parse(body).apps.map((a,i)=>({...a,id:'app'+i}));version=String(Number(version)+1);bumpRevision();res.end('{"ok":true}')}else res.end(JSON.stringify({...state(),token:'test',lanUrl:'http://example.local/',ipUrls:[],networkStatus:'テスト',qrUrl:'http://example.local/#connect=test'}));return;}
 if(path==='/api/devices'){res.end(JSON.stringify({devices}));return;}
 if(path==='/api/audio'){const value=JSON.parse(body);audioCalls.push(value);if(value.target==='speaker')audio.speakerVolume=value.volume;else audio.micVolume=value.volume;if(value.final)bumpRevision();const changed=value.target==='speaker'?{speakerVolume:audio.speakerVolume,speakerMuted:false,speakerAvailable:true,micVolume:0,micAvailable:false}:{micVolume:audio.micVolume,micMuted:false,micAvailable:true,speakerVolume:0,speakerAvailable:false};res.end(JSON.stringify({ok:true,audio:changed,revision}));return;}
+ if(path==='/api/view'){res.end('{"ok":true}');return;}
 if(path==='/api/state'){res.end(JSON.stringify(state()));return;}
 if(path==='/api/action'){actions.push(JSON.parse(body));res.end('{"ok":true}');return;}
 const file=path==='/'||path==='/settings'?'index.html':path.slice(1);if(!/^[\w.-]+$/.test(file)){res.writeHead(404);res.end();return;}try{res.end(fs.readFileSync('web/'+file))}catch{res.writeHead(404);res.end()}});
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser,page,phone;const errors=[];try{
  browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
  page=await browser.newPage({viewport:{width:1440,height:1080}});page.on('pageerror',e=>errors.push(String(e)));const base='http://127.0.0.1:'+server.address().port;
- const initialSettings=page.waitForResponse(r=>r.url().endsWith('/api/settings')&&r.request().method()==='GET');await page.goto(base+'/settings#test');await initialSettings;await page.locator('.shortcut-row').first().waitFor({state:'visible'});if(errors.length)throw Error(errors.join('\n'));assert((await page.locator('.shortcut-row').nth(0).innerText()).includes('スピーカーフェーダー'));assert((await page.locator('.shortcut-row').nth(1).innerText()).includes('マイクフェーダー'));await page.locator('.shortcut-row').filter({hasText:'出力先を切替'}).getByRole('button',{name:'追加',exact:true}).click();
+ const initialSettings=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/settings'&&r.request().method()==='GET');await page.goto(base+'/settings#test');await initialSettings;await page.locator('.shortcut-row').first().waitFor({state:'visible'});if(errors.length)throw Error(errors.join('\n'));assert((await page.locator('.shortcut-row').nth(0).innerText()).includes('スピーカーフェーダー'));assert((await page.locator('.shortcut-row').nth(1).innerText()).includes('マイクフェーダー'));await page.locator('.shortcut-row').filter({hasText:'出力先を切替'}).getByRole('button',{name:'追加',exact:true}).click();
  await page.locator('.audio-device-select').selectOption('output-two');await page.locator('#save').click();await page.waitForFunction(()=>document.querySelector('#preview-deck').textContent.includes('テスト ヘッドセット'));
  assert.equal(apps[0].deviceId,'output-two');assert.equal(apps[0].deviceTarget,'speaker');
  await page.getByRole('button',{name:'▦ アイコンを選ぶ'}).click();
- const savedHeadset=page.waitForResponse(r=>r.url().endsWith('/api/settings')&&r.request().method()==='GET');
+ const savedHeadset=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/settings'&&r.request().method()==='GET');
  await page.locator('.icon-choice[data-icon-key="headset"]').click();await page.locator('#icon-picker-backdrop').waitFor({state:'hidden'});await savedHeadset;
  await page.getByRole('button',{name:'▦ アイコンを選ぶ'}).click();const beforeColor=version;
  for(const name of ['青','紫']){await page.locator('#icon-colors').getByRole('button',{name,exact:true}).click();assert(await page.locator('#icon-picker-backdrop').isVisible());}
  assert.equal(version,beforeColor);assert.equal(apps[0].iconKey,'headset');
- const savedEarbuds=page.waitForResponse(r=>r.url().endsWith('/api/settings')&&r.request().method()==='GET');
+ const savedEarbuds=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/settings'&&r.request().method()==='GET');
  await page.locator('.icon-choice[data-icon-key="earbuds"]').click();await page.locator('#icon-picker-backdrop').waitFor({state:'hidden'});await savedEarbuds;
  assert.equal(apps[0].iconKey,'earbuds');assert.equal(apps[0].iconColor,'#714bc4');
  await page.reload();await page.locator('#preview-deck .preset-icon').waitFor();assert.equal(await page.locator('#preview-deck .preset-icon').evaluate(e=>e.style.background),'rgb(113, 75, 196)');
