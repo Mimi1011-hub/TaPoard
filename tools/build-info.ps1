@@ -1,0 +1,18 @@
+param([Parameter(Mandatory = $true)][string]$OutputPath)
+
+$ErrorActionPreference = 'Stop'
+$revision = 'unknown'
+try {
+    $candidate = (& git rev-parse --short=12 HEAD 2>$null).Trim()
+    if ($candidate -match '^[0-9a-fA-F]{7,40}$') { $revision = $candidate.ToLowerInvariant() }
+    $dirty = & git status --porcelain --untracked-files=no 2>$null
+    if ($dirty) { $revision += '.dirty' }
+} catch {
+    $revision = 'unknown'
+}
+$displayVersion = '2.0-dev+' + $revision
+$source = "using System.Reflection;`r`n[assembly: AssemblyInformationalVersion(`"$displayVersion`")]`r`n"
+$parent = Split-Path -Parent $OutputPath
+if ($parent) { New-Item -ItemType Directory -Force -Path $parent | Out-Null }
+[IO.File]::WriteAllText($OutputPath, $source, [Text.UTF8Encoding]::new($false))
+[pscustomobject]@{ Path = $OutputPath; DisplayVersion = $displayVersion; Revision = $revision }

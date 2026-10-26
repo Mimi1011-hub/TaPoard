@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 New-Item -ItemType Directory -Force dist | Out-Null
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:dist\TaPoard.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll src\*.cs
+$buildInfo = & .\tools\build-info.ps1 -OutputPath (Join-Path $PSScriptRoot 'tests\bin\BuildInfo.generated.cs')
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:dist\TaPoard.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll src\*.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 New-Item -ItemType Directory -Force dist\web | Out-Null
 Copy-Item web\* dist\web -Recurse -Force
@@ -11,4 +12,4 @@ Get-ChildItem web -File | ForEach-Object {
         throw "Published web asset does not match source: $($_.Name)"
     }
 }
-Write-Host 'Built dist\TaPoard.exe'
+Write-Host ('Built dist\TaPoard.exe (' + $buildInfo.DisplayVersion + ')')
