@@ -81,6 +81,14 @@ class WidgetRegistryTests
         touchpad.height = 2;
         WidgetRegistry.ValidateAndNormalize(touchpad);
         Check((int)touchpad.options["speed"] == 5, "touchpad accepts a 3x2 rectangle");
+        foreach (object wrong in new object[] { true, "5", 5.0m })
+        {
+            var strict = Entry("touchpad", 1);
+            strict.width = 3;
+            strict.height = 2;
+            strict.options = new Dictionary<string, object> { { "speed", wrong } };
+            Reject(delegate { WidgetRegistry.ValidateAndNormalize(strict); }, "integer options reject " + wrong.GetType().Name);
+        }
         Check((bool)touchpad.options["reverseScroll"] == false && (string)touchpad.options["longPress"] == "none", "touchpad scroll direction and long press default to normal and unassigned");
         var definitions = WidgetRegistry.PublicDefinitions() as List<object>;
         Check(definitions != null && definitions.Count == 10, "all current and planned widget definitions are public");

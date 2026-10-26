@@ -201,16 +201,14 @@ static class WidgetRegistry
         object raw;
         if (!source.TryGetValue(name, out raw))
             return fallback;
-        int value;
-        try
-        {
-            value = Convert.ToInt32(raw);
-        }
-        catch
-        {
+        // Same strictness as BooleanValue: JSON integers only, never true or "50".
+        if (!(raw is int || raw is long))
             throw new Exception(name + " の設定が正しくありません。");
-        }
-        if (value < minimum || value > maximum || raw is double || raw is float || raw is decimal)
+        long number = Convert.ToInt64(raw);
+        if (number < Int32.MinValue || number > Int32.MaxValue)
+            throw new Exception(name + " の設定が正しくありません。");
+        int value = (int)number;
+        if (value < minimum || value > maximum)
             throw new Exception(name + " の設定が正しくありません。");
         return value;
     }
