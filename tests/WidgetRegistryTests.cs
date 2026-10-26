@@ -1,27 +1,6 @@
 using System;
 using System.Collections.Generic;
 
-class TilePosition
-{
-    public int page { get; set; }
-    public int row { get; set; }
-    public int column { get; set; }
-}
-
-class PairedDevice
-{
-    public string id { get; set; }
-    public string name { get; set; }
-    public string credentialHash { get; set; }
-    public string created { get; set; }
-}
-
-static class DeckLayout
-{
-    internal static int Width(AppEntry app) { return app.width > 0 ? app.width : app.size == 2 ? 2 : 1; }
-    internal static int Height(AppEntry app) { return app.height > 0 ? app.height : app.size == 2 ? 2 : 1; }
-}
-
 class WidgetRegistryTests
 {
     static void Check(bool value, string message)
