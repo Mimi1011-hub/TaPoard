@@ -39,6 +39,12 @@ class LayoutV2Tests
 
     static void Main()
     {
+        // Program.LoadSettings creates this for a new installation: both legacy fader slots are 0.
+        var fresh = new Settings { schemaVersion = 2, token = "test", pairingKey = "pair", apps = new List<AppEntry>(), devices = new List<PairedDevice>(), columns = 5, rows = 3, keepAwake = true };
+        DeckLayout.Migrate(fresh);
+        DeckLayout.Validate(fresh);
+        Check(fresh.landscapeSpeaker.column == 0 && fresh.landscapeMic.column == 1 && fresh.portraitMic.column == 1, "new installation separates the default speaker and mic faders");
+
         var legacy = Fixture();
         legacy.apps.Add(new AppEntry { id = "old", name = "old", type = "hotkey", action = "common-copy", orientation = "landscape", size = 2, fontSize = 11, iconScale = 82, labelOpacity = 45, landscape = new TilePosition { page = 1, row = 1, column = 2 } });
         DeckLayout.Migrate(legacy);
