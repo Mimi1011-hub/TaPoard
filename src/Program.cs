@@ -14,7 +14,7 @@ using System.Windows.Forms;
 partial class Program
 {
     const int Port = 18781;
-    const string AppVersion = "1.05";
+    static readonly string AppVersion = BuildInfo.DisplayVersion;
     static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     static readonly string Data = Path.Combine(Root, "data");
 

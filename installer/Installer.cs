@@ -12,7 +12,16 @@ using Microsoft.Win32;
 class Installer
 {
     const string Product = "TaPoard";
-    const string Version = "1.05";
+    static readonly string Version = ReadVersion();
+
+    static string ReadVersion()
+    {
+        object[] attributes = Assembly.GetExecutingAssembly()
+            .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false);
+        return attributes.Length == 1
+            ? ((AssemblyInformationalVersionAttribute)attributes[0]).InformationalVersion
+            : "2.0-dev+source";
+    }
 
     enum FirewallResult
     {

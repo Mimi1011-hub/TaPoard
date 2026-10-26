@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = '1.05'
+$version = '2.0-dev'
 $releaseRoot = Join-Path $PSScriptRoot 'release'
 $stage = Join-Path $releaseRoot 'installer-payload'
 $verify = Join-Path $releaseRoot 'installer-verification'
@@ -20,12 +20,13 @@ foreach ($file in @($payload,$installer,$hashFile,$iconPreview)) { if (Test-Path
 
 New-Item -ItemType Directory -Path $stage | Out-Null
 New-Item -ItemType Directory -Force tools\bin | Out-Null
+$buildInfo = & .\tools\build-info.ps1 -OutputPath (Join-Path $PSScriptRoot 'tests\bin\BuildInfo.generated.cs')
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:exe /out:tools\bin\IconBuilder.exe /r:System.Drawing.dll tools\IconBuilder.cs
 if ($LASTEXITCODE -ne 0) { throw 'Icon builder compilation failed.' }
 & .\tools\bin\IconBuilder.exe .\assets\TaPoard-icon.png .\assets\TaPoard.ico .\web\icon-32.png .\web\icon-180.png .\web\icon-192.png .\web\icon-512.png
 if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed.' }
 
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:"$stage\TaPoard.exe" /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll src\*.cs
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:"$stage\TaPoard.exe" /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll src\*.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Application package build failed.' }
 Copy-Item -LiteralPath web -Destination (Join-Path $stage 'web') -Recurse
 Copy-Item -LiteralPath packaging\setup-lan.ps1,packaging\remove-firewall.ps1,packaging\README.txt -Destination $stage
@@ -36,14 +37,14 @@ foreach ($scriptName in @('setup-lan.ps1','remove-firewall.ps1')) {
     $scriptBytes = [IO.File]::ReadAllBytes($scriptPath)
     if ($scriptBytes.Length -lt 3 -or $scriptBytes[0] -ne 0xEF -or $scriptBytes[1] -ne 0xBB -or $scriptBytes[2] -ne 0xBF) { throw ('PowerShell script is missing UTF-8 BOM: ' + $scriptName) }
 }
-[IO.File]::WriteAllText((Join-Path $stage 'VERSION.txt'), "TaPoard $version`r`nWindows 10/11 64-bit`r`n", [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $stage 'VERSION.txt'), "TaPoard $($buildInfo.DisplayVersion)`r`nWindows 10/11 64-bit`r`n", [Text.UTF8Encoding]::new($false))
 
 $forbidden = Get-ChildItem -LiteralPath $stage -Recurse -Force | Where-Object { $_.Name -match '^settings(?:-v\d+)?\.json(?:\.(?:tmp|bak))?$' -or $_.Name -in @('network.json','network-status.txt','mdns-diagnostic.log') -or $_.FullName -match '[\\/]data[\\/]' }
 if ($forbidden) { throw 'Private runtime data was included in the installer payload.' }
 
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $payload -CompressionLevel Optimal
 $resourceArgument = '/resource:' + $payload + ',TaPoard.Payload.zip'
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:$installer $resourceArgument /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll installer\Installer.cs
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:$installer $resourceArgument /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll installer\Installer.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 
 $extractProcess = Start-Process -FilePath $installer -ArgumentList '/extract-only',('"' + $verify + '"') -Wait -PassThru -WindowStyle Hidden
