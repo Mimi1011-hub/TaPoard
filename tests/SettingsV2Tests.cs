@@ -4,21 +4,6 @@ using System.IO;
 using System.Text;
 using System.Web.Script.Serialization;
 
-class TilePosition
-{
-    public int page { get; set; }
-    public int row { get; set; }
-    public int column { get; set; }
-}
-
-class PairedDevice
-{
-    public string id { get; set; }
-    public string name { get; set; }
-    public string credentialHash { get; set; }
-    public string created { get; set; }
-}
-
 class SettingsV2Tests
 {
     static void Check(bool value, string message)
