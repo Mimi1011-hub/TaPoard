@@ -170,6 +170,26 @@ class InputSessionTests
             );
             InputSessions.Release("owner-a:view-a", configured);
 
+            var padApps = new List<AppEntry> { Widget("pad-2", "touchpad") };
+            padApps[0].options["longPress"] = "none"; padApps[0].options["reverseScroll"] = true;
+            string pad = InputSessions.Prepare("owner-a:view-a", padApps, new[] { "pad-2" })[0].sessionId;
+            InputSessions.Execute("owner-a:view-a", pad, 1, new[] { Event("buttonDown", "right", 0, 0, 0), Event("buttonUp", "right", 0, 0, 0) });
+            Check(sent[sent.Count - 1][1].type == "buttonUp" && sent[sent.Count - 1][1].control == "right", "two-finger tap right click is allowed while tapping is enabled");
+            InputSessions.Execute("owner-a:view-a", pad, 2, new[] { Event("wheel", null, 0, 0, 90) });
+            Check(sent[sent.Count - 1][0].delta == -90, "the saved touchpad scroll direction is applied on the PC");
+            padApps[0].options["tapToClick"] = false; padApps[0].options["twoFingerScroll"] = false;
+            pad = InputSessions.Prepare("owner-a:view-a", padApps, new[] { "pad-2" })[0].sessionId;
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", pad, 3, new[] { Event("buttonDown", "left", 0, 0, 0) }); },
+                "clicks are refused when tapping and long press are off"
+            );
+            pad = InputSessions.Prepare("owner-a:view-a", padApps, new[] { "pad-2" })[0].sessionId;
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", pad, 1, new[] { Event("wheel", null, 0, 0, 90) }); },
+                "scrolling is refused when two-finger scroll is off"
+            );
+            InputSessions.ClearAll(); sent.Clear();
+
             string restricted = InputSessions.Prepare("owner-c:view-c", apps, new[] { "wheel-1" })[0].sessionId;
             Reject(
                 delegate { InputSessions.Execute("owner-c:view-c", restricted, 1, move); },

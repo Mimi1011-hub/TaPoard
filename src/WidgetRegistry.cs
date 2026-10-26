@@ -148,6 +148,7 @@ static class WidgetRegistry
             normalized["acceleration"] = BooleanValue(source, "acceleration", true);
             normalized["tapToClick"] = BooleanValue(source, "tapToClick", true);
             normalized["twoFingerScroll"] = BooleanValue(source, "twoFingerScroll", true);
+            normalized["reverseScroll"] = BooleanValue(source, "reverseScroll", false);
             normalized["longPress"] = EnumValue(source, "longPress", "none", new[] { "none", "rightClick", "drag" });
             RejectUnknown(source, normalized);
         }
