@@ -97,6 +97,10 @@ static class DeckLayout
             int speakerSize = portrait ? s.portraitSpeakerSize : s.landscapeSpeakerSize, micSize = portrait ? s.portraitMicSize : s.landscapeMicSize;
             if (speakerSize == 0) { speakerSlot = s.speakerSlot; speakerSize = s.speakerSize; }
             if (micSize == 0) { micSlot = s.micSlot; micSize = s.micSize; }
+            // Same repair as 1.05: new or legacy files may leave both faders on slot 0.
+            int total = Math.Max(2, columns * Rows(s, portrait));
+            if (speakerSlot < 0 || speakerSlot >= total) speakerSlot = 0;
+            if (micSlot < 0 || micSlot >= total || micSlot == speakerSlot) micSlot = speakerSlot == 0 ? 1 : 0;
             if (Placement(s, portrait, false) == null) SetPlacement(s, portrait, false, new ControlPlacement { row = Math.Max(0, speakerSlot) / columns, column = Math.Max(0, speakerSlot) % columns, width = LegacySize(speakerSize), height = LegacySize(speakerSize) });
             if (Placement(s, portrait, true) == null) SetPlacement(s, portrait, true, new ControlPlacement { row = Math.Max(0, micSlot) / columns, column = Math.Max(0, micSlot) % columns, width = LegacySize(micSize), height = LegacySize(micSize) });
             MirrorLegacy(s, portrait);
