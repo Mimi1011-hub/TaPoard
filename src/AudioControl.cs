@@ -14,6 +14,8 @@ class AudioState
 
 static class AudioControl
 {
+    static readonly object SpeakerSync = new object();
+    static readonly object MicSync = new object();
     enum DataFlow
     {
         Render,
@@ -65,31 +67,66 @@ static class AudioControl
     {
         if (value < 0 || value > 100)
             throw new Exception("音量は0から100で指定してください。");
-        WithEndpoint(
-            Flow(target),
-            delegate(IAudioEndpointVolume endpoint)
-            {
-                Guid context = Guid.Empty;
-                Marshal.ThrowExceptionForHR(endpoint.SetMasterVolumeLevelScalar(value / 100f, ref context));
-            }
-        );
-        return ReadTarget(target);
+        lock (SyncFor(target))
+        {
+            WithEndpoint(
+                Flow(target),
+                delegate(IAudioEndpointVolume endpoint)
+                {
+                    Guid context = Guid.Empty;
+                    Marshal.ThrowExceptionForHR(endpoint.SetMasterVolumeLevelScalar(value / 100f, ref context));
+                }
+            );
+            return ReadTarget(target);
+        }
+    }
+
+    internal static AudioState AdjustVolume(string target, int delta)
+    {
+        AdjustedValue(50, delta); // validates the requested step before opening the endpoint
+        lock (SyncFor(target))
+        {
+            WithEndpoint(
+                Flow(target),
+                delegate(IAudioEndpointVolume endpoint)
+                {
+                    float current;
+                    Marshal.ThrowExceptionForHR(endpoint.GetMasterVolumeLevelScalar(out current));
+                    int adjusted = AdjustedValue((int)Math.Round(current * 100), delta);
+                    Guid context = Guid.Empty;
+                    Marshal.ThrowExceptionForHR(endpoint.SetMasterVolumeLevelScalar(adjusted / 100f, ref context));
+                }
+            );
+            return ReadTarget(target);
+        }
+    }
+
+    internal static int AdjustedValue(int current, int delta)
+    {
+        if (delta == 0 || delta < -20 || delta > 20)
+            throw new Exception("音量の変更幅は-20から20で指定してください。");
+        return Math.Max(0, Math.Min(100, current + delta));
     }
 
     internal static AudioState ToggleMute(string target)
     {
-        WithEndpoint(
-            Flow(target),
-            delegate(IAudioEndpointVolume endpoint)
-            {
-                bool muted;
-                Marshal.ThrowExceptionForHR(endpoint.GetMute(out muted));
-                Guid context = Guid.Empty;
-                Marshal.ThrowExceptionForHR(endpoint.SetMute(!muted, ref context));
-            }
-        );
-        return ReadTarget(target);
+        lock (SyncFor(target))
+        {
+            WithEndpoint(
+                Flow(target),
+                delegate(IAudioEndpointVolume endpoint)
+                {
+                    bool muted;
+                    Marshal.ThrowExceptionForHR(endpoint.GetMute(out muted));
+                    Guid context = Guid.Empty;
+                    Marshal.ThrowExceptionForHR(endpoint.SetMute(!muted, ref context));
+                }
+            );
+            return ReadTarget(target);
+        }
     }
+
+    static object SyncFor(string target) { return Flow(target) == DataFlow.Capture ? MicSync : SpeakerSync; }
 
     static AudioState ReadTarget(string target)
     {
