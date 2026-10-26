@@ -129,6 +129,7 @@
       note: 'スマートフォンをPCのマウスとして使う部品',
       items: [
         ['widget-wheel-vertical', '縦型ホイール', '1×1・上下スワイプでスクロール'],
+        ['widget-wheel-rotary', '円形ホイール', '2×2・円をなぞってスクロール'],
       ],
     },
     {
@@ -1705,6 +1706,90 @@
     tile.addEventListener('pointerup', end);
     tile.addEventListener('pointercancel', end);
   }
+  // Rotary wheel: the angle swept around the tile centre becomes steps, so the feel does not
+  // depend on tile size. The centre is a dead zone (and the middle-click tap target).
+  function bindRotaryGesture(tile, a, options) {
+    var sender = inputSender(a.id),
+      tracking = false,
+      pointerId = null,
+      lastAngle = null,
+      sweep = 0,
+      rotation = 0,
+      moved = false,
+      startedInCenter = false,
+      startTime = 0,
+      dial = tile.querySelector('.wheel-dial');
+    sender.listen(function (state) { if (state === 'busy') showInputBusy(tile, true); });
+    function polar(e) {
+      var rect = tile.getBoundingClientRect(),
+        dx = e.clientX - (rect.left + rect.width / 2),
+        dy = e.clientY - (rect.top + rect.height / 2);
+      return {
+        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
+        inside: Math.sqrt(dx * dx + dy * dy) < Math.min(rect.width, rect.height) * 0.18,
+      };
+    }
+    function begin(e) {
+      if (tracking) return;
+      var p = polar(e);
+      tracking = true;
+      pointerId = e.pointerId;
+      moved = false;
+      sweep = 0;
+      startedInCenter = p.inside;
+      lastAngle = p.inside ? null : p.angle;
+      startTime = Date.now();
+      tile.classList.add('adjusting');
+      if (tile.setPointerCapture) try { tile.setPointerCapture(e.pointerId); } catch (ignore) {}
+      if (e.cancelable) e.preventDefault();
+    }
+    function move(e) {
+      if (!tracking || e.pointerId !== pointerId) return;
+      var p = polar(e);
+      if (e.cancelable) e.preventDefault();
+      if (p.inside) {
+        lastAngle = null;
+        return;
+      }
+      if (lastAngle === null) {
+        lastAngle = p.angle;
+        moved = true;
+        return;
+      }
+      var delta = p.angle - lastAngle;
+      // Crossing the 180/-180 boundary must not look like a full turn.
+      if (delta > 180) delta -= 360;
+      else if (delta < -180) delta += 360;
+      lastAngle = p.angle;
+      if (Math.abs(delta) > 0.5) moved = true;
+      sweep += delta;
+      rotation += delta;
+      if (dial) dial.style.transform = 'rotate(' + rotation.toFixed(1) + 'deg)';
+      var steps = sweep > 0 ? Math.floor(sweep / options.sensitivity) : Math.ceil(sweep / options.sensitivity);
+      if (steps) {
+        sweep -= steps * options.sensitivity;
+        // Clockwise scrolls down, like a physical wheel turned towards the user.
+        sender.steps(-steps);
+        wheelFeedback(Math.abs(steps));
+      }
+    }
+    function end(e) {
+      if (!tracking || e.pointerId !== pointerId) return;
+      tracking = false;
+      tile.classList.remove('adjusting');
+      if (!moved && startedInCenter && e.type === 'pointerup' && options.middleClick && Date.now() - startTime < 400) {
+        sender.button('buttonDown', 'middle');
+        sender.button('buttonUp', 'middle');
+        wheelFeedback(1);
+      }
+      sender.release();
+      if (e.cancelable) e.preventDefault();
+    }
+    tile.addEventListener('pointerdown', begin);
+    tile.addEventListener('pointermove', move);
+    tile.addEventListener('pointerup', end);
+    tile.addEventListener('pointercancel', end);
+  }
   function wheelFeedback() {}
   function wheelTile(a, preview, index, slotIndex) {
     var options = wheelOptions(a),
@@ -1716,9 +1801,22 @@
     tile.dataset.size = a.size || 1;
     tile.dataset.width = a.width || a.size || 1;
     tile.dataset.height = a.height || a.size || 1;
-    var ridges = document.createElement('span');
-    ridges.className = 'wheel-ridges';
-    tile.appendChild(ridges);
+    if (options.style === 'rotary') {
+      var dial = document.createElement('span'),
+        notch = document.createElement('span'),
+        center = document.createElement('span');
+      dial.className = 'wheel-dial';
+      notch.className = 'wheel-notch';
+      center.className = 'wheel-center';
+      center.textContent = options.middleClick ? '中' : '';
+      dial.appendChild(notch);
+      tile.appendChild(dial);
+      tile.appendChild(center);
+    } else {
+      var ridges = document.createElement('span');
+      ridges.className = 'wheel-ridges';
+      tile.appendChild(ridges);
+    }
     var caption = document.createElement('span');
     caption.className = 'wheel-caption';
     caption.textContent = wheelCaption(options);
@@ -1738,7 +1836,7 @@
       tile.oncontextmenu = function (e) {
         openDeckContextMenu(e, index, a);
       };
-    } else if (a.id) bindWheelGesture(tile, a, options);
+    } else if (a.id) (options.style === 'rotary' ? bindRotaryGesture : bindWheelGesture)(tile, a, options);
     return tile;
   }
 
@@ -1799,16 +1897,26 @@
         options: { primary: memory ? 'memory' : gpu ? 'gpu' : gpuMemory ? 'gpuMemory' : 'cpu', cycle: false, gpuId: '' },
       };
     }
-    if (action === 'widget-wheel-vertical') {
+    if (action === 'widget-wheel-vertical' || action === 'widget-wheel-rotary') {
+      var rotary = action === 'widget-wheel-rotary';
       return {
-        name: '縦型ホイール',
+        name: rotary ? '円形ホイール' : '縦型ホイール',
         type: 'wheel',
         category: 'widget',
-        size: 1,
-        width: 1,
-        height: 1,
+        size: rotary ? 2 : 1,
+        width: rotary ? 2 : 1,
+        height: rotary ? 2 : 1,
         hideLabel: true,
-        options: { style: 'vertical', sensitivity: 24, multiplier: 1, reverse: false, ctrl: false, shift: false, alt: false, middleClick: false },
+        options: {
+          style: rotary ? 'rotary' : 'vertical',
+          sensitivity: rotary ? 18 : 24,
+          multiplier: 1,
+          reverse: false,
+          ctrl: false,
+          shift: false,
+          alt: false,
+          middleClick: false,
+        },
       };
     }
     return null;
