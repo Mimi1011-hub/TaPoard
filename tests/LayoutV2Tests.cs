@@ -40,7 +40,7 @@ class LayoutV2Tests
     static void Main()
     {
         var legacy = Fixture();
-        legacy.apps.Add(new AppEntry { id = "old", name = "old", type = "hotkey", action = "common-copy", orientation = "landscape", size = 2, fontSize = 11, iconScale = 82, labelOpacity = 45, landscape = new TilePosition { page = 1, row = 0, column = 0 } });
+        legacy.apps.Add(new AppEntry { id = "old", name = "old", type = "hotkey", action = "common-copy", orientation = "landscape", size = 2, fontSize = 11, iconScale = 82, labelOpacity = 45, landscape = new TilePosition { page = 1, row = 1, column = 2 } });
         DeckLayout.Migrate(legacy);
         Check(legacy.apps[0].width == 2 && legacy.apps[0].height == 2, "legacy 2x2 size migrates once to width and height");
         Check(legacy.landscapeSpeaker.row == 0 && legacy.landscapeMic.column == 1, "legacy fader slots migrate to row and column");
@@ -49,19 +49,26 @@ class LayoutV2Tests
         var rectangular = Fixture(); DeckLayout.Migrate(rectangular);
         rectangular.landscapeSpeaker = new ControlPlacement { row = 0, column = 0, width = 3, height = 1 };
         rectangular.landscapeMic = new ControlPlacement { row = 1, column = 0, width = 1, height = 1 };
-        rectangular.apps.Add(Tile("wide", "landscape", 3, 2, 1, 0, 0));
+        rectangular.apps.Add(Tile("wide", "landscape", 3, 2, 1, 1, 1));
         WidgetRegistry.ValidateAndNormalize(rectangular.apps[0]);
         DeckLayout.Validate(rectangular);
         Check(rectangular.portraitSpeaker.width == 1 && rectangular.portraitMic.width == 1, "portrait controls stay independent from landscape rectangles");
 
+        rectangular.apps.Add(Tile("control-overlap", "landscape", 3, 2, 2, 0, 0));
+        WidgetRegistry.ValidateAndNormalize(rectangular.apps[1]);
+        Reject(delegate { DeckLayout.Validate(rectangular); }, "fader space is reserved on every page");
+        rectangular.apps.RemoveAt(1);
+
         rectangular.landscapeColumns = 2;
         Reject(delegate { DeckLayout.Validate(rectangular); }, "grid narrower than a 3-cell control is rejected");
         rectangular.landscapeColumns = 5;
-        rectangular.apps.Add(Tile("overlap", "landscape", 2, 3, 1, 0, 1));
+        rectangular.apps.Add(Tile("overlap", "landscape", 3, 2, 1, 1, 2));
         WidgetRegistry.ValidateAndNormalize(rectangular.apps[1]);
         Reject(delegate { DeckLayout.Validate(rectangular); }, "overlapping rectangular widgets are rejected");
         rectangular.apps.RemoveAt(1);
 
+        rectangular.landscapeSpeaker = new ControlPlacement { row = 0, column = 0, width = 1, height = 1 };
+        rectangular.landscapeMic = new ControlPlacement { row = 0, column = 1, width = 1, height = 1 };
         rectangular.landscapeColumns = 3; rectangular.landscapeRows = 3;
         DeckLayout.Reflow(rectangular, "landscape", 5);
         DeckLayout.Validate(rectangular);

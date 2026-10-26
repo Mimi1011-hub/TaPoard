@@ -137,11 +137,8 @@ static class DeckLayout
     static bool Fits(HashSet<string> occupied, TilePosition p, int width, int height, int columns, int rows, Settings s, bool portrait)
     {
         if (p == null || p.page < 0 || p.page >= MaxPages || p.row < 0 || p.column < 0 || p.row + height > rows || p.column + width > columns) return false;
-        if (p.page == 0)
-        {
-            var speaker = Placement(s, portrait, false); var mic = Placement(s, portrait, true);
-            if (Overlap(p.row, p.column, width, height, speaker.row, speaker.column, speaker.width, speaker.height) || Overlap(p.row, p.column, width, height, mic.row, mic.column, mic.width, mic.height)) return false;
-        }
+        var speaker = Placement(s, portrait, false); var mic = Placement(s, portrait, true);
+        if (Overlap(p.row, p.column, width, height, speaker.row, speaker.column, speaker.width, speaker.height) || Overlap(p.row, p.column, width, height, mic.row, mic.column, mic.width, mic.height)) return false;
         return AreaFree(occupied, p.page, p.row, p.column, width, height);
     }
 
