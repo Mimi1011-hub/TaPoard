@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Web.Script.Serialization;
 
@@ -97,12 +96,28 @@ partial class Program
                     throw new Exception("表示部品が正しくありません。");
                 foreach (object id in list) visible.Add(Convert.ToString(id));
             }
+            InputSessions.PublicSession[] sessions;
             lock (Gate)
             {
-                UpdateDisplaySubscriptions(r, viewId, visible.ToArray(), true, true);
+                sessions = UpdateRuntimeSessions(r, viewId, visible.ToArray(), true, true);
                 TouchPhone(r.local);
             }
-            Reply(s, 200, JsonType, "{\"ok\":true}");
+            ReplyJson(s, 200, new { ok = true, inputSessions = sessions });
+        }
+        else if (path == "/api/input")
+        {
+            object rawSession, rawView, rawSequence, rawEvents;
+            if (!input.TryGetValue("sessionId", out rawSession) || !input.TryGetValue("viewId", out rawView)
+                || !input.TryGetValue("sequence", out rawSequence) || !input.TryGetValue("events", out rawEvents))
+                throw new Exception("入力要求が正しくありません。");
+            string owner = ViewIdentity(r, Convert.ToString(rawView));
+            var ack = InputSessions.Execute(
+                owner,
+                Convert.ToString(rawSession),
+                Convert.ToInt32(rawSequence),
+                InputSessions.ParseEvents(rawEvents)
+            );
+            ReplyJson(s, 200, ack);
         }
         else if (path == "/api/settings" && r.isAdmin)
         {
@@ -157,6 +172,7 @@ partial class Program
             {
                 Pairing.Revoke(config, id);
                 DisplaySubscriptions.ClearAll();
+                InputSessions.ClearAll();
             }
             else
                 Pairing.Decide(config, id, Convert.ToString(input["code"]), Convert.ToBoolean(input["approve"]));
@@ -182,7 +198,7 @@ partial class Program
     {
         lock (Gate)
         {
-            UpdateDisplaySubscriptions(r, true, true);
+            var inputSessions = UpdateRuntimeSessions(r, true, true);
             TouchPhone(r.local);
             // Skip the app list (with its icons) when the phone already has this version.
             var apps =
@@ -224,6 +240,7 @@ partial class Program
                     audio = AudioControl.Read(),
                     phoneConnected = PhoneConnected(),
                     computer = Environment.MachineName,
+                    inputSessions = inputSessions,
                 }
             );
         }
@@ -236,10 +253,10 @@ partial class Program
         long.TryParse(QueryValue(r.target, "revision"), out known);
         lock (Gate)
         {
-            UpdateDisplaySubscriptions(r, false, true);
             TouchPhone(r.local);
             if (known == revision)
                 Monitor.Wait(Gate, 15000);
+            var inputSessions = UpdateRuntimeSessions(r, false, true);
             if (!r.local)
                 phoneLastSeen = DateTime.UtcNow;
             ReplyJson(
@@ -268,6 +285,7 @@ partial class Program
                     portraitControls = Controls(true),
                     audio = AudioControl.Read(),
                     phoneConnected = PhoneConnected(),
+                    inputSessions = inputSessions,
                 }
             );
         }
@@ -277,7 +295,7 @@ partial class Program
     {
         lock (Gate)
         {
-            UpdateDisplaySubscriptions(r, true, true);
+            var inputSessions = UpdateRuntimeSessions(r, true, true);
             int landscapePages = DeckLayout.Pages(config, "landscape"),
                 portraitPages = DeckLayout.Pages(config, "portrait");
             string lanUrl = "http://" + lan.HostName + ":" + Port + "/";
@@ -322,25 +340,32 @@ partial class Program
                     ipUrls = ipUrls,
                     networkStatus = lan.Status,
                     displaySubscriptionCount = DisplaySubscriptions.Current().sessions,
+                    inputSessions = inputSessions,
                 }
             );
         }
     }
 
-    static void UpdateDisplaySubscriptions(Request r, bool renewMetrics, bool renewWeather)
+    static InputSessions.PublicSession[] UpdateRuntimeSessions(Request r, bool renewMetrics, bool renewWeather)
     {
         string viewId = QueryValue(r.target, "viewId");
-        if (String.IsNullOrEmpty(viewId)) return;
+        if (String.IsNullOrEmpty(viewId)) return new InputSessions.PublicSession[0];
         string raw = QueryValue(r.target, "visibleIds") ?? "";
-        UpdateDisplaySubscriptions(r, viewId, raw.Length == 0 ? new string[0] : raw.Split(','), renewMetrics, renewWeather);
+        return UpdateRuntimeSessions(r, viewId, raw.Length == 0 ? new string[0] : raw.Split(','), renewMetrics, renewWeather);
     }
 
-    static void UpdateDisplaySubscriptions(Request r, string viewId, string[] ids, bool renewMetrics, bool renewWeather)
+    static InputSessions.PublicSession[] UpdateRuntimeSessions(Request r, string viewId, string[] ids, bool renewMetrics, bool renewWeather)
+    {
+        string identity = ViewIdentity(r, viewId);
+        DisplaySubscriptions.Update(identity, config.apps, ids, renewMetrics, renewWeather);
+        return InputSessions.Prepare(identity, config.apps, ids);
+    }
+
+    static string ViewIdentity(Request r, string viewId)
     {
         if (String.IsNullOrEmpty(viewId) || viewId.Length < 8 || viewId.Length > 64 || !System.Text.RegularExpressions.Regex.IsMatch(viewId, "\\A[a-zA-Z0-9_-]+\\z"))
             throw new Exception("表示セッションが正しくありません。");
-        string identity = Pairing.Hash(r.auth ?? r.remote.ToString()) + ":" + viewId;
-        DisplaySubscriptions.Update(identity, config.apps, ids, renewMetrics, renewWeather);
+        return Pairing.Hash(r.auth ?? r.remote.ToString()) + ":" + viewId;
     }
 
     // Opens the drag-and-drop window on the UI thread; the browser polls GET /api/import for the result.
@@ -599,6 +624,7 @@ partial class Program
                     throw new Exception("ボタンIDが重複しています。");
             config = next;
             DisplaySubscriptions.RemoveUnknown(config.apps);
+            InputSessions.ClearAll();
             Save();
             version = NewId();
             ShrinkCurrentPages(DeckLayout.Pages(config, "landscape"), DeckLayout.Pages(config, "portrait"));
@@ -758,6 +784,7 @@ partial class Program
             config.pairingKey = ShortKey();
             config.devices.Clear();
             DisplaySubscriptions.ClearAll();
+            InputSessions.ClearAll();
             Pairing.Pending.Clear();
             Pairing.Revision++;
             Save();
@@ -771,12 +798,12 @@ partial class Program
         string action = Convert.ToString(input["action"]);
         if (action == "up" || action == "down" || action == "mute")
         {
+            InputSessions.ReleaseActive();
             byte key =
                 action == "up" ? (byte)0xAF // VK_VOLUME_UP
                 : action == "down" ? (byte)0xAE // VK_VOLUME_DOWN
                 : (byte)0xAD; // VK_VOLUME_MUTE
-            keybd_event(key, 0, 0, UIntPtr.Zero);
-            keybd_event(key, 0, 2, UIntPtr.Zero);
+            NativeInput.KeyTap(key);
         }
         else if (action == "launch")
         {
@@ -807,6 +834,7 @@ partial class Program
         }
         if (IsType(app, "hotkey"))
         {
+            InputSessions.ReleaseActive();
             ShortcutKeys.Send(app.action, app.hotkey);
             if (ShortcutKeys.IsAudio(app.action))
                 lock (Gate)
@@ -833,7 +861,4 @@ partial class Program
         );
         return "アプリを起動しました。";
     }
-
-    [DllImport("user32.dll")]
-    static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
 }

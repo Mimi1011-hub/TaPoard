@@ -330,10 +330,7 @@ static class ShortcutKeys
 
     static void SendCombo(byte[] combo)
     {
-        for (int i = 0; i < combo.Length; i++)
-            keybd_event(combo[i], 0, 0, UIntPtr.Zero);
-        for (int i = combo.Length - 1; i >= 0; i--)
-            keybd_event(combo[i], 0, 2, UIntPtr.Zero);
+        NativeInput.KeyCombo(combo);
     }
 
     static void SendDiscordOverlay(byte[] combo)
@@ -443,9 +440,6 @@ static class ShortcutKeys
                 AttachThreadInput(currentThread, foregroundThread, false);
         }
     }
-
-    [DllImport("user32.dll")]
-    static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
 
     [DllImport("user32.dll")]
     static extern IntPtr GetForegroundWindow();
