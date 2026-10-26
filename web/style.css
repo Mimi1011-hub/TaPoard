@@ -1058,7 +1058,8 @@ textarea {
   color: #b5c9ff;
 }
 .clock-settings > label,
-.metrics-settings > label {
+.metrics-settings > label,
+.wheel-settings > label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2330,3 +2331,51 @@ footer #app-version {
 #message.message-hiding {
   opacity: 0;
 }
+
+/* Mouse wheel widgets: the tile follows the finger, the PC receives ordered wheel steps. */
+.wheel-widget {
+  position: relative;
+  overflow: hidden;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  color: #e9efff;
+  background: linear-gradient(90deg, #0b0e14, #1b2232 50%, #0b0e14);
+}
+.wheel-widget:active { transform: none; }
+.wheel-ridges {
+  position: absolute;
+  inset: 8% 30%;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(180deg, #7f93c255 0 3px, transparent 3px 12px),
+    linear-gradient(90deg, #2a3348, #46557a 50%, #2a3348);
+  box-shadow: inset 0 6px 8px #000a, inset 0 -6px 8px #000a;
+}
+.wheel-widget.adjusting .wheel-ridges { box-shadow: inset 0 6px 8px #000a, inset 0 -6px 8px #000a, 0 0 0 2px #6f9cff; }
+.wheel-caption {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  text-align: center;
+  font-size: clamp(7px, 1.8vw, 11px);
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+.input-busy-label {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4px;
+  font-size: clamp(8px, 2vw, 13px);
+  background: #000c;
+  color: #ffd27a;
+  pointer-events: none;
+}
+.input-busy .input-busy-label { display: flex; }
+.preview-grid .wheel-widget { cursor: grab; }

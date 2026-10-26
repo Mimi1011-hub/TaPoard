@@ -124,6 +124,14 @@
       ],
     },
     {
+      category: 'widget',
+      title: 'マウス操作',
+      note: 'スマートフォンをPCのマウスとして使う部品',
+      items: [
+        ['widget-wheel-vertical', '縦型ホイール', '1×1・上下スワイプでスクロール'],
+      ],
+    },
+    {
       category: 'common',
       title: 'よく使う操作',
       note: '多くのアプリで共通のショートカット',
@@ -1483,6 +1491,257 @@
     });
   }
 
+  // Ordered input for wheel and touchpad widgets. One request per widget is in flight;
+  // later wheel steps and pointer movement are merged while it waits, clicks keep their order.
+  var inputSenders = {};
+  var BUSY_MESSAGE = '他の端末が操作中です。';
+  function inputSender(widgetId) {
+    if (inputSenders[widgetId]) return inputSenders[widgetId];
+    var queue = [],
+      inFlight = false,
+      lastSent = 0,
+      timer = null,
+      releaseWanted = false,
+      listener = null;
+    function notify(state) {
+      if (listener) listener(state);
+    }
+    function session() {
+      return inputSessionByWidget[widgetId] || null;
+    }
+    function renewSessions() {
+      announcedViewSignature = '';
+      announceView();
+    }
+    function push(event) {
+      var last = queue[queue.length - 1];
+      if (last && last.type === event.type && (event.type === 'steps' || event.type === 'wheel')) {
+        last.delta += event.delta;
+        if (!last.delta) queue.pop();
+      } else if (last && last.type === 'move' && event.type === 'move') {
+        last.dx += event.dx;
+        last.dy += event.dy;
+      } else queue.push(event);
+      pump();
+    }
+    function take() {
+      var batch = [];
+      while (queue.length && batch.length < 16) {
+        var event = queue[0];
+        if (event.type === 'steps' && Math.abs(event.delta) > 20) {
+          var part = event.delta > 0 ? 20 : -20;
+          event.delta -= part;
+          batch.push({ type: 'steps', delta: part });
+          break;
+        }
+        if (event.type === 'move' && (Math.abs(event.dx) > 4096 || Math.abs(event.dy) > 4096)) {
+          var mx = Math.max(-4096, Math.min(4096, event.dx)), my = Math.max(-4096, Math.min(4096, event.dy));
+          event.dx -= mx; event.dy -= my;
+          batch.push({ type: 'move', dx: mx, dy: my });
+          break;
+        }
+        queue.shift();
+        if (event.type === 'move' && !event.dx && !event.dy) continue;
+        batch.push(event);
+      }
+      return batch;
+    }
+    function post(path, body, retry) {
+      return api(path, body).catch(function (e) {
+        if (retry && e && e.name === 'AbortError') return post(path, body, false);
+        throw e;
+      });
+    }
+    function pump() {
+      if (inFlight || timer) return;
+      if (!queue.length) {
+        if (releaseWanted) {
+          releaseWanted = false;
+          var current = session();
+          if (current) api('input/release', { viewId: viewId, sessionId: current.sessionId }).catch(function () {});
+        }
+        return;
+      }
+      var wait = Math.max(0, 50 - (Date.now() - lastSent));
+      if (wait) {
+        timer = setTimeout(function () { timer = null; pump(); }, wait);
+        return;
+      }
+      var current = session();
+      if (!current) {
+        queue = [];
+        renewSessions();
+        return;
+      }
+      var batch = take();
+      if (!batch.length) return pump();
+      var sequence = current.nextSequence;
+      inFlight = true;
+      lastSent = Date.now();
+      post('input', { viewId: viewId, sessionId: current.sessionId, sequence: sequence, events: batch }, true)
+        .then(
+          function (ack) {
+            var latest = inputSessionByWidget[widgetId];
+            if (latest && latest.sessionId === current.sessionId)
+              latest.nextSequence = Math.max(latest.nextSequence, ack.acknowledged + 1);
+            notify('ok');
+          },
+          function (e) {
+            queue = [];
+            if (e && e.message === BUSY_MESSAGE) notify('busy');
+            else {
+              var stale = inputSessionByWidget[widgetId];
+              if (stale && stale.sessionId === current.sessionId) delete inputSessionByWidget[widgetId];
+              renewSessions();
+              notify('error');
+            }
+          },
+        )
+        .then(function () {
+          inFlight = false;
+          pump();
+        });
+    }
+    var sender = {
+      steps: function (count) { if (count) push({ type: 'steps', delta: count }); },
+      move: function (dx, dy) { if (dx || dy) push({ type: 'move', dx: dx, dy: dy }); },
+      wheel: function (delta) { if (delta) push({ type: 'wheel', delta: delta }); },
+      button: function (type, control) { push({ type: type, control: control }); },
+      keepalive: function () {
+        var current = session();
+        if (current && !inFlight && !queue.length)
+          api('input/keepalive', { viewId: viewId, sessionId: current.sessionId }).catch(function () {});
+      },
+      release: function () { releaseWanted = true; pump(); },
+      // A re-rendered tile replaces the previous tile's listener.
+      listen: function (next) { listener = next; },
+    };
+    inputSenders[widgetId] = sender;
+    return sender;
+  }
+  function showInputBusy(tile, busy) {
+    tile.classList.toggle('input-busy', busy);
+    clearTimeout(tile._busyTimer);
+    if (busy) tile._busyTimer = setTimeout(function () { tile.classList.remove('input-busy'); }, 2000);
+  }
+  function wheelOptions(a) {
+    var source = (a && a.options) || {},
+      rotary = source.style === 'rotary';
+    function number(name, fallback, min, max) {
+      var value = Number(source[name]);
+      return isFinite(value) ? Math.max(min, Math.min(max, Math.round(value))) : fallback;
+    }
+    return {
+      style: rotary ? 'rotary' : 'vertical',
+      sensitivity: number('sensitivity', rotary ? 18 : 24, 1, 200),
+      multiplier: number('multiplier', 1, 1, 10),
+      reverse: source.reverse === true,
+      ctrl: source.ctrl === true,
+      shift: source.shift === true,
+      alt: source.alt === true,
+      middleClick: source.middleClick === true,
+    };
+  }
+  function wheelCaption(options) {
+    var keys = ['ctrl', 'shift', 'alt'].filter(function (name) { return options[name]; }).map(function (name) {
+      return name === 'ctrl' ? 'Ctrl' : name === 'shift' ? 'Shift' : 'Alt';
+    });
+    return (keys.length ? keys.join('+') + ' + ' : '') + 'ホイール' + (options.multiplier > 1 ? ' ×' + options.multiplier : '');
+  }
+  function bindWheelGesture(tile, a, options) {
+    var sender = inputSender(a.id),
+      tracking = false,
+      pointerId = null,
+      startY = 0,
+      lastY = 0,
+      travel = 0,
+      moved = false,
+      startTime = 0,
+      offset = 0,
+      ridges = tile.querySelector('.wheel-ridges');
+    sender.listen(function (state) { if (state === 'busy') showInputBusy(tile, true); });
+    function begin(e) {
+      if (tracking) return;
+      tracking = true;
+      pointerId = e.pointerId;
+      startY = lastY = e.clientY;
+      travel = 0;
+      moved = false;
+      startTime = Date.now();
+      tile.classList.add('adjusting');
+      if (tile.setPointerCapture) try { tile.setPointerCapture(e.pointerId); } catch (ignore) {}
+      if (e.cancelable) e.preventDefault();
+    }
+    function move(e) {
+      if (!tracking || e.pointerId !== pointerId) return;
+      var delta = lastY - e.clientY;
+      lastY = e.clientY;
+      if (Math.abs(e.clientY - startY) > 4) moved = true;
+      travel += delta;
+      offset = (offset - delta) % 24;
+      if (ridges) ridges.style.backgroundPositionY = offset + 'px';
+      var steps = travel > 0 ? Math.floor(travel / options.sensitivity) : Math.ceil(travel / options.sensitivity);
+      if (steps) {
+        travel -= steps * options.sensitivity;
+        sender.steps(steps);
+        wheelFeedback(Math.abs(steps));
+      }
+      if (e.cancelable) e.preventDefault();
+    }
+    function end(e) {
+      if (!tracking || e.pointerId !== pointerId) return;
+      tracking = false;
+      tile.classList.remove('adjusting');
+      if (!moved && e.type === 'pointerup' && options.middleClick && Date.now() - startTime < 400) {
+        sender.button('buttonDown', 'middle');
+        sender.button('buttonUp', 'middle');
+        wheelFeedback(1);
+      }
+      sender.release();
+      if (e.cancelable) e.preventDefault();
+    }
+    tile.addEventListener('pointerdown', begin);
+    tile.addEventListener('pointermove', move);
+    tile.addEventListener('pointerup', end);
+    tile.addEventListener('pointercancel', end);
+  }
+  function wheelFeedback() {}
+  function wheelTile(a, preview, index, slotIndex) {
+    var options = wheelOptions(a),
+      tile = document.createElement('div');
+    tile.className = 'deck-key wheel-widget wheel-' + options.style;
+    tile.title = a.name || 'マウスホイール';
+    tile.dataset.widgetId = a.id || '';
+    tile.dataset.appIndex = index;
+    tile.dataset.size = a.size || 1;
+    tile.dataset.width = a.width || a.size || 1;
+    tile.dataset.height = a.height || a.size || 1;
+    var ridges = document.createElement('span');
+    ridges.className = 'wheel-ridges';
+    tile.appendChild(ridges);
+    var caption = document.createElement('span');
+    caption.className = 'wheel-caption';
+    caption.textContent = wheelCaption(options);
+    tile.appendChild(caption);
+    var busy = document.createElement('span');
+    busy.className = 'input-busy-label';
+    busy.textContent = '他端末が操作中';
+    tile.appendChild(busy);
+    tile.setAttribute('aria-label', (a.name || 'マウスホイール') + '：' + caption.textContent);
+    if (preview) {
+      tile.draggable = true;
+      tile.ondragstart = function (e) {
+        e.dataTransfer.setData('text/plain', 'tile:' + index);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      addDropTarget(tile, index, slotIndex);
+      tile.oncontextmenu = function (e) {
+        openDeckContextMenu(e, index, a);
+      };
+    } else if (a.id) bindWheelGesture(tile, a, options);
+    return tile;
+  }
+
   function catalogItem(action) {
     for (var g = 0; g < catalog.length; g++)
       for (var i = 0; i < catalog[g].items.length; i++)
@@ -1538,6 +1797,18 @@
         height: overview ? 2 : 1,
         hideLabel: true,
         options: { primary: memory ? 'memory' : gpu ? 'gpu' : gpuMemory ? 'gpuMemory' : 'cpu', cycle: false, gpuId: '' },
+      };
+    }
+    if (action === 'widget-wheel-vertical') {
+      return {
+        name: '縦型ホイール',
+        type: 'wheel',
+        category: 'widget',
+        size: 1,
+        width: 1,
+        height: 1,
+        hideLabel: true,
+        options: { style: 'vertical', sensitivity: 24, multiplier: 1, reverse: false, ctrl: false, shift: false, alt: false, middleClick: false },
       };
     }
     return null;
@@ -1686,6 +1957,7 @@
     if (a.type === 'clock') return clockTile(a, preview, index, slotIndex);
     if (a.type === 'metrics') return metricsTile(a, preview, index, slotIndex);
     if (a.type === 'weather') return weatherTile(a, preview, index, slotIndex);
+    if (a.type === 'wheel') return wheelTile(a, preview, index, slotIndex);
     var b = document.createElement(preview ? 'div' : 'button');
     b.className = 'deck-key';
     b.title = a.name;
@@ -1979,8 +2251,13 @@
   var announcedViewSignature = '';
   function applyInputSessions(response) {
     if (!response || !response.inputSessions) return;
+    var previous = inputSessionByWidget;
     inputSessionByWidget = {};
     response.inputSessions.forEach(function (session) {
+      // A response built before an in-flight input was acknowledged must not rewind the sequence.
+      var known = previous[session.widgetId];
+      if (known && known.sessionId === session.sessionId && known.nextSequence > session.nextSequence)
+        session.nextSequence = known.nextSequence;
       inputSessionByWidget[session.widgetId] = session;
     });
   }
@@ -2334,11 +2611,13 @@
                   ? 'PC情報ウィジェット'
                   : a.type === 'weather'
                     ? '天気ウィジェット'
+                    : a.type === 'wheel'
+                      ? 'マウスホイール'
               : 'アプリ';
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
-    if (a.type !== 'clock' && a.type !== 'metrics')
+    if (a.type !== 'clock' && a.type !== 'metrics' && a.type !== 'wheel')
       menu.appendChild(
         contextButton('アイコンを選ぶ', '', function () {
           if (rows[index]) openIconPicker(rows[index]);
@@ -2784,6 +3063,80 @@
     box.appendChild(area);
   }
 
+  function buildWheelSettings(fields, box) {
+    fields.options = wheelOptions({ options: fields.options });
+    var rotary = fields.options.style === 'rotary',
+      area = document.createElement('fieldset');
+    area.className = 'wheel-settings';
+    var legend = document.createElement('legend');
+    legend.textContent = rotary ? '円形ホイールの操作' : '縦型ホイールの操作';
+    area.appendChild(legend);
+    function changed() {
+      deckApps = rows.map(rowData);
+      renderPreview();
+    }
+    var sensitivityLabel = document.createElement('label'),
+      sensitivity = document.createElement('input'),
+      sensitivityValue = document.createElement('span');
+    sensitivityLabel.textContent = rotary ? '1目盛りの回転角' : '1目盛りのスワイプ距離';
+    sensitivity.type = 'range';
+    sensitivity.min = rotary ? 6 : 8;
+    sensitivity.max = rotary ? 90 : 120;
+    sensitivity.value = Math.max(Number(sensitivity.min), Math.min(Number(sensitivity.max), fields.options.sensitivity));
+    function showSensitivity() {
+      fields.options.sensitivity = Number(sensitivity.value);
+      sensitivityValue.textContent = sensitivity.value + (rotary ? '°（小さいほど敏感）' : 'px（小さいほど敏感）');
+    }
+    sensitivity.oninput = showSensitivity;
+    sensitivity.onchange = changed;
+    showSensitivity();
+    sensitivityLabel.appendChild(sensitivity);
+    sensitivityLabel.appendChild(sensitivityValue);
+    area.appendChild(sensitivityLabel);
+    var amountLabel = document.createElement('label'),
+      amount = document.createElement('select');
+    amountLabel.textContent = '1目盛りのスクロール量';
+    for (var step = 1; step <= 10; step++) {
+      var option = document.createElement('option');
+      option.value = step;
+      option.textContent = step + '段';
+      amount.appendChild(option);
+    }
+    amount.value = fields.options.multiplier;
+    amount.onchange = function () {
+      fields.options.multiplier = Number(amount.value);
+      changed();
+    };
+    amountLabel.appendChild(amount);
+    area.appendChild(amountLabel);
+    function check(name, text) {
+      var label = document.createElement('label'),
+        input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = fields.options[name];
+      input.dataset.option = name;
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(text));
+      area.appendChild(label);
+      input.onchange = function () {
+        fields.options[name] = input.checked;
+        changed();
+      };
+    }
+    check('reverse', 'スクロール方向を反転');
+    check('ctrl', 'Ctrlを押しながら（拡大・縮小など）');
+    check('shift', 'Shiftを押しながら（横スクロールなど）');
+    check('alt', 'Altを押しながら');
+    check('middleClick', rotary ? '中央タップで中クリック' : 'タップで中クリック');
+    var note = document.createElement('p');
+    note.className = 'editor-feedback';
+    note.textContent = rotary
+      ? '円の縁をなぞると回した角度だけスクロールします。中央付近は反応しません。'
+      : '上下にスワイプするとPCのマウスホイールとして動きます。スクロール量と修飾キーはPC側の設定で決まります。';
+    area.appendChild(note);
+    box.appendChild(area);
+  }
+
   function createEditor(a) {
     var box = document.createElement('div');
     box.className = 'editor';
@@ -2840,6 +3193,8 @@
                   ? 'METRICS'
                   : fields.type === 'weather'
                     ? 'WEATHER'
+                    : fields.type === 'wheel'
+                      ? 'WHEEL'
               : 'APP';
     heading.appendChild(kind);
     box.appendChild(heading);
@@ -2868,6 +3223,7 @@
     if (fields.type === 'audioDevice') buildDeviceSelector(fields, box);
     if (fields.type === 'clock') buildClockSettings(fields, box);
     if (fields.type === 'metrics') buildMetricsSettings(fields, box);
+    if (fields.type === 'wheel') buildWheelSettings(fields, box);
     if (fields.type === 'weather') {
       fields.options = fields.options || { forecastMode: 'days' };
       var weatherNote = document.createElement('p');
@@ -2885,7 +3241,7 @@
       refreshEditorIcon(fields);
     };
     refreshEditorIcon(fields);
-    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather') {
+    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather' && fields.type !== 'wheel') {
       var iconButton = document.createElement('button');
       iconButton.type = 'button';
       iconButton.className = 'subtle icon-select-button';
