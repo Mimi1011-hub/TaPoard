@@ -1,0 +1,138 @@
+const { chromium } = require('C:/Users/shimi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs = require('fs');
+const http = require('http');
+const assert = require('assert');
+
+let apps = [];
+let revision = 1;
+let version = '1';
+let metrics = {
+  active: true, cpuAvailable: true, memoryAvailable: true,
+  cpuPercent: 25.5, memoryPercent: 50.0,
+  memoryUsedBytes: 8589934592, memoryTotalBytes: 17179869184,
+  sampledAt: Date.now(),
+  history: [{ timestamp: Date.now() - 2000, cpuPercent: 20, memoryPercent: 49 }, { timestamp: Date.now(), cpuPercent: 25.5, memoryPercent: 50 }],
+};
+const syncWaiters = new Set();
+const stateVisibleIds = [];
+const viewCalls = [];
+const controls = {
+  speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1,
+  speakerRow: 0, speakerColumn: 0, speakerWidth: 1, speakerHeight: 1,
+  micRow: 0, micColumn: 1, micWidth: 1, micHeight: 1,
+};
+function state() {
+  return {
+    apps, revision, version, metrics, appVersion: '2.0-dev+test', computer: '情報テストPC',
+    landscapeGrid: { columns: 5, rows: 3 }, portraitGrid: { columns: 3, rows: 5 },
+    landscapeControls: controls, portraitControls: controls,
+    landscapePage: 0, portraitPage: 0, landscapePages: 1, portraitPages: 1,
+    columns: 5, rows: 3, speakerSlot: 0, micSlot: 1, keepAwake: false, phoneConnected: false,
+    audio: { speakerVolume: 50, micVolume: 50, speakerAvailable: true, micAvailable: true, devices: [] },
+  };
+}
+function sendSync(res) { if (!res.writableEnded) res.end(JSON.stringify(state())); }
+function bump(changeVersion) {
+  revision++;
+  if (changeVersion) version = String(Number(version) + 1);
+  for (const waiter of [...syncWaiters]) {
+    clearTimeout(waiter.timer);
+    syncWaiters.delete(waiter);
+    sendSync(waiter.res);
+  }
+}
+const server = http.createServer(async (req, res) => {
+  let body = '';
+  for await (const chunk of req) body += chunk;
+  const url = new URL(req.url, 'http://127.0.0.1');
+  const path = url.pathname;
+  res.setHeader('Content-Type', path.endsWith('.js') ? 'application/javascript' : path.endsWith('.css') ? 'text/css' : path.startsWith('/api/') ? 'application/json' : 'text/html');
+  if (path === '/api/sync') {
+    const requested = Number(url.searchParams.get('revision') || 0);
+    if (requested < revision) { sendSync(res); return; }
+    const waiter = { res, timer: null };
+    waiter.timer = setTimeout(() => { syncWaiters.delete(waiter); sendSync(res); }, 20000);
+    syncWaiters.add(waiter);
+    res.on('close', () => { clearTimeout(waiter.timer); syncWaiters.delete(waiter); });
+    return;
+  }
+  if (path === '/api/settings') {
+    if (req.method === 'POST') {
+      apps = JSON.parse(body).apps.map((app, index) => ({ ...app, id: app.id || 'metric-' + index }));
+      bump(true);
+      res.end('{"ok":true}');
+    } else {
+      res.end(JSON.stringify({ ...state(), token: 'test', lanUrl: 'http://example.local/', ipUrls: [], networkStatus: 'テスト', qrUrl: 'http://example.local/#connect=test' }));
+    }
+    return;
+  }
+  if (path === '/api/state') {
+    const visible = url.searchParams.get('visibleIds');
+    if (visible !== null) stateVisibleIds.push(visible);
+    res.end(JSON.stringify(state()));
+    return;
+  }
+  if (path === '/api/view') { viewCalls.push(JSON.parse(body)); res.end('{"ok":true,"inputSessions":[]}'); return; }
+  if (path === '/api/devices') { res.end('{"devices":[]}'); return; }
+  if (path === '/api/audio') { res.end(JSON.stringify({ ok: true, audio: state().audio, revision })); return; }
+  const file = path === '/' || path === '/settings' ? 'index.html' : path.slice(1);
+  if (!/^[\w.-]+$/.test(file)) { res.writeHead(404); res.end(); return; }
+  try { res.end(fs.readFileSync('web/' + file)); } catch { res.writeHead(404); res.end(); }
+});
+
+(async () => {
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = 'http://127.0.0.1:' + server.address().port;
+  let browser;
+  const errors = [];
+  try {
+    browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe' });
+    const admin = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    admin.on('pageerror', error => errors.push(String(error)));
+    await admin.goto(base + '/settings#test');
+    const group = admin.locator('.shortcut-group').filter({ hasText: '時計・情報表示' });
+    await group.locator('summary').click();
+    const savedCpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
+    const refreshedCpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');
+    await group.locator('.shortcut-row[data-action="widget-metrics-cpu"]').getByRole('button', { name: '追加', exact: true }).click();
+    await savedCpu;
+    await refreshedCpu;
+    await admin.locator('#preview-deck .metrics-small').waitFor();
+    assert.equal(apps[0].type, 'metrics');
+    assert.equal(apps[0].options.primary, 'cpu');
+    assert.equal(await admin.locator('#preview-deck .metrics-small .metric-value').innerText(), '25.5%');
+
+    await group.locator('summary').click();
+    const savedOverview = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
+    const refreshedOverview = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');
+    await group.locator('.shortcut-row[data-action="widget-metrics-overview"]').getByRole('button', { name: '追加', exact: true }).click();
+    await savedOverview;
+    await refreshedOverview;
+    await admin.waitForFunction(() => document.querySelectorAll('#preview-deck .metrics-widget').length === 2);
+    assert.equal(apps[1].width, 2);
+    assert.equal(apps[1].height, 2);
+    assert.equal(await admin.locator('#preview-deck .metrics-large .metric-row').count(), 2);
+    assert((await admin.locator('#preview-deck .metrics-large .cpu-line').getAttribute('d')).length > 0);
+
+    const phone = await browser.newPage({ viewport: { width: 667, height: 375 } });
+    phone.on('pageerror', error => errors.push(String(error)));
+    await phone.goto(base + '/#connect=test');
+    const cpuTile = phone.locator('#deck .metrics-small');
+    await cpuTile.waitFor();
+    await cpuTile.evaluate(node => { node.dataset.identityCheck = 'same-node'; });
+    metrics = {
+      ...metrics, cpuPercent: 67.8, memoryPercent: 55.5, sampledAt: Date.now(),
+      history: [...metrics.history, { timestamp: Date.now(), cpuPercent: 67.8, memoryPercent: 55.5 }],
+    };
+    bump(false);
+    await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '67.8%');
+    assert.equal(await cpuTile.getAttribute('data-identity-check'), 'same-node', 'metrics update rebuilt the full deck');
+    assert(stateVisibleIds.some(value => value.includes('metric-0')) || viewCalls.some(call => call.visibleIds.includes('metric-0')));
+    assert.deepEqual(errors, []);
+    console.log('PASS metrics UI: 1x1 and 2x2 widgets, history graph, subscription and in-place updates');
+  } finally {
+    if (browser) await browser.close();
+    server.closeAllConnections();
+    server.close();
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

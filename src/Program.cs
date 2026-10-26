@@ -154,6 +154,12 @@ partial class Program
             try
             {
                 LoadSettings();
+                DisplaySubscriptions.Changed = MetricsSampler.OnSubscriptionsChanged;
+                MetricsSampler.Changed = delegate
+                {
+                    lock (Gate)
+                        Signal();
+                };
                 admin = RandomKey();
                 lan = new LanNetwork(Path.Combine(Root, "network.json"));
                 File.WriteAllText(Path.Combine(Root, "network-status.txt"), lan.Status);
@@ -173,6 +179,9 @@ partial class Program
             {
                 if (server != null)
                     server.Stop();
+                DisplaySubscriptions.Changed = null;
+                DisplaySubscriptions.ClearAll();
+                MetricsSampler.SetActive(false);
                 InputSessions.ClearAll();
                 if (lan != null)
                     lan.Dispose();
