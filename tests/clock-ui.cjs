@@ -6,6 +6,7 @@ const assert = require('assert');
 let apps = [];
 let revision = 1;
 let version = '1';
+let grid = { columns: 5, rows: 3 };
 const viewCalls = [];
 const stateVisibleIds = [];
 const syncWaiters = new Set();
@@ -17,7 +18,7 @@ const controls = {
 function state() {
   return {
     apps, revision, version, appVersion: '2.0-dev+test', computer: '時計テストPC',
-    landscapeGrid: { columns: 5, rows: 3 }, portraitGrid: { columns: 3, rows: 5 },
+    landscapeGrid: grid, portraitGrid: { columns: 3, rows: 5 },
     landscapeControls: controls, portraitControls: controls,
     landscapePage: 0, portraitPage: 0, landscapePages: 1, portraitPages: 1,
     columns: 5, rows: 3, speakerSlot: 0, micSlot: 1, keepAwake: false, phoneConnected: false,
@@ -73,6 +74,18 @@ const server = http.createServer(async (req, res) => {
   try { res.end(fs.readFileSync('web/' + file)); } catch { res.writeHead(404); res.end(); }
 });
 
+// Waits for the explicit save and the settings reload that follows it, not for an older notice.
+async function save(page) {
+  let posted = false;
+  const refreshed = page.waitForResponse(response => {
+    const path = new URL(response.url()).pathname, method = response.request().method();
+    if (path === '/api/settings' && method === 'POST') posted = true;
+    return posted && path === '/api/settings' && method === 'GET';
+  });
+  await page.locator('#save').click();
+  await refreshed;
+}
+
 (async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = 'http://127.0.0.1:' + server.address().port;
@@ -100,16 +113,14 @@ const server = http.createServer(async (req, res) => {
     const clockSettings = admin.locator('.editor .clock-settings');
     await clockSettings.locator('select').selectOption('analog');
     await admin.locator('#preview-deck .clock-face').waitFor();
-    await admin.locator('#save').click();
-    await admin.waitForFunction(() => document.querySelector('#message').textContent.includes('保存しました'));
+    await save(admin);
     assert.equal(apps[0].options.style, 'analog');
     assert.equal(await admin.locator('.editor .icon-select-button').count(), 0);
 
     await clockSettings.locator('select').selectOption('digital');
     const checks = clockSettings.locator('input[type="checkbox"]');
     await checks.nth(3).check();
-    await admin.locator('#save').click();
-    await admin.waitForFunction(() => document.querySelector('#message').textContent.includes('保存しました'));
+    await save(admin);
     assert.equal(apps[0].options.hour12, true);
     assert.match(await admin.locator('#preview-deck .clock-time').innerText(), / (AM|PM)$/);
 
@@ -120,6 +131,17 @@ const server = http.createServer(async (req, res) => {
     await phoneClock.waitFor();
     const first = await phoneClock.innerText();
     await phone.waitForFunction(previous => document.querySelector('#deck .clock-time').textContent !== previous, first, { timeout: 2500 });
+    const fits = () => phone.locator('#deck .clock-widget').evaluate(tile => {
+      const node = tile.querySelector('.clock-time'), range = document.createRange();
+      range.selectNodeContents(node);
+      const text = range.getBoundingClientRect(), box = tile.getBoundingClientRect();
+      return text.left >= box.left - 1 && text.right <= box.right + 1 && text.top >= box.top - 1 && text.bottom <= box.bottom + 1;
+    });
+    assert(await fits(), '12-hour time fits a 2x2 tile on a 5x3 grid');
+    grid = { columns: 8, rows: 5 };
+    bump();
+    await phone.waitForFunction(() => document.querySelector('#deck').dataset.columns === '8');
+    assert(await fits(), '12-hour time fits a 2x2 tile on a dense 8x5 grid');
     assert(stateVisibleIds.length > 0);
     assert(stateVisibleIds.every(value => value === ''), 'clock must not create a display subscription');
     assert(viewCalls.every(call => Array.isArray(call.visibleIds) && call.visibleIds.length === 0), 'clock view announcements must stay empty');

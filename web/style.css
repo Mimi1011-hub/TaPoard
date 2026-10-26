@@ -893,6 +893,8 @@ textarea {
   transform: none;
 }
 .clock-digital {
+  /* The time is sized from the tile, not the screen, so dense grids do not clip it. */
+  container-type: size;
   background:
     radial-gradient(circle at 50% 18%, #23335f 0, transparent 55%),
     linear-gradient(145deg, #171a23, #08090c);
@@ -901,6 +903,7 @@ textarea {
   max-width: 100%;
   color: #f2f5ff;
   font-size: clamp(18px, 6.4vw, 48px);
+  font-size: min(18cqw, 34cqh);
   font-weight: 650;
   line-height: 1;
   letter-spacing: -0.05em;
@@ -910,6 +913,7 @@ textarea {
 .clock-date {
   color: #aebce2;
   font-size: clamp(8px, 2.1vw, 16px);
+  font-size: min(8.5cqw, 13cqh);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -956,8 +960,9 @@ textarea {
   transform: translate(-50%, -50%);
   box-shadow: 0 0 5px #7896ff;
 }
-.preview-grid .clock-time { font-size: clamp(10px, 2.4vw, 23px); }
-.preview-grid .clock-date { font-size: clamp(5px, 0.9vw, 9px); }
+.clock-12h .clock-time { font-size: min(13cqw, 30cqh); }
+.clock-no-seconds .clock-time { font-size: min(25cqw, 40cqh); }
+.clock-12h.clock-no-seconds .clock-time { font-size: min(18cqw, 34cqh); }
 .preview-grid .clock-marker { font-size: clamp(4px, 0.7vw, 7px); }
 .metrics-widget {
   padding: 7px !important;

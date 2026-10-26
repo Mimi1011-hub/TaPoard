@@ -1225,6 +1225,8 @@
     var options = clockOptions(a),
       tile = document.createElement('div');
     tile.className = 'deck-key clock-widget clock-' + options.style;
+    if (options.hour12) tile.classList.add('clock-12h');
+    if (!options.showSeconds) tile.classList.add('clock-no-seconds');
     tile.title = a.name || (options.style === 'analog' ? 'アナログ時計' : 'デジタル時計');
     tile._clockOptions = options;
     tile.dataset.appIndex = index;
