@@ -1,6 +1,30 @@
 using System;
 using System.Collections.Generic;
 
+class TilePosition
+{
+    public int page { get; set; }
+    public int row { get; set; }
+    public int column { get; set; }
+}
+
+// Speaker/microphone fader placement for one orientation.
+struct ControlLayout
+{
+    public int speakerSlot;
+    public int micSlot;
+    public int speakerSize;
+    public int micSize;
+    public int speakerRow;
+    public int speakerColumn;
+    public int speakerWidth;
+    public int speakerHeight;
+    public int micRow;
+    public int micColumn;
+    public int micWidth;
+    public int micHeight;
+}
+
 static class DeckLayout
 {
     internal const int MaxPages = 40;
