@@ -31,6 +31,7 @@
     connected = false,
     rows = [],
     deckApps = [],
+    inputSessionByWidget = {},
     deckVersion = '',
     deckRevision = 0,
     page = 0,
@@ -1421,6 +1422,7 @@
     syncGridControls();
   }
   function applyState(s) {
+    if (s.inputSessions) applyInputSessions(s);
     deckRevision = s.revision || deckRevision;
     if (s.appVersion) $('app-version').textContent = 'Version ' + s.appVersion;
     if (s.apps) {
@@ -1456,7 +1458,7 @@
           app.orientation === orientation &&
           position &&
           position.page === page &&
-          (app.type === 'metrics' || app.type === 'weather')
+          (app.type === 'metrics' || app.type === 'weather' || app.type === 'wheel' || app.type === 'touchpad')
         );
       })
       .map(function (app) { return app.id; })
@@ -1468,15 +1470,24 @@
   }
 
   var announcedViewSignature = '';
+  function applyInputSessions(response) {
+    if (!response || !response.inputSessions) return;
+    inputSessionByWidget = {};
+    response.inputSessions.forEach(function (session) {
+      inputSessionByWidget[session.widgetId] = session;
+    });
+  }
   function announceView() {
     if (!key || document.hidden) return Promise.resolve();
     var ids = visibleWidgetIds();
     var signature = ids.join(',');
     if (signature === announcedViewSignature) return Promise.resolve();
     announcedViewSignature = signature;
-    return api('view', { viewId: viewId, visibleIds: ids }).catch(function () {
-      announcedViewSignature = '';
-    });
+    return api('view', { viewId: viewId, visibleIds: ids })
+      .then(applyInputSessions)
+      .catch(function () {
+        announcedViewSignature = '';
+      });
   }
 
   function refresh() {

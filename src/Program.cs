@@ -173,6 +173,7 @@ partial class Program
             {
                 if (server != null)
                     server.Stop();
+                InputSessions.ClearAll();
                 if (lan != null)
                     lan.Dispose();
                 if (tray != null)
