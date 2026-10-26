@@ -74,8 +74,6 @@ partial class Program
     {
         DeckLayout.MigrateGrid(config);
         DeckLayout.MigrateControls(config);
-        NormalizeControlPair(Math.Max(2, DeckLayout.Columns(config, false) * DeckLayout.Rows(config, false)), false);
-        NormalizeControlPair(Math.Max(2, DeckLayout.Columns(config, true) * DeckLayout.Rows(config, true)), true);
         // The legacy shared fields mirror the landscape layout for older clients.
         config.columns = config.landscapeColumns;
         config.rows = config.landscapeRows;
@@ -83,20 +81,6 @@ partial class Program
         config.micSlot = config.landscapeMicSlot;
         config.speakerSize = config.landscapeSpeakerSize;
         config.micSize = config.landscapeMicSize;
-    }
-
-    static void NormalizeControlPair(int total, bool portrait)
-    {
-        var c = DeckLayout.GetControls(config, portrait);
-        if (c.speakerSlot < 0 || c.speakerSlot >= total)
-            c.speakerSlot = 0;
-        if (c.micSlot < 0 || c.micSlot >= total || c.micSlot == c.speakerSlot)
-            c.micSlot = c.speakerSlot == 0 ? 1 : 0;
-        if (c.speakerSize != 2)
-            c.speakerSize = 1;
-        if (c.micSize != 2)
-            c.micSize = 1;
-        DeckLayout.SetControls(config, portrait, c);
     }
 
     static object Controls(bool portrait)
@@ -108,6 +92,14 @@ partial class Program
             micSlot = c.micSlot,
             speakerSize = c.speakerSize,
             micSize = c.micSize,
+            speakerRow = c.speakerRow,
+            speakerColumn = c.speakerColumn,
+            speakerWidth = c.speakerWidth,
+            speakerHeight = c.speakerHeight,
+            micRow = c.micRow,
+            micColumn = c.micColumn,
+            micWidth = c.micWidth,
+            micHeight = c.micHeight,
         };
     }
 

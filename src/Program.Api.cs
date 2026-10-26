@@ -464,13 +464,33 @@ partial class Program
     {
         var c = DeckLayout.GetControls(target, portrait);
         if (input.ContainsKey("speakerSlot"))
+        {
             c.speakerSlot = Convert.ToInt32(input["speakerSlot"]);
+            if (!input.ContainsKey("speakerRow")) { c.speakerRow = -1; c.speakerColumn = -1; }
+        }
         if (input.ContainsKey("micSlot"))
+        {
             c.micSlot = Convert.ToInt32(input["micSlot"]);
+            if (!input.ContainsKey("micRow")) { c.micRow = -1; c.micColumn = -1; }
+        }
         if (input.ContainsKey("speakerSize"))
+        {
             c.speakerSize = Convert.ToInt32(input["speakerSize"]);
+            if (!input.ContainsKey("speakerWidth")) { c.speakerWidth = c.speakerSize; c.speakerHeight = c.speakerSize; }
+        }
         if (input.ContainsKey("micSize"))
+        {
             c.micSize = Convert.ToInt32(input["micSize"]);
+            if (!input.ContainsKey("micWidth")) { c.micWidth = c.micSize; c.micHeight = c.micSize; }
+        }
+        if (input.ContainsKey("speakerRow")) c.speakerRow = Convert.ToInt32(input["speakerRow"]);
+        if (input.ContainsKey("speakerColumn")) c.speakerColumn = Convert.ToInt32(input["speakerColumn"]);
+        if (input.ContainsKey("speakerWidth")) c.speakerWidth = Convert.ToInt32(input["speakerWidth"]);
+        if (input.ContainsKey("speakerHeight")) c.speakerHeight = Convert.ToInt32(input["speakerHeight"]);
+        if (input.ContainsKey("micRow")) c.micRow = Convert.ToInt32(input["micRow"]);
+        if (input.ContainsKey("micColumn")) c.micColumn = Convert.ToInt32(input["micColumn"]);
+        if (input.ContainsKey("micWidth")) c.micWidth = Convert.ToInt32(input["micWidth"]);
+        if (input.ContainsKey("micHeight")) c.micHeight = Convert.ToInt32(input["micHeight"]);
         DeckLayout.SetControls(target, portrait, c);
     }
 
