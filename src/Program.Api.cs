@@ -575,6 +575,11 @@ partial class Program
             audio = AudioControl.SetVolume(target, Convert.ToInt32(input["volume"]));
             notify = input.ContainsKey("final") && Convert.ToBoolean(input["final"]);
         }
+        else if (input.ContainsKey("delta"))
+        {
+            audio = AudioControl.AdjustVolume(target, Convert.ToInt32(input["delta"]));
+            notify = true;
+        }
         else if (input.ContainsKey("toggleMute") && Convert.ToBoolean(input["toggleMute"]))
         {
             audio = AudioControl.ToggleMute(target);

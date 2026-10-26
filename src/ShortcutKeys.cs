@@ -317,15 +317,8 @@ static class ShortcutKeys
             AudioControl.ToggleMute(target);
             return;
         }
-        AudioState state = AudioControl.Read();
-        bool available = target == "mic" ? state.micAvailable : state.speakerAvailable;
-        if (!available)
-            throw new Exception(
-                target == "mic" ? "既定のマイクが見つかりません。" : "既定のスピーカーが見つかりません。"
-            );
-        int current = target == "mic" ? state.micVolume : state.speakerVolume,
-            change = action.EndsWith("-up", StringComparison.OrdinalIgnoreCase) ? 5 : -5;
-        AudioControl.SetVolume(target, Math.Max(0, Math.Min(100, current + change)));
+        int change = action.EndsWith("-up", StringComparison.OrdinalIgnoreCase) ? 5 : -5;
+        AudioControl.AdjustVolume(target, change);
     }
 
     static void SendCombo(byte[] combo)

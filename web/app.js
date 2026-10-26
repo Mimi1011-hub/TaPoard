@@ -749,8 +749,13 @@
     '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="17" y="6" width="14" height="25" rx="7"/><path d="M11 24a13 13 0 0 0 26 0M24 37v6m-7 0h14"/></svg>';
   function setFaderVisual(track, value) {
     value = Math.max(0, Math.min(100, value));
-    track.querySelector('.fader-level').style.height = value + '%';
-    track.querySelector('.fader-thumb').style.bottom = 'calc(' + value + '% - 5px)';
+    if (track.classList.contains('horizontal-track')) {
+      track.querySelector('.fader-level').style.width = value + '%';
+      track.querySelector('.fader-thumb').style.left = 'calc(' + value + '% - 5px)';
+    } else {
+      track.querySelector('.fader-level').style.height = value + '%';
+      track.querySelector('.fader-thumb').style.bottom = 'calc(' + value + '% - 5px)';
+    }
     track.setAttribute('aria-valuenow', value);
   }
   function mergeAudioTarget(target, next) {
@@ -922,9 +927,12 @@
       prefix = isMic ? 'mic' : 'speaker',
       value = audioState[prefix + 'Volume'],
       muted = audioState[prefix + 'Muted'],
-      available = audioState[prefix + 'Available'] !== false;
+      available = audioState[prefix + 'Available'] !== false,
+      control = controlRect(target, currentOrientation(preview)),
+      horizontal = control.width === 3 && control.height === 1;
     var tile = document.createElement('div');
-    tile.className = 'deck-key audio-fader' + (muted ? ' muted' : '') + (!available ? ' unavailable' : '');
+    tile.className =
+      'deck-key audio-fader' + (horizontal ? ' horizontal' : '') + (muted ? ' muted' : '') + (!available ? ' unavailable' : '');
     var mute = document.createElement(preview ? 'div' : 'button');
     mute.className = 'audio-mute';
     mute.innerHTML = isMic ? micIcon : speakerIcon;
@@ -938,8 +946,24 @@
       };
     }
     tile.appendChild(mute);
+    function stepButton(delta, text) {
+      var button = document.createElement(preview ? 'span' : 'button');
+      button.className = 'fader-step';
+      button.textContent = text;
+      button.setAttribute('aria-label', (isMic ? 'マイク' : 'スピーカー') + '音量を' + (delta > 0 ? '上げる' : '下げる'));
+      if (!preview) {
+        button.type = 'button';
+        button.disabled = !available;
+        button.onclick = function (e) {
+          e.stopPropagation();
+          sendAudio(target, { delta: delta });
+        };
+      }
+      return button;
+    }
+    if (horizontal) tile.appendChild(stepButton(-5, '−'));
     var track = document.createElement('div');
-    track.className = 'fader-track';
+    track.className = 'fader-track' + (horizontal ? ' horizontal-track' : '');
     track.setAttribute('role', 'slider');
     track.setAttribute('aria-label', (isMic ? 'マイク' : 'スピーカー') + '音量');
     track.setAttribute('aria-valuemin', '0');
@@ -952,6 +976,7 @@
     track.appendChild(thumb);
     setFaderVisual(track, value);
     tile.appendChild(track);
+    if (horizontal) tile.appendChild(stepButton(5, '＋'));
     var label = document.createElement('span');
     label.className = 'fader-value';
     label.textContent = value + '%';
@@ -966,21 +991,25 @@
     if (!available) return tile;
     var tracking = false,
       moved = false,
-      startY = 0,
+      startPoint = 0,
       current = value,
       pending = null,
       inFlight = false,
       sendTimer = null,
       lastSent = 0,
       finishing = false;
-    function pointY(e) {
+    function point(e) {
       var list =
         e && e.touches && e.touches.length
           ? e.touches
           : e && e.changedTouches && e.changedTouches.length
             ? e.changedTouches
             : null;
-      return list ? list[0].clientY : e && typeof e.clientY === 'number' ? e.clientY : null;
+      var source = list ? list[0] : e;
+      if (!source) return null;
+      return horizontal
+        ? typeof source.clientX === 'number' ? source.clientX : null
+        : typeof source.clientY === 'number' ? source.clientY : null;
     }
     function finish() {
       if (!finishing || inFlight || pending !== null) return;
@@ -1028,11 +1057,13 @@
       }
       pump(finalValue);
     }
-    function updateAt(y, e) {
-      if (typeof y !== 'number' || !isFinite(y)) return;
+    function updateAt(position, e) {
+      if (typeof position !== 'number' || !isFinite(position)) return;
       var rect = track.getBoundingClientRect();
-      if (!rect.height) return;
-      current = Math.round(Math.max(0, Math.min(100, ((rect.bottom - y) * 100) / rect.height)));
+      if (horizontal ? !rect.width : !rect.height) return;
+      current = Math.round(
+        Math.max(0, Math.min(100, horizontal ? ((position - rect.left) * 100) / rect.width : ((rect.bottom - position) * 100) / rect.height)),
+      );
       setFaderVisual(track, current);
       label.textContent = current + '%';
       tile.classList.toggle('adjusting', moved);
@@ -1040,11 +1071,11 @@
       if (e && e.cancelable) e.preventDefault();
     }
     function begin(e) {
-      if (e.target && e.target.closest && e.target.closest('.audio-mute')) return;
+      if (e.target && e.target.closest && e.target.closest('.audio-mute,.fader-step')) return;
       tracking = true;
       moved = false;
       audioInteraction = true;
-      startY = pointY(e);
+      startPoint = point(e);
       if (e.pointerId !== undefined && tile.setPointerCapture)
         try {
           tile.setPointerCapture(e.pointerId);
@@ -1053,15 +1084,15 @@
     }
     function move(e) {
       if (!tracking) return;
-      var y = pointY(e);
-      if (typeof y !== 'number') return;
-      if (Math.abs(y - startY) > 3) moved = true;
-      if (moved) updateAt(y, e);
+      var position = point(e);
+      if (typeof position !== 'number') return;
+      if (Math.abs(position - startPoint) > 3) moved = true;
+      if (moved) updateAt(position, e);
     }
     function end(e) {
       if (!tracking) return;
-      var y = pointY(e);
-      if (moved && typeof y === 'number') updateAt(y, e);
+      var position = point(e);
+      if (moved && typeof position === 'number') updateAt(position, e);
       tracking = false;
       tile.classList.remove('adjusting');
       if (moved) queue(true);
@@ -1670,14 +1701,14 @@
         '位置を保存しました。',
     );
   }
-  function setAudioControlSize(target, size) {
+  function setAudioControlShape(target, width, height, label) {
     var orientation = admin ? previewOrientation : currentOrientation(false),
       controls = controlsFor(orientation),
       key = target + 'Size',
       before = Object.assign({}, controls);
-    controls[key] = size;
-    controls[target + 'Width'] = size;
-    controls[target + 'Height'] = size;
+    controls[key] = width === height ? width : 1;
+    controls[target + 'Width'] = width;
+    controls[target + 'Height'] = height;
     try {
       validatePlacements(rows.map(rowData));
     } catch (e) {
@@ -1690,7 +1721,7 @@
         '向きの' +
         (target === 'mic' ? 'マイク' : 'スピーカー') +
         'フェーダーを' +
-        (size === 2 ? '4マス' : '1マス') +
+        label +
         '表示にしました。',
     );
   }
@@ -1702,7 +1733,7 @@
       isMic = target === 'mic',
       display = displayGrid(true),
       rect = controlRect(target, previewOrientation),
-      size = rect.width === rect.height ? rect.width : 1,
+      shape = rect.width + 'x' + rect.height,
       column = rect.column,
       row = rect.row;
     menu.textContent = '';
@@ -1718,7 +1749,7 @@
       (previewOrientation === 'portrait' ? '縦向き · ' : '横向き · ') + (isMic ? 'マイク' : 'スピーカー');
     text.appendChild(name);
     var hint = document.createElement('small');
-    hint.textContent = '音量フェーダー · ' + (size === 2 ? '4マス' : '1マス');
+    hint.textContent = '音量フェーダー · ' + (shape === '3x1' ? '横3マス' : shape === '2x2' ? '4マス' : '1マス');
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
@@ -1727,9 +1758,9 @@
         '1マス（1×1）',
         '',
         function () {
-          setAudioControlSize(target, 1);
+          setAudioControlShape(target, 1, 1, '1マス');
         },
-        size === 1,
+        shape === '1x1',
       ),
     );
     menu.appendChild(
@@ -1737,9 +1768,19 @@
         '4マス（2×2）',
         '',
         function () {
-          setAudioControlSize(target, 2);
+          setAudioControlShape(target, 2, 2, '4マス');
         },
-        size === 2,
+        shape === '2x2',
+      ),
+    );
+    menu.appendChild(
+      contextButton(
+        '横3マス（3×1）',
+        '',
+        function () {
+          setAudioControlShape(target, 3, 1, '横3マス');
+        },
+        shape === '3x1',
       ),
     );
     menu.appendChild(
