@@ -66,6 +66,10 @@ class Settings
     public int landscapePageCount { get; set; }
     public int portraitPageCount { get; set; }
     public List<PairedDevice> devices { get; set; }
+    public string weatherName { get; set; }
+    public double weatherLatitude { get; set; }
+    public double weatherLongitude { get; set; }
+    public string weatherTimezone { get; set; }
 }
 
 class ControlPlacement

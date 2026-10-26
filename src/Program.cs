@@ -154,7 +154,12 @@ partial class Program
             try
             {
                 LoadSettings();
-                DisplaySubscriptions.Changed = MetricsSampler.OnSubscriptionsChanged;
+                WeatherService.Initialize(Data, delegate { lock (Gate) Signal(); });
+                DisplaySubscriptions.Changed = delegate
+                {
+                    MetricsSampler.OnSubscriptionsChanged();
+                    lock (Gate) WeatherService.SetActive(DisplaySubscriptions.Current().weather.Count != 0, config);
+                };
                 MetricsSampler.Changed = delegate
                 {
                     lock (Gate)
@@ -182,6 +187,7 @@ partial class Program
                 DisplaySubscriptions.Changed = null;
                 DisplaySubscriptions.ClearAll();
                 MetricsSampler.SetActive(false);
+                WeatherService.Stop();
                 InputSessions.ClearAll();
                 if (lan != null)
                     lan.Dispose();

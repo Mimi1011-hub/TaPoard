@@ -81,6 +81,10 @@ partial class Program
             SetLayout(r, input);
         else if (path == "/api/audio")
             SetAudio(r, input);
+        else if (path == "/api/weather/search" && r.isAdmin)
+            ReplyJson(s, 200, new { results = WeatherService.Search(Convert.ToString(input["query"])) });
+        else if (path == "/api/weather/location" && r.isAdmin)
+            SetWeatherLocation(r, input);
         else if (path == "/api/view")
         {
             object rawViewId;
@@ -239,6 +243,7 @@ partial class Program
                     portraitControls = Controls(true),
                     audio = AudioControl.Read(),
                     metrics = MetricsSampler.PublicSnapshot(),
+                    weather = WeatherService.PublicSnapshot(config),
                     phoneConnected = PhoneConnected(),
                     computer = Environment.MachineName,
                     inputSessions = inputSessions,
@@ -286,6 +291,7 @@ partial class Program
                     portraitControls = Controls(true),
                     audio = AudioControl.Read(),
                     metrics = MetricsSampler.PublicSnapshot(),
+                    weather = WeatherService.PublicSnapshot(config),
                     phoneConnected = PhoneConnected(),
                     inputSessions = inputSessions,
                 }
@@ -338,6 +344,8 @@ partial class Program
                     portraitControls = Controls(true),
                     audio = AudioControl.Read(),
                     metrics = MetricsSampler.PublicSnapshot(),
+                    weather = WeatherService.PublicSnapshot(config),
+                    weatherLocation = WeatherService.PublicLocation(config),
                     phoneConnected = PhoneConnected(),
                     lanUrl = lanUrl,
                     ipUrls = ipUrls,
@@ -640,6 +648,25 @@ partial class Program
         }
     }
 
+    static void SetWeatherLocation(Request r, Dictionary<string, object> input)
+    {
+        string name = Convert.ToString(input["name"]), timezone = Convert.ToString(input["timezone"]);
+        double latitude = Convert.ToDouble(input["latitude"], System.Globalization.CultureInfo.InvariantCulture),
+            longitude = Convert.ToDouble(input["longitude"], System.Globalization.CultureInfo.InvariantCulture);
+        WeatherService.ValidateLocation(name, latitude, longitude, timezone);
+        lock (Gate)
+        {
+            config.weatherName = name;
+            config.weatherLatitude = latitude;
+            config.weatherLongitude = longitude;
+            config.weatherTimezone = timezone;
+            Save();
+            WeatherService.Configure(config);
+            Signal();
+            ReplyJson(r.stream, 200, new { ok = true, weatherLocation = WeatherService.PublicLocation(config), revision = revision });
+        }
+    }
+
     // Validates one submitted button and clears the fields its type does not use.
     static void ValidateEntry(AppEntry a)
     {
@@ -781,6 +808,10 @@ partial class Program
         next.pageCount = config.pageCount;
         next.landscapePageCount = config.landscapePageCount;
         next.portraitPageCount = config.portraitPageCount;
+        next.weatherName = config.weatherName;
+        next.weatherLatitude = config.weatherLatitude;
+        next.weatherLongitude = config.weatherLongitude;
+        next.weatherTimezone = config.weatherTimezone;
     }
 
     // Issues new phone keys and forgets every paired device.
