@@ -41,8 +41,8 @@
       grids: { landscape: { columns: 5, rows: 3 }, portrait: { columns: 3, rows: 5 } },
       keepAwake: true,
       controls: {
-        landscape: { speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1 },
-        portrait: { speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1 },
+        landscape: { speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1, speakerRow: 0, speakerColumn: 0, speakerWidth: 1, speakerHeight: 1, micRow: 0, micColumn: 1, micWidth: 1, micHeight: 1 },
+        portrait: { speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1, speakerRow: 0, speakerColumn: 0, speakerWidth: 1, speakerHeight: 1, micRow: 0, micColumn: 1, micWidth: 1, micHeight: 1 },
       },
     },
     appsPerPage = 13,
@@ -1163,7 +1163,7 @@
         return;
       }
       if (
-        !canPlace(rows.map(rowData), -1, positionAt(page, slotIndex, displayGrid(true).columns), 1, previewOrientation)
+        !canPlace(rows.map(rowData), -1, positionAt(page, slotIndex, displayGrid(true).columns), 1, 1, previewOrientation)
       ) {
         message('空き枠へドロップしてください。');
         return;
@@ -1227,6 +1227,8 @@
     b.setAttribute('aria-label', a.name);
     b.dataset.appIndex = index;
     b.dataset.size = a.size || 1;
+    b.dataset.width = a.width || a.size || 1;
+    b.dataset.height = a.height || a.size || 1;
     applyAppearance(b, a, preview);
     if (preview) {
       b.draggable = true;
@@ -1279,13 +1281,15 @@
     container.style.aspectRatio = columns + '/' + display.rows;
     if (!preview) container.parentElement.style.setProperty('--deck-ratio', columns / display.rows);
     var used = {};
-    function put(tile, pos, size) {
+    function put(tile, pos, width, height) {
+      width = width || 1;
+      height = height || 1;
       tile.dataset.slot = pos.row * columns + pos.column;
-      tile.style.gridColumn = pos.column + 1 + ' / span ' + size;
-      tile.style.gridRow = pos.row + 1 + ' / span ' + size;
+      tile.style.gridColumn = pos.column + 1 + ' / span ' + width;
+      tile.style.gridRow = pos.row + 1 + ' / span ' + height;
       container.appendChild(tile);
-      for (var y = pos.row; y < pos.row + size; y++)
-        for (var x = pos.column; x < pos.column + size; x++) used[y * columns + x] = true;
+      for (var y = pos.row; y < pos.row + height; y++)
+        for (var x = pos.column; x < pos.column + width; x++) used[y * columns + x] = true;
     }
     ['speaker', 'mic'].forEach(function (target) {
       var slot = controls[target + 'Slot'],
@@ -1297,15 +1301,16 @@
           e.dataTransfer.setData('text/plain', 'control-' + target + '-fader');
         };
       }
-      put(tile, positionAt(page, slot, columns), controls[target + 'Size'] || 1);
+      var rect = controlRect(target, orientation);
+      put(tile, { page: page, row: rect.row, column: rect.column }, rect.width, rect.height);
     });
     deckApps.forEach(function (a, i) {
       if (a.orientation !== orientation) return;
       var pos = a[orientation];
-      if (pos && pos.page === page) put(appTile(a, preview, i, pos.row * columns + pos.column), pos, a.size || 1);
+      if (pos && pos.page === page) put(appTile(a, preview, i, pos.row * columns + pos.column), pos, a.width || a.size || 1, a.height || a.size || 1);
     });
     for (var slot = 0; slot < total; slot++)
-      if (!used[slot]) put(emptyTile(preview, rows.length, slot), positionAt(page, slot, columns), 1);
+      if (!used[slot]) put(emptyTile(preview, rows.length, slot), positionAt(page, slot, columns), 1, 1);
   }
   function renderDeck() {
     var orientation = currentOrientation(false);
@@ -1352,11 +1357,25 @@
   }
   function syncGridControls() {
     var orientation = admin ? previewOrientation : currentOrientation(false),
-      grid = gridFor(orientation);
+      grid = gridFor(orientation),
+      controls = controlsFor(orientation),
+      minimumColumns = Math.max(2, controls.speakerWidth || controls.speakerSize || 1, controls.micWidth || controls.micSize || 1),
+      minimumRows = Math.max(2, controls.speakerHeight || controls.speakerSize || 1, controls.micHeight || controls.micSize || 1);
+    deckApps.forEach(function (app) {
+      if (app.orientation !== orientation) return;
+      minimumColumns = Math.max(minimumColumns, app.width || app.size || 1);
+      minimumRows = Math.max(minimumRows, app.height || app.size || 1);
+    });
     $('grid-columns').value = grid.columns;
     $('grid-rows').value = grid.rows;
     $('admin-columns').value = grid.columns;
     $('admin-rows').value = grid.rows;
+    [$('grid-columns'), $('admin-columns')].forEach(function (select) {
+      Array.prototype.forEach.call(select.options, function (option) { option.disabled = Number(option.value) < minimumColumns; });
+    });
+    [$('grid-rows'), $('admin-rows')].forEach(function (select) {
+      Array.prototype.forEach.call(select.options, function (option) { option.disabled = Number(option.value) < minimumRows; });
+    });
     appsPerPage = Math.max(1, grid.columns * grid.rows - 2);
   }
   function applyLayout(s) {
@@ -1368,21 +1387,27 @@
       layout.grids.portrait = { columns: Math.min(s.columns, s.rows), rows: Math.max(s.columns, s.rows) };
     if (typeof s.keepAwake === 'boolean') layout.keepAwake = s.keepAwake;
     ['landscape', 'portrait'].forEach(function (o) {
-      var source = s[o + 'Controls'];
-      if (source)
-        layout.controls[o] = {
-          speakerSlot: source.speakerSlot,
-          micSlot: source.micSlot,
-          speakerSize: source.speakerSize || 1,
-          micSize: source.micSize || 1,
-        };
-      else if (typeof s.speakerSlot === 'number')
-        layout.controls[o] = {
-          speakerSlot: s.speakerSlot,
-          micSlot: s.micSlot,
-          speakerSize: s.speakerSize || 1,
-          micSize: s.micSize || 1,
-        };
+      var source = s[o + 'Controls'] || (typeof s.speakerSlot === 'number' ? s : null),
+        grid = layout.grids[o];
+      if (!source) return;
+      var speakerSlot = source.speakerSlot || 0,
+        micSlot = typeof source.micSlot === 'number' ? source.micSlot : 1,
+        speakerSize = source.speakerSize || 1,
+        micSize = source.micSize || 1;
+      layout.controls[o] = {
+        speakerSlot: speakerSlot,
+        micSlot: micSlot,
+        speakerSize: speakerSize,
+        micSize: micSize,
+        speakerRow: typeof source.speakerRow === 'number' ? source.speakerRow : Math.floor(speakerSlot / grid.columns),
+        speakerColumn: typeof source.speakerColumn === 'number' ? source.speakerColumn : speakerSlot % grid.columns,
+        speakerWidth: source.speakerWidth || speakerSize,
+        speakerHeight: source.speakerHeight || speakerSize,
+        micRow: typeof source.micRow === 'number' ? source.micRow : Math.floor(micSlot / grid.columns),
+        micColumn: typeof source.micColumn === 'number' ? source.micColumn : micSlot % grid.columns,
+        micWidth: source.micWidth || micSize,
+        micHeight: source.micHeight || micSize,
+      };
     });
     $('awake').checked = layout.keepAwake;
     syncGridControls();
@@ -1562,17 +1587,23 @@
       total = grid.columns * grid.rows,
       controls = controlsFor(orientation);
     if (destination < 0 || destination >= total) return;
-    var own = target === 'mic' ? 'micSlot' : 'speakerSlot',
-      other = target === 'mic' ? 'speakerSlot' : 'micSlot',
-      beforeOwn = controls[own],
-      beforeOther = controls[other];
-    if (destination === controls[other]) controls[other] = beforeOwn;
-    controls[own] = destination;
+    var otherTarget = target === 'mic' ? 'speaker' : 'mic',
+      before = Object.assign({}, controls),
+      destinationRow = Math.floor(destination / grid.columns),
+      destinationColumn = destination % grid.columns,
+      other = controlRect(otherTarget, orientation);
+    if (destinationRow === other.row && destinationColumn === other.column) {
+      controls[otherTarget + 'Row'] = controls[target + 'Row'];
+      controls[otherTarget + 'Column'] = controls[target + 'Column'];
+      controls[otherTarget + 'Slot'] = controls[target + 'Slot'];
+    }
+    controls[target + 'Row'] = destinationRow;
+    controls[target + 'Column'] = destinationColumn;
+    controls[target + 'Slot'] = destination;
     try {
       validatePlacements(rows.map(rowData));
     } catch (e) {
-      controls[own] = beforeOwn;
-      controls[other] = beforeOther;
+      Object.assign(controls, before);
       message(e.message);
       return;
     }
@@ -1587,12 +1618,14 @@
     var orientation = admin ? previewOrientation : currentOrientation(false),
       controls = controlsFor(orientation),
       key = target + 'Size',
-      before = controls[key];
+      before = Object.assign({}, controls);
     controls[key] = size;
+    controls[target + 'Width'] = size;
+    controls[target + 'Height'] = size;
     try {
       validatePlacements(rows.map(rowData));
     } catch (e) {
-      controls[key] = before;
+      Object.assign(controls, before);
       message(e.message);
       return;
     }
@@ -1612,9 +1645,10 @@
     var menu = $('deck-context-menu'),
       isMic = target === 'mic',
       display = displayGrid(true),
-      size = controlsFor(previewOrientation)[target + 'Size'] || 1,
-      column = slot % display.columns,
-      row = Math.floor(slot / display.columns);
+      rect = controlRect(target, previewOrientation),
+      size = rect.width === rect.height ? rect.width : 1,
+      column = rect.column,
+      row = rect.row;
     menu.textContent = '';
     var head = document.createElement('div');
     head.className = 'context-head';
@@ -1669,7 +1703,7 @@
         function () {
           moveAudioControl(target, slot + 1);
         },
-        column >= display.columns - size,
+        column >= display.columns - rect.width,
       ),
     );
     menu.appendChild(
@@ -1689,7 +1723,7 @@
         function () {
           moveAudioControl(target, slot + display.columns);
         },
-        row >= display.rows - size,
+        row >= display.rows - rect.height,
       ),
     );
     menu.hidden = false;
@@ -1805,6 +1839,14 @@
       micSlot: controls.micSlot,
       speakerSize: controls.speakerSize,
       micSize: controls.micSize,
+      speakerRow: controls.speakerRow,
+      speakerColumn: controls.speakerColumn,
+      speakerWidth: controls.speakerWidth,
+      speakerHeight: controls.speakerHeight,
+      micRow: controls.micRow,
+      micColumn: controls.micColumn,
+      micWidth: controls.micWidth,
+      micHeight: controls.micHeight,
     })
       .then(function (s) {
         deckRevision = s.revision || deckRevision;
@@ -2040,6 +2082,8 @@
       landscape: a.landscape || null,
       portrait: a.portrait || null,
       size: a.size || 1,
+      width: a.width || a.size || 1,
+      height: a.height || a.size || 1,
       fontSize: a.fontSize || 11,
       iconScale: a.iconScale || 82,
       labelOpacity: typeof a.labelOpacity === 'number' ? a.labelOpacity : 45,
@@ -2056,6 +2100,7 @@
       deviceTarget: a.deviceTarget || 'speaker',
       deviceId: { value: a.deviceId || '' },
       deviceName: a.deviceName || '',
+      options: a.options || null,
       initialName: a.name || '',
     };
     var heading = document.createElement('div');
@@ -2170,6 +2215,8 @@
       landscape: r.landscape,
       portrait: r.portrait,
       size: r.size,
+      width: r.width,
+      height: r.height,
       fontSize: r.fontSize,
       iconScale: r.iconScale,
       labelOpacity: r.labelOpacity,
@@ -2189,6 +2236,7 @@
       deviceTarget: r.deviceTarget,
       deviceName: r.deviceName,
       customIcon: r.customIcon || '',
+      options: r.options,
     };
   }
   function persistRows(success) {
@@ -2503,89 +2551,93 @@
       slot = controls[target + 'Slot'],
       size = controls[target + 'Size'] || 1;
     return {
-      row: Math.floor(slot / grid.columns),
-      column: slot % grid.columns,
-      size: size,
+      row: typeof controls[target + 'Row'] === 'number' ? controls[target + 'Row'] : Math.floor(slot / grid.columns),
+      column: typeof controls[target + 'Column'] === 'number' ? controls[target + 'Column'] : slot % grid.columns,
+      width: controls[target + 'Width'] || size,
+      height: controls[target + 'Height'] || size,
       rows: grid.rows,
       columns: grid.columns,
     };
   }
   function rectOverlap(a, b) {
     return (
-      a.row < b.row + b.size && a.row + a.size > b.row && a.column < b.column + b.size && a.column + a.size > b.column
+      a.row < b.row + b.height && a.row + a.height > b.row && a.column < b.column + b.width && a.column + a.width > b.column
     );
   }
   function controlsFit(orientation) {
     var speaker = controlRect('speaker', orientation),
       mic = controlRect('mic', orientation);
     return (
-      speaker.row + speaker.size <= speaker.rows &&
-      speaker.column + speaker.size <= speaker.columns &&
-      mic.row + mic.size <= mic.rows &&
-      mic.column + mic.size <= mic.columns &&
+      speaker.row >= 0 && speaker.column >= 0 && mic.row >= 0 && mic.column >= 0 &&
+      speaker.row + speaker.height <= speaker.rows &&
+      speaker.column + speaker.width <= speaker.columns &&
+      mic.row + mic.height <= mic.rows &&
+      mic.column + mic.width <= mic.columns &&
       !rectOverlap(speaker, mic)
     );
   }
-  function canPlace(apps, index, pos, size, orientation) {
+  function canPlace(apps, index, pos, width, height, orientation) {
     var grid = gridFor(orientation);
+    width = width || 1;
+    height = height || 1;
     if (
       !pos ||
       pos.page < 0 ||
       pos.page >= 40 ||
       pos.row < 0 ||
       pos.column < 0 ||
-      pos.row + size > grid.rows ||
-      pos.column + size > grid.columns
+      pos.row + height > grid.rows ||
+      pos.column + width > grid.columns
     )
       return false;
-    var tile = { row: pos.row, column: pos.column, size: size };
+    var tile = { row: pos.row, column: pos.column, width: width, height: height };
     if (rectOverlap(tile, controlRect('speaker', orientation)) || rectOverlap(tile, controlRect('mic', orientation)))
       return false;
     return !apps.some(function (a, i) {
       var p = a[orientation],
-        n = a.size || 1;
+        w = a.width || a.size || 1,
+        h = a.height || a.size || 1;
       return (
         i !== index &&
         p &&
         p.page === pos.page &&
-        p.row < pos.row + size &&
-        p.row + n > pos.row &&
-        p.column < pos.column + size &&
-        p.column + n > pos.column
+        p.row < pos.row + height &&
+        p.row + h > pos.row &&
+        p.column < pos.column + width &&
+        p.column + w > pos.column
       );
     });
   }
-  function findSpace(apps, index, size, orientation, startPage) {
+  function findSpace(apps, index, width, height, orientation, startPage) {
     var grid = gridFor(orientation);
     for (var p = startPage || 0; p < 40; p++)
       for (var slot = 0; slot < grid.columns * grid.rows; slot++) {
         var pos = positionAt(p, slot, grid.columns);
-        if (canPlace(apps, index, pos, size, orientation)) return pos;
+        if (canPlace(apps, index, pos, width, height, orientation)) return pos;
       }
     throw Error('空き枠がありません。');
   }
   function assignPlacement(a, apps, desired) {
     a.size = a.size || 1;
+    a.width = a.width || a.size;
+    a.height = a.height || a.size;
     var o = a.orientation || previewOrientation;
     if (a[o]) return;
-    var pos = desired && desired.orientation === o ? desired.position : findSpace(apps, -1, a.size, o, page);
-    if (!canPlace(apps, -1, pos, a.size, o)) throw Error('空き枠へ配置してください。');
+    var pos = desired && desired.orientation === o ? desired.position : findSpace(apps, -1, a.width, a.height, o, page);
+    if (!canPlace(apps, -1, pos, a.width, a.height, o)) throw Error('空き枠へ配置してください。');
     a[o] = { page: pos.page, row: pos.row, column: pos.column };
   }
   function ensurePlacements(apps) {
     apps.forEach(function (a, i) {
       a.size = a.size || 1;
+      a.width = a.width || a.size;
+      a.height = a.height || a.size;
       var o = a.orientation || 'landscape';
-      if (!a[o]) a[o] = findSpace(apps, i, a.size, o, 0);
+      if (!a[o]) a[o] = findSpace(apps, i, a.width, a.height, o, 0);
     });
   }
   function validatePlacements(apps) {
     ['landscape', 'portrait'].forEach(function (o) {
-      var controls = controlsFor(o),
-        grid = gridFor(o),
-        total = grid.columns * grid.rows;
-      if (controls.speakerSlot >= total || controls.micSlot >= total)
-        throw Error((o === 'portrait' ? '縦' : '横') + '向きのフェーダーが枠からはみ出します。');
       if (!controlsFit(o))
         throw Error(
           (o === 'portrait' ? '縦' : '横') +
@@ -2594,7 +2646,7 @@
     });
     apps.forEach(function (a, i) {
       var o = a.orientation || 'landscape';
-      if (!canPlace(apps, i, a[o], a.size || 1, o))
+      if (!canPlace(apps, i, a[o], a.width || a.size || 1, a.height || a.size || 1, o))
         throw Error((o === 'portrait' ? '縦' : '横') + '配置で重なるか枠からはみ出します。空き枠へ移動してください。');
     });
   }
@@ -2611,7 +2663,7 @@
       grid = displayGrid(true);
     if (!fields || fields.orientation !== previewOrientation || slot < 0 || slot >= grid.columns * grid.rows) return;
     var pos = positionAt(page, slot, grid.columns);
-    if (!canPlace(rows.map(rowData), index, pos, fields.size, previewOrientation)) {
+    if (!canPlace(rows.map(rowData), index, pos, fields.width, fields.height, previewOrientation)) {
       message('空いている枠へ移動してください。');
       return;
     }
@@ -2639,7 +2691,7 @@
       icon.style.height = (a.iconScale || 82) + '%';
       icon.style.maxWidth = 'none';
       icon.style.maxHeight = 'none';
-      icon.style.fontSize = (cell * (a.size || 1) * (a.iconScale || 82)) / 180 + 'px';
+      icon.style.fontSize = (cell * Math.min(a.width || a.size || 1, a.height || a.size || 1) * (a.iconScale || 82)) / 180 + 'px';
     }
   }
   function buildAppearance(fields, box) {
@@ -2669,8 +2721,11 @@
       input.value = fields[name];
       input.onchange = function () {
         var old = fields[name],
+          oldWidth = fields.width,
+          oldHeight = fields.height,
           oldPosition = fields[fields.orientation];
         fields[name] = Number(input.value);
+        if (name === 'size') fields.width = fields.height = fields.size;
         try {
           validatePlacements(rows.map(rowData));
           status.textContent = '「設定を保存」で反映します。';
@@ -2681,7 +2736,8 @@
               var candidate = findSpace(
                 rows.map(rowData),
                 rows.indexOf(fields),
-                fields.size,
+                fields.width,
+                fields.height,
                 fields.orientation,
                 oldPosition ? oldPosition.page : 0,
               );
@@ -2697,6 +2753,8 @@
             }
           }
           fields[name] = old;
+          fields.width = oldWidth;
+          fields.height = oldHeight;
           input.value = old;
           status.textContent = e.message;
         }
@@ -2806,7 +2864,7 @@
         !Object.keys(p).every(function (k) {
           return Number.isInteger(p[k]);
         }) ||
-        !canPlace(rows.map(rowData), rows.indexOf(fields), p, fields.size, orient.value)
+        !canPlace(rows.map(rowData), rows.indexOf(fields), p, fields.width, fields.height, orient.value)
       ) {
         status.textContent = '空いている範囲内のマスを指定してください。';
         return;

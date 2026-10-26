@@ -98,7 +98,7 @@ static class WidgetRegistry
         var normalized = new Dictionary<string, object>();
         if (definition.type == "clock")
         {
-            RequireSize(app, 2, "時計は2×2です。");
+            RequireDimensions(app, 2, 2, "時計は2×2です。");
             normalized["style"] = EnumValue(source, "style", "digital", new[] { "digital", "analog" });
             normalized["showSeconds"] = BooleanValue(source, "showSeconds", true);
             normalized["showDate"] = BooleanValue(source, "showDate", true);
@@ -108,13 +108,13 @@ static class WidgetRegistry
         }
         else if (definition.type == "weather")
         {
-            RequireSquareSize(app, "天気は1×1または2×2です。");
+            RequireSquareDimensions(app, "天気は1×1または2×2です。");
             normalized["forecastMode"] = EnumValue(source, "forecastMode", "hours", new[] { "hours", "days" });
             RejectUnknown(source, normalized);
         }
         else if (definition.type == "metrics")
         {
-            RequireSquareSize(app, "PC情報は1×1または2×2です。");
+            RequireSquareDimensions(app, "PC情報は1×1または2×2です。");
             normalized["primary"] = EnumValue(
                 source,
                 "primary",
@@ -128,7 +128,7 @@ static class WidgetRegistry
         else if (definition.type == "wheel")
         {
             string style = EnumValue(source, "style", "vertical", new[] { "vertical", "rotary" });
-            RequireSize(app, style == "vertical" ? 1 : 2, "縦型ホイールは1×1、円形ホイールは2×2です。");
+            RequireDimensions(app, style == "vertical" ? 1 : 2, style == "vertical" ? 1 : 2, "縦型ホイールは1×1、円形ホイールは2×2です。");
             normalized["style"] = style;
             normalized["sensitivity"] = IntegerValue(source, "sensitivity", style == "vertical" ? 24 : 18, 1, 200);
             normalized["multiplier"] = IntegerValue(source, "multiplier", 1, 1, 10);
@@ -140,20 +140,40 @@ static class WidgetRegistry
             RejectUnknown(source, normalized);
         }
         else if (definition.type == "touchpad")
-            throw new Exception("タッチパッドは長方形配置の実装後に登録できます。");
+        {
+            int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
+            if (!((width == 3 && height == 2) || (width == 2 && height == 3)))
+                throw new Exception("タッチパッドは3×2または2×3です。");
+            normalized["speed"] = IntegerValue(source, "speed", 5, 1, 10);
+            normalized["acceleration"] = BooleanValue(source, "acceleration", true);
+            normalized["tapToClick"] = BooleanValue(source, "tapToClick", true);
+            normalized["twoFingerScroll"] = BooleanValue(source, "twoFingerScroll", true);
+            normalized["longPress"] = EnumValue(source, "longPress", "none", new[] { "none", "rightClick", "drag" });
+            RejectUnknown(source, normalized);
+        }
         app.options = normalized;
     }
 
-    static void RequireSquareSize(AppEntry app, string message)
+    static void RequireSquareDimensions(AppEntry app, string message)
     {
-        if (app.size != 1 && app.size != 2)
+        int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
+        if (width != height || (width != 1 && width != 2))
             throw new Exception(message);
     }
 
-    static void RequireSize(AppEntry app, int expected, string message)
+    static void RequireDimensions(AppEntry app, int width, int height, string message)
     {
-        if (app.size != expected)
+        if (DeckLayout.Width(app) != width || DeckLayout.Height(app) != height)
             throw new Exception(message);
+    }
+
+    internal static void ValidateDimensions(AppEntry app)
+    {
+        WidgetDefinition definition = Require(app.type);
+        int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
+        string key = width + "x" + height;
+        if (Array.IndexOf(definition.sizes, key) < 0)
+            throw new Exception(definition.label + "では" + key + "を使用できません。");
     }
 
     static string EnumValue(Dictionary<string, object> source, string name, string fallback, string[] allowed)
@@ -230,6 +250,8 @@ static class WidgetRegistry
         result["landscape"] = app.landscape;
         result["portrait"] = app.portrait;
         result["size"] = app.size;
+        result["width"] = DeckLayout.Width(app);
+        result["height"] = DeckLayout.Height(app);
         result["fontSize"] = app.fontSize;
         result["iconScale"] = app.iconScale;
         result["labelOpacity"] = app.labelOpacity;

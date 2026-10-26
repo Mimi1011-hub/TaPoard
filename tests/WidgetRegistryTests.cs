@@ -16,6 +16,12 @@ class PairedDevice
     public string created { get; set; }
 }
 
+static class DeckLayout
+{
+    internal static int Width(AppEntry app) { return app.width > 0 ? app.width : app.size == 2 ? 2 : 1; }
+    internal static int Height(AppEntry app) { return app.height > 0 ? app.height : app.size == 2 ? 2 : 1; }
+}
+
 class WidgetRegistryTests
 {
     static void Check(bool value, string message)
@@ -91,7 +97,11 @@ class WidgetRegistryTests
         publicOptions["forecastMode"] = "changed";
         Check((string)weather.options["forecastMode"] == "hours", "public options are returned as a copy");
 
-        Reject(delegate { WidgetRegistry.ValidateAndNormalize(Entry("touchpad", 2)); }, "touchpad waits for rectangular layout support");
+        var touchpad = Entry("touchpad", 1);
+        touchpad.width = 3;
+        touchpad.height = 2;
+        WidgetRegistry.ValidateAndNormalize(touchpad);
+        Check((int)touchpad.options["speed"] == 5, "touchpad accepts a 3x2 rectangle");
         var definitions = WidgetRegistry.PublicDefinitions() as List<object>;
         Check(definitions != null && definitions.Count == 10, "all current and planned widget definitions are public");
     }

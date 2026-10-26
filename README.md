@@ -91,7 +91,7 @@ node tests/mdns-check.js <PCの現在のLANのIPv4アドレス>
 - `src\Settings.cs`：`settings-v2.json` に保存する設定とボタンの形式
 - `src\SettingsFile.cs`：旧設定からの一度限りの移行と、v2設定の安全な保存
 - `src\WidgetRegistry.cs`：部品種類・許可サイズ・種類別設定・スマートフォンへの公開項目
-- `src\DeckLayout.cs`：縦横それぞれの枠数・ボタン配置・フェーダー位置の検証と再配置
+- `src\DeckLayoutV2.cs`：縦横それぞれの長方形配置・フェーダー位置・枠数制約の検証と再配置
 - `src\SecureKeys.cs`：接続キーの乱数生成
 - `web\app.js` / `web\style.css`：スマートフォンとPC設定画面の共通Web画面
 

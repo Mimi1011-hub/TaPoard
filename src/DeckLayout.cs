@@ -15,9 +15,18 @@ struct ControlLayout
     public int micSlot;
     public int speakerSize;
     public int micSize;
+    public int speakerRow;
+    public int speakerColumn;
+    public int speakerWidth;
+    public int speakerHeight;
+    public int micRow;
+    public int micColumn;
+    public int micWidth;
+    public int micHeight;
 }
 
-static class DeckLayout
+#if false // 1.05 square-layout reference; active implementation is DeckLayoutV2.cs.
+static class LegacyDeckLayout
 {
     internal const int MaxPages = 40;
 
@@ -508,3 +517,4 @@ static class DeckLayout
         }
     }
 }
+#endif

@@ -23,6 +23,8 @@ class AppEntry
     public TilePosition landscape { get; set; }
     public TilePosition portrait { get; set; }
     public int size { get; set; }
+    public int width { get; set; }
+    public int height { get; set; }
     public int fontSize { get; set; }
     public int iconScale { get; set; }
     public int? labelOpacity { get; set; }
@@ -56,8 +58,20 @@ class Settings
     public int portraitMicSlot { get; set; }
     public int portraitSpeakerSize { get; set; }
     public int portraitMicSize { get; set; }
+    public ControlPlacement landscapeSpeaker { get; set; }
+    public ControlPlacement landscapeMic { get; set; }
+    public ControlPlacement portraitSpeaker { get; set; }
+    public ControlPlacement portraitMic { get; set; }
     public int pageCount { get; set; }
     public int landscapePageCount { get; set; }
     public int portraitPageCount { get; set; }
     public List<PairedDevice> devices { get; set; }
+}
+
+class ControlPlacement
+{
+    public int row { get; set; }
+    public int column { get; set; }
+    public int width { get; set; }
+    public int height { get; set; }
 }
