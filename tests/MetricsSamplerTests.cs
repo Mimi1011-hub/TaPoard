@@ -37,6 +37,9 @@ class MetricsSamplerTests
             int changed = 0;
             MetricsSampler.CounterReader = Counters;
             MetricsSampler.MemoryReader = Memory;
+            MetricsSampler.GpuStarter = delegate { };
+            MetricsSampler.GpuReader = delegate { return new GpuMetricInfo[0]; };
+            MetricsSampler.GpuStopper = delegate { };
             MetricsSampler.Changed = delegate { changed++; };
             MetricsSampler.SetActive(true);
             var first = MetricsSampler.PublicSnapshot();
