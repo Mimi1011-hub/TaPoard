@@ -57,6 +57,12 @@ Write-Host 'PASS existing long key and 12-character pairing key'
 $state = Invoke-RestMethod ($base + '/api/state') -Headers $headers
 if ([string]::IsNullOrWhiteSpace($state.version)) { throw 'State version missing' }
 if ($state.appVersion -ne '1.05') { throw ('Unexpected app version: ' + $state.appVersion) }
+if (@($state.widgetDefinitions).Count -ne 10) { throw 'Widget definitions missing or duplicated' }
+foreach ($app in @($state.apps)) {
+    if ($app.PSObject.Properties.Name -contains 'path' -or $app.PSObject.Properties.Name -contains 'args' -or $app.PSObject.Properties.Name -contains 'url' -or $app.PSObject.Properties.Name -contains 'text') {
+        throw 'Private action field leaked into phone state'
+    }
+}
 if (!$state.audio.speakerAvailable -or $state.audio.speakerVolume -lt 0 -or $state.audio.speakerVolume -gt 100) { throw 'Speaker state missing or invalid' }
 if ($state.columns -lt 3 -or $state.rows -lt 2) { throw 'Grid settings missing or invalid' }
 if (!$state.landscapeGrid -or !$state.portraitGrid) { throw 'Independent orientation grids missing' }

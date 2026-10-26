@@ -162,28 +162,7 @@ partial class Program
             var apps =
                 QueryValue(r.target, "version") == version
                     ? null
-                    : config.apps.ConvertAll(a => new
-                    {
-                        id = a.id,
-                        name = a.name,
-                        icon = a.icon,
-                        iconKey = a.iconKey,
-                        iconColor = a.iconColor,
-                        customIcon = a.customIcon,
-                        type = a.type,
-                        action = a.action,
-                        category = a.category,
-                        deviceId = a.deviceId,
-                        deviceTarget = a.deviceTarget,
-                        orientation = a.orientation,
-                        landscape = a.landscape,
-                        portrait = a.portrait,
-                        size = a.size,
-                        fontSize = a.fontSize,
-                        iconScale = a.iconScale,
-                        labelOpacity = a.labelOpacity,
-                        hideLabel = a.hideLabel,
-                    });
+                    : config.apps.ConvertAll(a => WidgetRegistry.PublicEntry(a));
             int landscapePages = DeckLayout.Pages(config, "landscape"),
                 portraitPages = DeckLayout.Pages(config, "portrait");
             landscapePage = Math.Max(0, Math.Min(landscapePage, landscapePages - 1));
@@ -194,6 +173,7 @@ partial class Program
                 new
                 {
                     apps = apps,
+                    widgetDefinitions = WidgetRegistry.PublicDefinitions(),
                     version = version,
                     appVersion = AppVersion,
                     revision = revision,
@@ -286,6 +266,7 @@ partial class Program
                     iphoneQrUrl = lanUrl + fragment,
                     androidQrUrl = androidUrl + fragment,
                     apps = config.apps,
+                    widgetDefinitions = WidgetRegistry.PublicDefinitions(),
                     version = version,
                     appVersion = AppVersion,
                     revision = revision,
@@ -562,6 +543,9 @@ partial class Program
     // Validates one submitted button and clears the fields its type does not use.
     static void ValidateEntry(AppEntry a)
     {
+        if (String.IsNullOrWhiteSpace(a.type))
+            a.type = "app";
+        WidgetDefinition definition = WidgetRegistry.Require(a.type);
         if (a.orientation != "landscape" && a.orientation != "portrait")
             throw new Exception("ボタンの画面方向が正しくありません。");
         if (String.IsNullOrWhiteSpace(a.name))
@@ -618,7 +602,20 @@ partial class Program
             a.category = "custom";
             a.icon = null;
         }
-        else
+        else if (definition.displayOnly)
+        {
+            a.path = "";
+            a.args = "";
+            a.url = "";
+            a.text = "";
+            a.action = null;
+            a.category = "widget";
+            a.deviceId = null;
+            a.deviceTarget = null;
+            a.deviceName = null;
+            a.icon = null;
+        }
+        else if (IsType(a, "app"))
         {
             a.type = "app";
             a.action = null;
@@ -629,6 +626,9 @@ partial class Program
                 throw new Exception("実在するexe・ショートカットの絶対パスを指定してください");
             a.icon = AppIcons.Read(a.path);
         }
+        else
+            throw new Exception("登録されていない部品種類です。");
+        WidgetRegistry.ValidateAndNormalize(a);
         if (String.IsNullOrEmpty(a.id) || !config.apps.Exists(old => old.id == a.id))
             a.id = NewId();
     }
@@ -719,6 +719,8 @@ partial class Program
                 app = config.apps.Find(a => a.id == id);
             if (app == null)
                 throw new Exception("ボタンが見つかりません");
+            if (WidgetRegistry.IsDisplayWidget(app.type))
+                throw new Exception("この部品は直接実行できません");
             resultMessage = Launch(app, resultMessage);
         }
         else

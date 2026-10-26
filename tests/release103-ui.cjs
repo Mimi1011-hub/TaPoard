@@ -6,6 +6,7 @@ const ready=new Promise((resolve,reject)=>{host.stdout.on('data',d=>{if(String(d
 async function api(path,key='test-admin',body){const r=await fetch(base+'/api/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()}}
 (async()=>{let browser;try{await ready;browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});const errors=[];
  const admin=await browser.newPage({viewport:{width:1440,height:1100}});admin.on('pageerror',e=>errors.push(String(e)));await admin.goto(base+'/settings#test-admin');await admin.locator('#preview-deck [data-app-index="0"]').waitFor();
+ const publicState=(await api('state','test-phone')).data;assert.equal(publicState.widgetDefinitions.length,10);for(const entry of publicState.apps){assert.equal('path' in entry,false);assert.equal('args' in entry,false);assert.equal('url' in entry,false);assert.equal('text' in entry,false)}
  assert.equal((await api('settings','test-phone')).status,404);assert.equal((await api('pair/manage','test-phone')).status,404);
  const badOrigin=await fetch(base+'/api/pair/start',{method:'POST',headers:{'Content-Type':'application/json',Origin:'http://evil.example'}});assert.equal(badOrigin.status,400);
  const bare=await fetch(base+'/api/pair/start',{method:'POST'});assert.equal(bare.status,400);
