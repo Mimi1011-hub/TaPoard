@@ -38,7 +38,7 @@ foreach ($scriptName in @('setup-lan.ps1','remove-firewall.ps1')) {
 }
 [IO.File]::WriteAllText((Join-Path $stage 'VERSION.txt'), "TaPoard $version`r`nWindows 10/11 64-bit`r`n", [Text.UTF8Encoding]::new($false))
 
-$forbidden = Get-ChildItem -LiteralPath $stage -Recurse -Force | Where-Object { $_.Name -in @('settings.json','network.json','network-status.txt','mdns-diagnostic.log') -or $_.FullName -match '[\\/]data[\\/]' }
+$forbidden = Get-ChildItem -LiteralPath $stage -Recurse -Force | Where-Object { $_.Name -match '^settings(?:-v\d+)?\.json(?:\.(?:tmp|bak))?$' -or $_.Name -in @('network.json','network-status.txt','mdns-diagnostic.log') -or $_.FullName -match '[\\/]data[\\/]' }
 if ($forbidden) { throw 'Private runtime data was included in the installer payload.' }
 
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $payload -CompressionLevel Optimal
@@ -59,7 +59,7 @@ foreach ($relative in @('TaPoard.exe','web\index.html','web\app.js','web\qrcode.
     }
     if (!$matches) { throw ('Installer verification failed: ' + $relative) }
 }
-$privateExtracted = Get-ChildItem -LiteralPath $verify -Recurse -Force | Where-Object { $_.Name -in @('settings.json','network.json','network-status.txt','mdns-diagnostic.log') -or $_.FullName -match '[\\/]data[\\/]' }
+$privateExtracted = Get-ChildItem -LiteralPath $verify -Recurse -Force | Where-Object { $_.Name -match '^settings(?:-v\d+)?\.json(?:\.(?:tmp|bak))?$' -or $_.Name -in @('network.json','network-status.txt','mdns-diagnostic.log') -or $_.FullName -match '[\\/]data[\\/]' }
 if ($privateExtracted) { throw 'Private runtime data was extracted from the installer.' }
 
 Copy-Item -LiteralPath assets\TaPoard-icon.png -Destination $iconPreview

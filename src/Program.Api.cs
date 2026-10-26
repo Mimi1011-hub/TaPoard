@@ -661,6 +661,7 @@ partial class Program
     // Call while holding Gate.
     static void KeepServerFields(Settings next)
     {
+        next.schemaVersion = config.schemaVersion;
         next.token = config.token;
         next.pairingKey = config.pairingKey;
         next.columns = config.columns;

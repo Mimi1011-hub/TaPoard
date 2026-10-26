@@ -17,6 +17,9 @@
 # Private runtime state and diagnostics
 **/data/
 settings.json
+settings-v*.json
+settings-v*.json.tmp
+settings-v*.json.bak
 network.json
 network-status.txt
 *.log
