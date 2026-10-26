@@ -75,6 +75,8 @@
       history: [],
       gpus: [],
     },
+    weatherState = { active: false, configured: false, available: false, stale: false, location: '', days: [], attribution: 'Weather data by Open-Meteo.com' },
+    weatherLocation = { configured: false, name: '', latitude: 0, longitude: 0, timezone: '' },
     audioInteraction = false,
     messageTimer = null,
     clockTimer = null;
@@ -112,6 +114,8 @@
       items: [
         ['widget-clock-digital', 'デジタル時計', '2×2・端末時刻'],
         ['widget-clock-analog', 'アナログ時計', '2×2・端末時刻'],
+        ['widget-weather-now', '現在の天気', '1×1・気温と降水確率'],
+        ['widget-weather-days', '3日間の天気', '2×2・最高／最低気温'],
         ['widget-metrics-cpu', 'CPU使用率', '1×1・2秒更新'],
         ['widget-metrics-memory', 'メモリ使用率', '1×1・2秒更新'],
         ['widget-metrics-gpu', 'GPU使用率', '1×1・GPUを選択'],
@@ -1405,6 +1409,71 @@
     }
     return tile;
   }
+  function weatherSymbol(code) {
+    if (code <= 1) return '☀';
+    if (code <= 3) return '☁';
+    if (code === 45 || code === 48) return '≋';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return '❄';
+    if (code >= 95) return 'ϟ';
+    return '☂';
+  }
+  function weatherTemperature(value) {
+    return typeof value === 'number' && isFinite(value) ? Math.round(value) + '°' : '—';
+  }
+  function renderWeatherTile(tile, a) {
+    tile.textContent = '';
+    var large = (a.width || a.size || 1) === 2 && (a.height || a.size || 1) === 2;
+    tile.className = 'deck-key weather-widget ' + (large ? 'weather-large' : 'weather-small');
+    if (!weatherState.configured) {
+      tile.innerHTML = '<strong class="weather-message">地域を設定</strong>';
+      return;
+    }
+    if (!weatherState.available) {
+      tile.innerHTML = '<strong class="weather-message">天気を取得中</strong>';
+      return;
+    }
+    if (!large) {
+      var icon = document.createElement('span'), temperature = document.createElement('strong'), rain = document.createElement('span');
+      icon.className = 'weather-icon'; icon.textContent = weatherSymbol(weatherState.code);
+      temperature.className = 'weather-temperature'; temperature.textContent = weatherTemperature(weatherState.temperature);
+      rain.className = 'weather-rain'; rain.textContent = '降水 ' + Math.round(weatherState.precipitation || 0) + '%';
+      tile.appendChild(icon); tile.appendChild(temperature); tile.appendChild(rain);
+    } else {
+      var heading = document.createElement('strong');
+      heading.className = 'weather-heading'; heading.textContent = weatherState.location;
+      tile.appendChild(heading);
+      var days = document.createElement('div'); days.className = 'weather-days';
+      (weatherState.days || []).slice(0, 3).forEach(function (day, index) {
+        var column = document.createElement('div'), date = new Date(day.date + 'T00:00:00');
+        column.innerHTML = '<small>' + (index === 0 ? '今日' : (date.getMonth() + 1) + '/' + date.getDate()) + '</small><b>' + weatherSymbol(day.code) + '</b><span><i>' + weatherTemperature(day.maximum) + '</i> / ' + weatherTemperature(day.minimum) + '</span><em>☂ ' + Math.round(day.precipitation || 0) + '%</em>';
+        days.appendChild(column);
+      });
+      tile.appendChild(days);
+      var updated = document.createElement('small'); updated.className = 'weather-updated';
+      updated.textContent = (weatherState.stale ? '古い予報・' : '') + '更新 ' + new Date(weatherState.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      tile.appendChild(updated);
+    }
+    tile.title = weatherState.attribution || 'Weather data by Open-Meteo.com';
+  }
+  function weatherTile(a, preview, index, slotIndex) {
+    var tile = document.createElement('div');
+    tile.dataset.widgetId = a.id || ''; tile.dataset.appIndex = index;
+    tile.dataset.size = a.size || 1; tile.dataset.width = a.width || a.size || 1; tile.dataset.height = a.height || a.size || 1;
+    renderWeatherTile(tile, a);
+    if (preview) {
+      tile.draggable = true;
+      tile.ondragstart = function (e) { e.dataTransfer.setData('text/plain', 'tile:' + index); e.dataTransfer.effectAllowed = 'move'; };
+      addDropTarget(tile, index, slotIndex);
+      tile.oncontextmenu = function (e) { openDeckContextMenu(e, index, a); };
+    }
+    return tile;
+  }
+  function updateWeatherTiles() {
+    Array.prototype.forEach.call(document.querySelectorAll('.weather-widget[data-widget-id]'), function (tile) {
+      var app = deckApps.filter(function (entry) { return entry.id === tile.dataset.widgetId; })[0];
+      if (app) renderWeatherTile(tile, app);
+    });
+  }
   function updateMetricTiles() {
     Array.prototype.forEach.call(document.querySelectorAll('.metrics-widget[data-widget-id]'), function (tile) {
       var app = deckApps.filter(function (entry) {
@@ -1440,6 +1509,19 @@
         height: 2,
         hideLabel: true,
         options: { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false },
+      };
+    }
+    if (action === 'widget-weather-now' || action === 'widget-weather-days') {
+      var days = action === 'widget-weather-days';
+      return {
+        name: days ? '3日間の天気' : '現在の天気',
+        type: 'weather',
+        category: 'widget',
+        size: days ? 2 : 1,
+        width: days ? 2 : 1,
+        height: days ? 2 : 1,
+        hideLabel: true,
+        options: { forecastMode: days ? 'days' : 'hours' },
       };
     }
     if (action === 'widget-metrics-cpu' || action === 'widget-metrics-memory' || action === 'widget-metrics-gpu' || action === 'widget-metrics-gpu-memory' || action === 'widget-metrics-overview') {
@@ -1603,6 +1685,7 @@
   function appTile(a, preview, index, slotIndex) {
     if (a.type === 'clock') return clockTile(a, preview, index, slotIndex);
     if (a.type === 'metrics') return metricsTile(a, preview, index, slotIndex);
+    if (a.type === 'weather') return weatherTile(a, preview, index, slotIndex);
     var b = document.createElement(preview ? 'div' : 'button');
     b.className = 'deck-key';
     b.title = a.name;
@@ -1849,6 +1932,7 @@
     }
     if (s.audio) audioState = s.audio;
     if (s.metrics) metricsState = s.metrics;
+    if (s.weather) weatherState = s.weather;
     applyLayout(s);
     if (typeof s.landscapePage === 'number') pageByOrientation.landscape = s.landscapePage;
     if (typeof s.portraitPage === 'number') pageByOrientation.portrait = s.portraitPage;
@@ -1864,10 +1948,10 @@
     if (admin) {
       updatePhoneStatus(s.phoneConnected);
       if (forceRender || beforeRender !== deckRenderSignature()) renderPreview();
-      else updateMetricTiles();
+      else { updateMetricTiles(); updateWeatherTiles(); }
     } else if (!audioInteraction) {
       if (forceRender || beforeRender !== deckRenderSignature()) renderDeck();
-      else updateMetricTiles();
+      else { updateMetricTiles(); updateWeatherTiles(); }
     }
   }
 
@@ -2248,6 +2332,8 @@
                 ? '時計ウィジェット'
                 : a.type === 'metrics'
                   ? 'PC情報ウィジェット'
+                  : a.type === 'weather'
+                    ? '天気ウィジェット'
               : 'アプリ';
     text.appendChild(hint);
     head.appendChild(text);
@@ -2752,6 +2838,8 @@
                 ? 'CLOCK'
                 : fields.type === 'metrics'
                   ? 'METRICS'
+                  : fields.type === 'weather'
+                    ? 'WEATHER'
               : 'APP';
     heading.appendChild(kind);
     box.appendChild(heading);
@@ -2780,6 +2868,13 @@
     if (fields.type === 'audioDevice') buildDeviceSelector(fields, box);
     if (fields.type === 'clock') buildClockSettings(fields, box);
     if (fields.type === 'metrics') buildMetricsSettings(fields, box);
+    if (fields.type === 'weather') {
+      fields.options = fields.options || { forecastMode: 'days' };
+      var weatherNote = document.createElement('p');
+      weatherNote.className = 'editor-feedback';
+      weatherNote.textContent = fields.width === 2 && fields.height === 2 ? '3日分の最高・最低気温と降水確率を表示します。' : '現在の気温と今日の降水確率を表示します。';
+      box.appendChild(weatherNote);
+    }
     buildAppearance(fields, box);
     if (fields.type === 'hotkey' && fields.action.indexOf('audio-') !== 0) buildHotkey(fields, box);
     ['path', 'args', 'url', 'text'].forEach(function (name) {
@@ -2790,7 +2885,7 @@
       refreshEditorIcon(fields);
     };
     refreshEditorIcon(fields);
-    if (fields.type !== 'clock' && fields.type !== 'metrics') {
+    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather') {
       var iconButton = document.createElement('button');
       iconButton.type = 'button';
       iconButton.className = 'subtle icon-select-button';
@@ -3024,6 +3119,8 @@
         $('lan-url').textContent = s.lanUrl;
         $('lan-url').href = s.lanUrl;
         $('network-status').textContent = s.networkStatus;
+        if (s.weatherLocation) weatherLocation = s.weatherLocation;
+        renderWeatherLocation();
         $('ip-urls').textContent = '';
         (s.ipUrls || []).forEach(function (url) {
           var a = document.createElement('a');
@@ -3048,6 +3145,43 @@
         message('トレイの「設定をブラウザで開く」から開き直してください。 ' + e.message);
       });
   }
+  function renderWeatherLocation() {
+    if (!admin) return;
+    $('weather-current-location').textContent = weatherLocation.configured
+      ? '設定中：' + weatherLocation.name + '（' + weatherLocation.timezone + '）'
+      : '地域が未設定です。検索して候補を選んでください。';
+  }
+  $('weather-search').onclick = function () {
+    var query = $('weather-query').value.trim();
+    $('weather-results').textContent = '検索中…';
+    api('weather/search', { query: query })
+      .then(function (response) {
+        $('weather-results').textContent = '';
+        if (!response.results || !response.results.length) {
+          $('weather-results').textContent = '候補が見つかりませんでした。';
+          return;
+        }
+        response.results.forEach(function (result) {
+          var button = document.createElement('button');
+          button.type = 'button'; button.className = 'subtle weather-result';
+          button.textContent = [result.name, result.region, result.country].filter(Boolean).join('、');
+          button.onclick = function () {
+            button.disabled = true;
+            api('weather/location', result)
+              .then(function (saved) {
+                weatherLocation = saved.weatherLocation;
+                renderWeatherLocation();
+                $('weather-results').textContent = '地域を保存しました。天気部品を表示すると予報を取得します。';
+                refresh();
+              })
+              .catch(function (e) { button.disabled = false; message(e.message); });
+          };
+          $('weather-results').appendChild(button);
+        });
+      })
+      .catch(function (e) { $('weather-results').textContent = ''; message(e.message); });
+  };
+  $('weather-query').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); $('weather-search').click(); } };
   $('add').onclick = function () {
     editor({ type: 'app', category: 'app' });
   };

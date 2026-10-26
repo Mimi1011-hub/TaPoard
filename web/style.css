@@ -1064,6 +1064,40 @@ textarea {
   gap: 6px;
   margin: 5px 14px 5px 0;
 }
+.weather-widget {
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  color: #f5f8ff;
+  background: radial-gradient(circle at 20% 10%, #416fb866, transparent 48%), linear-gradient(145deg, #182333, #090d13);
+}
+.weather-widget:active { transform: none; }
+.weather-small { gap: 0 !important; }
+.weather-icon { font-size: clamp(23px, 7vw, 48px); line-height: 0.9; color: #ffd77a; }
+.weather-temperature { font-size: clamp(18px, 5vw, 38px); line-height: 1; }
+.weather-rain { color: #a9c9ff; font-size: clamp(7px, 2vw, 13px); }
+.weather-message { text-align: center; font-size: clamp(8px, 2vw, 14px); }
+.weather-large { justify-content: flex-start; gap: 5px !important; padding: 9px !important; }
+.weather-heading { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cfddf4; font-size: clamp(8px, 1.8vw, 13px); }
+.weather-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; width: 100%; flex: 1; }
+.weather-days > div { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; border-radius: 8px; background: #ffffff0a; }
+.weather-days small { color: #abb9cf; }
+.weather-days b { color: #ffd77a; font-size: clamp(18px, 5vw, 36px); line-height: 1; }
+.weather-days span { white-space: nowrap; font-size: clamp(7px, 1.8vw, 12px); }
+.weather-days i { color: #ff9c8f; font-style: normal; }
+.weather-days em { color: #9dc4ff; font-style: normal; font-size: clamp(6px, 1.5vw, 10px); }
+.weather-updated { align-self: flex-end; color: #8d9aaf; font-size: clamp(5px, 1.2vw, 9px); }
+.preview-grid .weather-icon { font-size: clamp(10px, 2.6vw, 24px); }
+.preview-grid .weather-temperature { font-size: clamp(9px, 2vw, 20px); }
+.preview-grid .weather-rain, .preview-grid .weather-heading, .preview-grid .weather-days span { font-size: 5px; }
+.preview-grid .weather-days b { font-size: clamp(8px, 1.8vw, 18px); }
+.weather-location-settings { border: 1px solid #3d465b; border-radius: 12px; margin: 16px 0; padding: 14px; }
+.weather-location-settings legend { color: #b5c9ff; font-weight: 700; }
+.weather-location-settings > small { display: block; margin-top: 10px; color: #8e98aa; }
+.weather-search-row { display: flex; gap: 8px; }
+.weather-search-row input { flex: 1; min-width: 0; }
+.weather-results { display: grid; gap: 6px; margin-top: 8px; }
+.weather-result { width: 100%; text-align: left; }
 .clock-settings select,
 .metrics-settings select {
   margin-left: 6px;
