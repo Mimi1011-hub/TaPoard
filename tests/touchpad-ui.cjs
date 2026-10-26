@@ -96,6 +96,18 @@ async function settle(count) {
 const eventsSince = index => inputs.slice(index).flatMap(input => input.events);
 const buttons = list => list.filter(e => e.type === 'buttonDown' || e.type === 'buttonUp').map(e => e.type + ':' + e.control);
 
+// Waits for the explicit save and the settings reload that follows it, not for an older notice.
+async function save(page) {
+  let posted = false;
+  const refreshed = page.waitForResponse(response => {
+    const path = new URL(response.url()).pathname, method = response.request().method();
+    if (path === '/api/settings' && method === 'POST') posted = true;
+    return posted && path === '/api/settings' && method === 'GET';
+  });
+  await page.locator('#save').click();
+  await refreshed;
+}
+
 (async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = 'http://127.0.0.1:' + server.address().port;
@@ -120,8 +132,7 @@ const buttons = list => list.filter(e => e.type === 'buttonDown' || e.type === '
     const settings = admin.locator('.editor .touchpad-settings');
     await settings.locator('select').selectOption('rightClick');
     await settings.locator('input[data-option="acceleration"]').uncheck();
-    await admin.locator('#save').click();
-    await admin.waitForFunction(() => document.querySelector('#message').textContent.includes('保存しました'));
+    await save(admin);
     assert.equal(apps[0].options.longPress, 'rightClick');
     assert.equal(apps[0].options.acceleration, false);
 

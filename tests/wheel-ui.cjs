@@ -91,6 +91,18 @@ function sumSteps(list) {
   return list.reduce((total, input) => total + input.events.filter(e => e.type === 'steps').reduce((sum, e) => sum + e.delta, 0), 0);
 }
 
+// Waits for the explicit save and the settings reload that follows it, not for an older notice.
+async function save(page) {
+  let posted = false;
+  const refreshed = page.waitForResponse(response => {
+    const path = new URL(response.url()).pathname, method = response.request().method();
+    if (path === '/api/settings' && method === 'POST') posted = true;
+    return posted && path === '/api/settings' && method === 'GET';
+  });
+  await page.locator('#save').click();
+  await refreshed;
+}
+
 (async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = 'http://127.0.0.1:' + server.address().port;
@@ -117,8 +129,7 @@ function sumSteps(list) {
     await settings.locator('input[data-option="reverse"]').check();
     await settings.locator('input[data-option="middleClick"]').check();
     await settings.locator('input[type="range"]').fill('30');
-    await admin.locator('#save').click();
-    await admin.waitForFunction(() => document.querySelector('#message').textContent.includes('保存しました'));
+    await save(admin);
     assert.equal(apps[0].options.multiplier, 3);
     assert.equal(apps[0].options.ctrl, true);
     assert.equal(apps[0].options.reverse, true);
