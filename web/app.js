@@ -130,6 +130,8 @@
       items: [
         ['widget-wheel-vertical', '縦型ホイール', '1×1・上下スワイプでスクロール'],
         ['widget-wheel-rotary', '円形ホイール', '2×2・円をなぞってスクロール'],
+        ['widget-touchpad-wide', 'タッチパッド（横長）', '3×2・移動／クリック／スクロール'],
+        ['widget-touchpad-tall', 'タッチパッド（縦長）', '2×3・移動／クリック／スクロール'],
       ],
     },
     {
@@ -1494,7 +1496,20 @@
 
   // Ordered input for wheel and touchpad widgets. One request per widget is in flight;
   // later wheel steps and pointer movement are merged while it waits, clicks keep their order.
-  var inputSenders = {};
+  var inputSenders = {},
+    inputInteraction = 0,
+    inputRenderDeferred = false;
+  // A re-render during a gesture would drop the captured pointers, so it waits for the finger.
+  function beginInputInteraction() {
+    inputInteraction++;
+  }
+  function endInputInteraction() {
+    inputInteraction = Math.max(0, inputInteraction - 1);
+    if (!inputInteraction && inputRenderDeferred) {
+      inputRenderDeferred = false;
+      renderDeck();
+    }
+  }
   var BUSY_MESSAGE = '他の端末が操作中です。';
   function inputSender(widgetId) {
     if (inputSenders[widgetId]) return inputSenders[widgetId];
@@ -1669,6 +1684,7 @@
       travel = 0;
       moved = false;
       startTime = Date.now();
+      beginInputInteraction();
       tile.classList.add('adjusting');
       if (tile.setPointerCapture) try { tile.setPointerCapture(e.pointerId); } catch (ignore) {}
       if (e.cancelable) e.preventDefault();
@@ -1699,6 +1715,7 @@
         inputFeedback(true);
       }
       sender.release();
+      endInputInteraction();
       if (e.cancelable) e.preventDefault();
     }
     tile.addEventListener('pointerdown', begin);
@@ -1739,6 +1756,7 @@
       startedInCenter = p.inside;
       lastAngle = p.inside ? null : p.angle;
       startTime = Date.now();
+      beginInputInteraction();
       tile.classList.add('adjusting');
       if (tile.setPointerCapture) try { tile.setPointerCapture(e.pointerId); } catch (ignore) {}
       if (e.cancelable) e.preventDefault();
@@ -1783,6 +1801,7 @@
         inputFeedback(true);
       }
       sender.release();
+      endInputInteraction();
       if (e.cancelable) e.preventDefault();
     }
     tile.addEventListener('pointerdown', begin);
@@ -1855,6 +1874,195 @@
       }
     };
   }
+  function appendWidgetName(tile, a) {
+    if (a.hideLabel || !a.name) return;
+    var name = document.createElement('span');
+    name.className = 'input-widget-name';
+    name.textContent = a.name;
+    tile.appendChild(name);
+  }
+  function touchpadOptions(a) {
+    var source = (a && a.options) || {},
+      speed = Number(source.speed);
+    return {
+      speed: isFinite(speed) ? Math.max(1, Math.min(10, Math.round(speed))) : 5,
+      acceleration: source.acceleration !== false,
+      tapToClick: source.tapToClick !== false,
+      twoFingerScroll: source.twoFingerScroll !== false,
+      reverseScroll: source.reverseScroll === true,
+      longPress: source.longPress === 'rightClick' || source.longPress === 'drag' ? source.longPress : 'none',
+    };
+  }
+  // Touchpad gestures: one finger moves, tap = left click, two-finger tap = right click,
+  // tap then touch-and-move = drag, two fingers moving vertically = scroll.
+  function bindTouchpadGesture(tile, a, options) {
+    var sender = inputSender(a.id),
+      pointers = {},
+      count = 0,
+      maxPointers = 0,
+      downTime = 0,
+      travel = 0,
+      lastTapEnd = 0,
+      tapThenTouch = false,
+      dragging = false,
+      longFired = false,
+      longTimer = null,
+      keepTimer = null,
+      restX = 0,
+      restY = 0,
+      restScroll = 0;
+    sender.listen(function (state) {
+      if (state === 'busy') showInputBusy(tile, true);
+    });
+    function click(control) {
+      sender.button('buttonDown', control);
+      sender.button('buttonUp', control);
+      inputFeedback(true);
+    }
+    function startDrag() {
+      if (dragging) return;
+      dragging = true;
+      tile.classList.add('dragging');
+      sender.button('buttonDown', 'left');
+      inputFeedback(true);
+      clearInterval(keepTimer);
+      keepTimer = setInterval(sender.keepalive, 500);
+    }
+    function stopDrag() {
+      clearInterval(keepTimer);
+      keepTimer = null;
+      if (!dragging) return;
+      dragging = false;
+      tile.classList.remove('dragging');
+      sender.button('buttonUp', 'left');
+    }
+    function moveBy(dx, dy, elapsed) {
+      var factor = options.speed * 0.3;
+      if (options.acceleration && elapsed > 0) {
+        var velocity = Math.sqrt(dx * dx + dy * dy) / elapsed;
+        factor *= 1 + Math.min(2, Math.max(0, velocity - 0.25) * 1.5);
+      }
+      restX += dx * factor;
+      restY += dy * factor;
+      var x = Math.trunc(restX),
+        y = Math.trunc(restY);
+      restX -= x;
+      restY -= y;
+      sender.move(x, y);
+    }
+    function begin(e) {
+      if (pointers[e.pointerId]) return;
+      if (tile.setPointerCapture) try { tile.setPointerCapture(e.pointerId); } catch (ignore) {}
+      pointers[e.pointerId] = { x: e.clientX, y: e.clientY, time: e.timeStamp || Date.now() };
+      count++;
+      maxPointers = Math.max(maxPointers, count);
+      if (count === 1) {
+        beginInputInteraction();
+        downTime = Date.now();
+        travel = 0;
+        longFired = false;
+        restX = restY = restScroll = 0;
+        tapThenTouch = options.tapToClick && downTime - lastTapEnd < 300;
+        clearTimeout(longTimer);
+        if (options.longPress !== 'none')
+          longTimer = setTimeout(function () {
+            if (count !== 1 || travel > 8) return;
+            longFired = true;
+            if (options.longPress === 'rightClick') click('right');
+            else startDrag();
+          }, 500);
+      } else clearTimeout(longTimer);
+      tile.classList.add('adjusting');
+      if (e.cancelable) e.preventDefault();
+    }
+    function move(e) {
+      var pointer = pointers[e.pointerId];
+      if (!pointer) return;
+      var now = e.timeStamp || Date.now(),
+        dx = e.clientX - pointer.x,
+        dy = e.clientY - pointer.y,
+        elapsed = now - pointer.time;
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+      pointer.time = now;
+      travel += Math.abs(dx) + Math.abs(dy);
+      if (travel > 8) clearTimeout(longTimer);
+      if (e.cancelable) e.preventDefault();
+      if (count === 1 && maxPointers === 1) {
+        if (tapThenTouch && travel > 8) {
+          tapThenTouch = false;
+          startDrag();
+        }
+        moveBy(dx, dy, elapsed);
+      } else if (count >= 2 && options.twoFingerScroll) {
+        // Fingers moving down scroll up, like the page following the fingers.
+        restScroll += (dy / count) * 4;
+        var delta = Math.trunc(restScroll);
+        if (delta) {
+          restScroll -= delta;
+          sender.wheel(delta);
+        }
+      }
+    }
+    function end(e) {
+      if (!pointers[e.pointerId]) return;
+      delete pointers[e.pointerId];
+      count--;
+      if (e.cancelable) e.preventDefault();
+      if (count > 0) return;
+      clearTimeout(longTimer);
+      tile.classList.remove('adjusting');
+      var tap = e.type === 'pointerup' && !longFired && Date.now() - downTime < 250 && travel < 10 * maxPointers;
+      if (dragging) stopDrag();
+      else if (tap && options.tapToClick) {
+        click(maxPointers >= 2 ? 'right' : 'left');
+        if (maxPointers === 1) lastTapEnd = Date.now();
+      }
+      maxPointers = 0;
+      tapThenTouch = false;
+      sender.release();
+      endInputInteraction();
+    }
+    tile.addEventListener('pointerdown', begin);
+    tile.addEventListener('pointermove', move);
+    tile.addEventListener('pointerup', end);
+    tile.addEventListener('pointercancel', end);
+  }
+  function touchpadTile(a, preview, index, slotIndex) {
+    var options = touchpadOptions(a),
+      tile = document.createElement('div');
+    tile.className = 'deck-key touchpad-widget';
+    tile.title = a.name || 'タッチパッド';
+    tile.dataset.widgetId = a.id || '';
+    tile.dataset.appIndex = index;
+    tile.dataset.size = a.size || 1;
+    tile.dataset.width = a.width || 3;
+    tile.dataset.height = a.height || 2;
+    var hint = document.createElement('span');
+    hint.className = 'touchpad-hint';
+    hint.textContent =
+      (options.tapToClick ? 'タップ：クリック　2本指タップ：右クリック' : '') +
+      (options.twoFingerScroll ? (options.tapToClick ? '\n' : '') + '2本指で上下：スクロール' : '');
+    tile.appendChild(hint);
+    appendWidgetName(tile, a);
+    var busy = document.createElement('span');
+    busy.className = 'input-busy-label';
+    busy.textContent = '他端末が操作中';
+    tile.appendChild(busy);
+    tile.setAttribute('aria-label', a.name || 'タッチパッド');
+    if (preview) {
+      tile.draggable = true;
+      tile.ondragstart = function (e) {
+        e.dataTransfer.setData('text/plain', 'tile:' + index);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      addDropTarget(tile, index, slotIndex);
+      tile.oncontextmenu = function (e) {
+        openDeckContextMenu(e, index, a);
+      };
+    } else if (a.id) bindTouchpadGesture(tile, a, options);
+    return tile;
+  }
   function wheelTile(a, preview, index, slotIndex) {
     var options = wheelOptions(a),
       tile = document.createElement('div');
@@ -1885,6 +2093,7 @@
     caption.className = 'wheel-caption';
     caption.textContent = wheelCaption(options);
     tile.appendChild(caption);
+    appendWidgetName(tile, a);
     var busy = document.createElement('span');
     busy.className = 'input-busy-label';
     busy.textContent = '他端末が操作中';
@@ -1981,6 +2190,19 @@
           alt: false,
           middleClick: false,
         },
+      };
+    }
+    if (action === 'widget-touchpad-wide' || action === 'widget-touchpad-tall') {
+      var tall = action === 'widget-touchpad-tall';
+      return {
+        name: 'タッチパッド',
+        type: 'touchpad',
+        category: 'widget',
+        size: 1,
+        width: tall ? 2 : 3,
+        height: tall ? 3 : 2,
+        hideLabel: true,
+        options: { speed: 5, acceleration: true, tapToClick: true, twoFingerScroll: true, reverseScroll: false, longPress: 'none' },
       };
     }
     return null;
@@ -2130,6 +2352,7 @@
     if (a.type === 'metrics') return metricsTile(a, preview, index, slotIndex);
     if (a.type === 'weather') return weatherTile(a, preview, index, slotIndex);
     if (a.type === 'wheel') return wheelTile(a, preview, index, slotIndex);
+    if (a.type === 'touchpad') return touchpadTile(a, preview, index, slotIndex);
     var b = document.createElement(preview ? 'div' : 'button');
     b.className = 'deck-key';
     b.title = a.name;
@@ -2393,7 +2616,8 @@
       updatePhoneStatus(s.phoneConnected);
       if (forceRender || beforeRender !== deckRenderSignature()) renderPreview();
       else { updateMetricTiles(); updateWeatherTiles(); }
-    } else if (!audioInteraction) {
+    } else if (inputInteraction && (forceRender || beforeRender !== deckRenderSignature())) inputRenderDeferred = true;
+    else if (!audioInteraction) {
       if (forceRender || beforeRender !== deckRenderSignature()) renderDeck();
       else { updateMetricTiles(); updateWeatherTiles(); }
     }
@@ -2785,11 +3009,13 @@
                     ? '天気ウィジェット'
                     : a.type === 'wheel'
                       ? 'マウスホイール'
+                      : a.type === 'touchpad'
+                        ? 'タッチパッド'
               : 'アプリ';
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
-    if (a.type !== 'clock' && a.type !== 'metrics' && a.type !== 'wheel')
+    if (a.type !== 'clock' && a.type !== 'metrics' && a.type !== 'wheel' && a.type !== 'touchpad')
       menu.appendChild(
         contextButton('アイコンを選ぶ', '', function () {
           if (rows[index]) openIconPicker(rows[index]);
@@ -3309,6 +3535,76 @@
     box.appendChild(area);
   }
 
+  function buildTouchpadSettings(fields, box) {
+    fields.options = touchpadOptions({ options: fields.options });
+    var area = document.createElement('fieldset');
+    area.className = 'wheel-settings touchpad-settings';
+    var legend = document.createElement('legend');
+    legend.textContent = 'タッチパッドの操作';
+    area.appendChild(legend);
+    function changed() {
+      deckApps = rows.map(rowData);
+      renderPreview();
+    }
+    var speedLabel = document.createElement('label'),
+      speed = document.createElement('input'),
+      speedValue = document.createElement('span');
+    speedLabel.textContent = 'ポインターの速さ';
+    speed.type = 'range';
+    speed.min = 1;
+    speed.max = 10;
+    speed.value = fields.options.speed;
+    speed.oninput = function () {
+      fields.options.speed = Number(speed.value);
+      speedValue.textContent = speed.value;
+    };
+    speed.onchange = changed;
+    speedValue.textContent = speed.value;
+    speedLabel.appendChild(speed);
+    speedLabel.appendChild(speedValue);
+    area.appendChild(speedLabel);
+    var longLabel = document.createElement('label'),
+      longPress = document.createElement('select');
+    longLabel.textContent = '長押し';
+    [['none', '何もしない'], ['rightClick', '右クリック'], ['drag', 'ドラッグ開始']].forEach(function (pair) {
+      var option = document.createElement('option');
+      option.value = pair[0];
+      option.textContent = pair[1];
+      longPress.appendChild(option);
+    });
+    longPress.value = fields.options.longPress;
+    longPress.onchange = function () {
+      fields.options.longPress = longPress.value;
+      changed();
+    };
+    longLabel.appendChild(longPress);
+    area.appendChild(longLabel);
+    [
+      ['acceleration', '速く動かすと遠くまで動く（加速）'],
+      ['tapToClick', 'タップでクリック（2本指タップで右クリック、タップ後に触れて動かすとドラッグ）'],
+      ['twoFingerScroll', '2本指の上下でスクロール'],
+      ['reverseScroll', 'スクロール方向を反転'],
+    ].forEach(function (pair) {
+      var label = document.createElement('label'),
+        input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = fields.options[pair[0]];
+      input.dataset.option = pair[0];
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(pair[1]));
+      area.appendChild(label);
+      input.onchange = function () {
+        fields.options[pair[0]] = input.checked;
+        changed();
+      };
+    });
+    var note = document.createElement('p');
+    note.className = 'editor-feedback';
+    note.textContent = '操作中は他の端末から横取りされません。指を離すと他の端末が操作できます（通信が切れた場合は約2秒後）。';
+    area.appendChild(note);
+    box.appendChild(area);
+  }
+
   function createEditor(a) {
     var box = document.createElement('div');
     box.className = 'editor';
@@ -3367,6 +3663,8 @@
                     ? 'WEATHER'
                     : fields.type === 'wheel'
                       ? 'WHEEL'
+                      : fields.type === 'touchpad'
+                        ? 'TOUCHPAD'
               : 'APP';
     heading.appendChild(kind);
     box.appendChild(heading);
@@ -3396,6 +3694,7 @@
     if (fields.type === 'clock') buildClockSettings(fields, box);
     if (fields.type === 'metrics') buildMetricsSettings(fields, box);
     if (fields.type === 'wheel') buildWheelSettings(fields, box);
+    if (fields.type === 'touchpad') buildTouchpadSettings(fields, box);
     if (fields.type === 'weather') {
       fields.options = fields.options || { forecastMode: 'days' };
       var weatherNote = document.createElement('p');
@@ -3413,7 +3712,7 @@
       refreshEditorIcon(fields);
     };
     refreshEditorIcon(fields);
-    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather' && fields.type !== 'wheel') {
+    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather' && fields.type !== 'wheel' && fields.type !== 'touchpad') {
       var iconButton = document.createElement('button');
       iconButton.type = 'button';
       iconButton.className = 'subtle icon-select-button';

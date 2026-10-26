@@ -2422,3 +2422,41 @@ footer #app-version {
   pointer-events: none;
 }
 .wheel-rotary.adjusting .wheel-dial { box-shadow: inset 0 0 0 2px #6f9cff, 0 4px 12px #0008; }
+
+/* Touchpad: a quiet surface; hints fade so the whole area stays usable. */
+.touchpad-widget {
+  position: relative;
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  color: #8fa3cf;
+  background: linear-gradient(160deg, #1d2433, #10141c);
+  box-shadow: inset 0 0 0 1px #3a4766;
+}
+.touchpad-widget:active { transform: none; }
+.touchpad-widget.adjusting { box-shadow: inset 0 0 0 2px #6f9cff; }
+.touchpad-widget.dragging { box-shadow: inset 0 0 0 2px #ffcf6f; }
+.touchpad-hint {
+  white-space: pre-line;
+  text-align: center;
+  font-size: clamp(8px, 1.9vw, 12px);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.touchpad-widget.adjusting .touchpad-hint { opacity: 0.2; }
+.preview-grid .touchpad-widget { cursor: grab; }
+.input-widget-name {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  right: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: clamp(7px, 1.8vw, 11px);
+  color: #c9d6f5;
+  pointer-events: none;
+}
