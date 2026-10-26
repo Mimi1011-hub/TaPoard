@@ -63,6 +63,17 @@
       micMuted: false,
       micAvailable: true,
     },
+    metricsState = {
+      active: false,
+      cpuSupported: true,
+      cpuAvailable: false,
+      memoryAvailable: false,
+      cpuPercent: null,
+      memoryPercent: null,
+      memoryUsedBytes: 0,
+      memoryTotalBytes: 0,
+      history: [],
+    },
     audioInteraction = false,
     messageTimer = null,
     clockTimer = null;
@@ -100,6 +111,9 @@
       items: [
         ['widget-clock-digital', 'デジタル時計', '2×2・端末時刻'],
         ['widget-clock-analog', 'アナログ時計', '2×2・端末時刻'],
+        ['widget-metrics-cpu', 'CPU使用率', '1×1・2秒更新'],
+        ['widget-metrics-memory', 'メモリ使用率', '1×1・2秒更新'],
+        ['widget-metrics-overview', 'CPU・メモリ', '2×2・60秒グラフ'],
       ],
     },
     {
@@ -1242,6 +1256,130 @@
     return tile;
   }
 
+  function metricOptions(a) {
+    var source = (a && a.options) || {};
+    return {
+      primary: ['cpu', 'memory', 'gpu', 'gpuMemory'].indexOf(source.primary) >= 0 ? source.primary : 'cpu',
+      cycle: source.cycle === true,
+      gpuId: typeof source.gpuId === 'string' ? source.gpuId : '',
+    };
+  }
+  function metricDescriptor(primary) {
+    if (primary === 'memory') return { label: 'メモリ', value: metricsState.memoryPercent, available: metricsState.memoryAvailable, supported: true };
+    if (primary === 'gpu') return { label: 'GPU', value: null, available: false, supported: false };
+    if (primary === 'gpuMemory') return { label: 'GPUメモリ', value: null, available: false, supported: false };
+    return { label: 'CPU', value: metricsState.cpuPercent, available: metricsState.cpuAvailable, supported: metricsState.cpuSupported !== false };
+  }
+  function metricPercent(value, available, supported) {
+    if (supported === false) return '未対応';
+    return available && typeof value === 'number' && isFinite(value)
+      ? Math.max(0, Math.min(100, value)).toFixed(1) + '%'
+      : '更新待ち';
+  }
+  function bytesText(value) {
+    return typeof value === 'number' && value > 0 ? (value / 1073741824).toFixed(1) + ' GB' : '—';
+  }
+  function metricPath(history, name) {
+    var path = '',
+      count = Math.max(2, history.length);
+    history.forEach(function (point, index) {
+      var value = point && point[name];
+      if (typeof value !== 'number' || !isFinite(value)) return;
+      var x = history.length < 2 ? 100 : (index * 100) / (count - 1),
+        y = 100 - Math.max(0, Math.min(100, value));
+      path += (path ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
+    });
+    return path;
+  }
+  function appendMetricRow(root, labelText, value, available, className, supported) {
+    var row = document.createElement('div');
+    row.className = 'metric-row ' + className;
+    var label = document.createElement('span');
+    label.textContent = labelText;
+    var output = document.createElement('strong');
+    output.textContent = metricPercent(value, available, supported);
+    row.appendChild(label);
+    row.appendChild(output);
+    root.appendChild(row);
+  }
+  function renderMetricsTile(tile, a) {
+    tile.textContent = '';
+    var options = metricOptions(a),
+      large = (a.width || a.size || 1) === 2 && (a.height || a.size || 1) === 2;
+    tile.className = 'deck-key metrics-widget ' + (large ? 'metrics-large' : 'metrics-small');
+    tile.classList.toggle('metrics-inactive', !metricsState.active);
+    if (large) {
+      var heading = document.createElement('strong');
+      heading.className = 'metrics-heading';
+      heading.textContent = 'PC情報';
+      tile.appendChild(heading);
+      appendMetricRow(tile, 'CPU', metricsState.cpuPercent, metricsState.cpuAvailable, 'metric-cpu', metricsState.cpuSupported !== false);
+      appendMetricRow(tile, 'メモリ', metricsState.memoryPercent, metricsState.memoryAvailable, 'metric-memory');
+      var detail = document.createElement('span');
+      detail.className = 'metrics-memory-detail';
+      detail.textContent = bytesText(metricsState.memoryUsedBytes) + ' / ' + bytesText(metricsState.memoryTotalBytes);
+      tile.appendChild(detail);
+      var graph = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      graph.setAttribute('class', 'metrics-graph');
+      graph.setAttribute('viewBox', '0 0 100 100');
+      graph.setAttribute('preserveAspectRatio', 'none');
+      [['memoryPercent', 'memory-line'], ['cpuPercent', 'cpu-line']].forEach(function (definition) {
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', definition[1]);
+        path.setAttribute('d', metricPath(metricsState.history || [], definition[0]));
+        graph.appendChild(path);
+      });
+      tile.appendChild(graph);
+      tile.setAttribute(
+        'aria-label',
+        'PC情報 CPU ' + metricPercent(metricsState.cpuPercent, metricsState.cpuAvailable, metricsState.cpuSupported !== false) + ' メモリ ' + metricPercent(metricsState.memoryPercent, metricsState.memoryAvailable),
+      );
+    } else {
+      var primary = options.primary;
+      if (options.cycle) primary = Math.floor(Date.now() / 4000) % 2 ? 'memory' : 'cpu';
+      var descriptor = metricDescriptor(primary),
+        name = document.createElement('span'),
+        value = document.createElement('strong');
+      name.className = 'metric-name';
+      name.textContent = descriptor.label;
+      value.className = 'metric-value';
+      value.textContent = metricPercent(descriptor.value, descriptor.available, descriptor.supported);
+      tile.appendChild(name);
+      tile.appendChild(value);
+      tile.setAttribute('aria-label', descriptor.label + ' ' + value.textContent);
+    }
+  }
+  function metricsTile(a, preview, index, slotIndex) {
+    var tile = document.createElement('div');
+    tile.title = a.name || 'PC情報';
+    tile.dataset.widgetId = a.id || '';
+    tile.dataset.appIndex = index;
+    tile.dataset.size = a.size || 1;
+    tile.dataset.width = a.width || a.size || 1;
+    tile.dataset.height = a.height || a.size || 1;
+    renderMetricsTile(tile, a);
+    if (preview) {
+      tile.draggable = true;
+      tile.ondragstart = function (e) {
+        e.dataTransfer.setData('text/plain', 'tile:' + index);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      addDropTarget(tile, index, slotIndex);
+      tile.oncontextmenu = function (e) {
+        openDeckContextMenu(e, index, a);
+      };
+    }
+    return tile;
+  }
+  function updateMetricTiles() {
+    Array.prototype.forEach.call(document.querySelectorAll('.metrics-widget[data-widget-id]'), function (tile) {
+      var app = deckApps.filter(function (entry) {
+        return entry.id === tile.dataset.widgetId;
+      })[0];
+      if (app) renderMetricsTile(tile, app);
+    });
+  }
+
   function catalogItem(action) {
     for (var g = 0; g < catalog.length; g++)
       for (var i = 0; i < catalog[g].items.length; i++)
@@ -1257,18 +1395,34 @@
     return action === 'custom-url' ? 'url' : action === 'custom-clipboard' ? 'clipboard' : '';
   }
   function widgetFromAction(action) {
-    if (action !== 'widget-clock-digital' && action !== 'widget-clock-analog') return null;
-    var analog = action === 'widget-clock-analog';
-    return {
-      name: analog ? 'アナログ時計' : 'デジタル時計',
-      type: 'clock',
-      category: 'widget',
-      size: 2,
-      width: 2,
-      height: 2,
-      hideLabel: true,
-      options: { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false },
-    };
+    if (action === 'widget-clock-digital' || action === 'widget-clock-analog') {
+      var analog = action === 'widget-clock-analog';
+      return {
+        name: analog ? 'アナログ時計' : 'デジタル時計',
+        type: 'clock',
+        category: 'widget',
+        size: 2,
+        width: 2,
+        height: 2,
+        hideLabel: true,
+        options: { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false },
+      };
+    }
+    if (action === 'widget-metrics-cpu' || action === 'widget-metrics-memory' || action === 'widget-metrics-overview') {
+      var overview = action === 'widget-metrics-overview',
+        memory = action === 'widget-metrics-memory';
+      return {
+        name: overview ? 'CPU・メモリ' : memory ? 'メモリ使用率' : 'CPU使用率',
+        type: 'metrics',
+        category: 'widget',
+        size: overview ? 2 : 1,
+        width: overview ? 2 : 1,
+        height: overview ? 2 : 1,
+        hideLabel: true,
+        options: { primary: memory ? 'memory' : 'cpu', cycle: false, gpuId: '' },
+      };
+    }
+    return null;
   }
   function addWidgetEditor(action, index) {
     var item = widgetFromAction(action);
@@ -1373,7 +1527,7 @@
       if (
         !canPlace(rows.map(rowData), -1, positionAt(page, slotIndex, displayGrid(true).columns), width, height, previewOrientation)
       ) {
-        message(widget ? '時計を置ける2×2の空き枠へドロップしてください。' : '空き枠へドロップしてください。');
+        message(widget ? widget.name + 'を置ける' + width + '×' + height + 'の空き枠へドロップしてください。' : '空き枠へドロップしてください。');
         return;
       }
       desiredPlacement = {
@@ -1412,6 +1566,7 @@
   }
   function appTile(a, preview, index, slotIndex) {
     if (a.type === 'clock') return clockTile(a, preview, index, slotIndex);
+    if (a.type === 'metrics') return metricsTile(a, preview, index, slotIndex);
     var b = document.createElement(preview ? 'div' : 'button');
     b.className = 'deck-key';
     b.title = a.name;
@@ -1627,7 +1782,28 @@
     $('awake').checked = layout.keepAwake;
     syncGridControls();
   }
-  function applyState(s) {
+  function deckRenderSignature() {
+    var orientation = admin ? previewOrientation : currentOrientation(false);
+    return JSON.stringify({
+      orientation: orientation,
+      version: deckVersion,
+      page: pageByOrientation[orientation] || 0,
+      pages: pagesByOrientation[orientation] || 1,
+      grid: layout.grids[orientation],
+      controls: layout.controls[orientation],
+      audio: {
+        speakerVolume: audioState.speakerVolume,
+        speakerMuted: audioState.speakerMuted,
+        speakerAvailable: audioState.speakerAvailable,
+        micVolume: audioState.micVolume,
+        micMuted: audioState.micMuted,
+        micAvailable: audioState.micAvailable,
+        devices: audioState.devices || [],
+      },
+    });
+  }
+  function applyState(s, forceRender) {
+    var beforeRender = deckRenderSignature();
     if (s.inputSessions) applyInputSessions(s);
     deckRevision = s.revision || deckRevision;
     if (s.appVersion) $('app-version').textContent = 'Version ' + s.appVersion;
@@ -1636,6 +1812,7 @@
       deckVersion = s.version || deckVersion;
     }
     if (s.audio) audioState = s.audio;
+    if (s.metrics) metricsState = s.metrics;
     applyLayout(s);
     if (typeof s.landscapePage === 'number') pageByOrientation.landscape = s.landscapePage;
     if (typeof s.portraitPage === 'number') pageByOrientation.portrait = s.portraitPage;
@@ -1650,8 +1827,12 @@
     }
     if (admin) {
       updatePhoneStatus(s.phoneConnected);
-      renderPreview();
-    } else if (!audioInteraction) renderDeck();
+      if (forceRender || beforeRender !== deckRenderSignature()) renderPreview();
+      else updateMetricTiles();
+    } else if (!audioInteraction) {
+      if (forceRender || beforeRender !== deckRenderSignature()) renderDeck();
+      else updateMetricTiles();
+    }
   }
 
   function visibleWidgetIds() {
@@ -1702,7 +1883,7 @@
       .then(function (s) {
         var was = connected;
         connected = true;
-        applyState(s);
+        applyState(s, true);
         announceView();
         if (!admin) {
           $('status').textContent = '● ' + s.computer;
@@ -2029,11 +2210,13 @@
               ? '音声機器切替'
               : a.type === 'clock'
                 ? '時計ウィジェット'
+                : a.type === 'metrics'
+                  ? 'PC情報ウィジェット'
               : 'アプリ';
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
-    if (a.type !== 'clock')
+    if (a.type !== 'clock' && a.type !== 'metrics')
       menu.appendChild(
         contextButton('アイコンを選ぶ', '', function () {
           if (rows[index]) openIconPicker(rows[index]);
@@ -2129,7 +2312,7 @@
           return settings().then(function () {
             message(success || '画面の設定を保存しました。');
           });
-        applyState(s);
+        applyState(s, true);
         message(success || '画面の設定を保存しました。');
       })
       .catch(function (e) {
@@ -2408,6 +2591,47 @@
     box.appendChild(area);
   }
 
+  function buildMetricsSettings(fields, box) {
+    fields.options = metricOptions({ options: fields.options });
+    var area = document.createElement('fieldset');
+    area.className = 'metrics-settings';
+    var legend = document.createElement('legend');
+    legend.textContent = 'PC情報の表示';
+    area.appendChild(legend);
+    var primaryLabel = document.createElement('label');
+    primaryLabel.textContent = '1マスで表示する項目';
+    var primary = document.createElement('select');
+    [['cpu', 'CPU使用率'], ['memory', 'メモリ使用率']].forEach(function (pair) {
+      var option = document.createElement('option');
+      option.value = pair[0];
+      option.textContent = pair[1];
+      primary.appendChild(option);
+    });
+    primary.value = fields.options.primary === 'memory' ? 'memory' : 'cpu';
+    primaryLabel.appendChild(primary);
+    area.appendChild(primaryLabel);
+    var cycleLabel = document.createElement('label'),
+      cycle = document.createElement('input');
+    cycle.type = 'checkbox';
+    cycle.checked = fields.options.cycle;
+    cycleLabel.appendChild(cycle);
+    cycleLabel.appendChild(document.createTextNode('CPUとメモリを自動で切り替える'));
+    area.appendChild(cycleLabel);
+    function previewMetrics() {
+      fields.options.primary = primary.value;
+      fields.options.cycle = cycle.checked;
+      deckApps = rows.map(rowData);
+      renderPreview();
+    }
+    primary.onchange = previewMetrics;
+    cycle.onchange = previewMetrics;
+    var note = document.createElement('p');
+    note.className = 'editor-feedback';
+    note.textContent = '4マスではCPU・メモリと直近60秒のグラフを同時表示します。表示中だけPCから2秒ごとに取得します。';
+    area.appendChild(note);
+    box.appendChild(area);
+  }
+
   function createEditor(a) {
     var box = document.createElement('div');
     box.className = 'editor';
@@ -2460,6 +2684,8 @@
               ? 'AUDIO'
               : fields.type === 'clock'
                 ? 'CLOCK'
+                : fields.type === 'metrics'
+                  ? 'METRICS'
               : 'APP';
     heading.appendChild(kind);
     box.appendChild(heading);
@@ -2487,6 +2713,7 @@
     });
     if (fields.type === 'audioDevice') buildDeviceSelector(fields, box);
     if (fields.type === 'clock') buildClockSettings(fields, box);
+    if (fields.type === 'metrics') buildMetricsSettings(fields, box);
     buildAppearance(fields, box);
     if (fields.type === 'hotkey' && fields.action.indexOf('audio-') !== 0) buildHotkey(fields, box);
     ['path', 'args', 'url', 'text'].forEach(function (name) {
@@ -2497,7 +2724,7 @@
       refreshEditorIcon(fields);
     };
     refreshEditorIcon(fields);
-    if (fields.type !== 'clock') {
+    if (fields.type !== 'clock' && fields.type !== 'metrics') {
       var iconButton = document.createElement('button');
       iconButton.type = 'button';
       iconButton.className = 'subtle icon-select-button';
@@ -2745,7 +2972,7 @@
           rows.push(createEditor(a));
         });
         renderEditorOrder();
-        applyState(s);
+        applyState(s, true);
         announceView();
         refreshDeviceSelectors();
         renderCatalog();

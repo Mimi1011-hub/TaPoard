@@ -238,6 +238,7 @@ partial class Program
                     landscapeControls = Controls(false),
                     portraitControls = Controls(true),
                     audio = AudioControl.Read(),
+                    metrics = MetricsSampler.PublicSnapshot(),
                     phoneConnected = PhoneConnected(),
                     computer = Environment.MachineName,
                     inputSessions = inputSessions,
@@ -284,6 +285,7 @@ partial class Program
                     landscapeControls = Controls(false),
                     portraitControls = Controls(true),
                     audio = AudioControl.Read(),
+                    metrics = MetricsSampler.PublicSnapshot(),
                     phoneConnected = PhoneConnected(),
                     inputSessions = inputSessions,
                 }
@@ -335,6 +337,7 @@ partial class Program
                     landscapeControls = Controls(false),
                     portraitControls = Controls(true),
                     audio = AudioControl.Read(),
+                    metrics = MetricsSampler.PublicSnapshot(),
                     phoneConnected = PhoneConnected(),
                     lanUrl = lanUrl,
                     ipUrls = ipUrls,

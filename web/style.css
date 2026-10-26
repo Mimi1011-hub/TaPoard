@@ -959,23 +959,102 @@ textarea {
 .preview-grid .clock-time { font-size: clamp(10px, 2.4vw, 23px); }
 .preview-grid .clock-date { font-size: clamp(5px, 0.9vw, 9px); }
 .preview-grid .clock-marker { font-size: clamp(4px, 0.7vw, 7px); }
-.clock-settings {
+.metrics-widget {
+  padding: 7px !important;
+  gap: 3px !important;
+  color: #edf2ff;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  background:
+    radial-gradient(circle at 15% 5%, #1d4d4866, transparent 48%),
+    linear-gradient(145deg, #151a21, #08090c);
+}
+.metrics-widget:active { transform: none; }
+.metrics-inactive { opacity: 0.72; }
+.metrics-small .metric-name {
+  color: #a9b9d6;
+  font-size: clamp(8px, 2.2vw, 15px);
+  line-height: 1;
+}
+.metrics-small .metric-value {
+  color: #f3f7ff;
+  font-size: clamp(17px, 5vw, 38px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px #63c9b566;
+}
+.metrics-heading {
+  align-self: flex-start;
+  color: #aebbd1;
+  font-size: clamp(8px, 1.8vw, 13px);
+  line-height: 1;
+}
+.metric-row {
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  font-size: clamp(8px, 2vw, 15px);
+}
+.metric-row strong {
+  font-size: 1.25em;
+  font-variant-numeric: tabular-nums;
+}
+.metric-cpu strong { color: #76a4ff; }
+.metric-memory strong { color: #63d2b9; }
+.metrics-memory-detail {
+  z-index: 1;
+  align-self: flex-end;
+  color: #8f9aae;
+  font-size: clamp(6px, 1.4vw, 10px);
+  white-space: nowrap;
+}
+.metrics-graph {
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 7px;
+  width: calc(100% - 14px);
+  height: 38%;
+  opacity: 0.72;
+  overflow: visible;
+}
+.metrics-graph path {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.metrics-graph .cpu-line { stroke: #76a4ff; }
+.metrics-graph .memory-line { stroke: #63d2b9; }
+.preview-grid .metrics-widget { padding: 3px !important; }
+.preview-grid .metrics-heading,
+.preview-grid .metrics-small .metric-name { font-size: clamp(5px, 0.8vw, 8px); }
+.preview-grid .metrics-small .metric-value { font-size: clamp(9px, 2vw, 19px); }
+.preview-grid .metric-row { font-size: clamp(5px, 0.8vw, 8px); }
+.preview-grid .metrics-memory-detail { font-size: 5px; }
+.clock-settings,
+.metrics-settings {
   border: 1px solid #3d465b;
   border-radius: 10px;
   margin: 14px 0;
   padding: 14px;
 }
-.clock-settings legend {
+.clock-settings legend,
+.metrics-settings legend {
   font-size: 13px;
   color: #b5c9ff;
 }
-.clock-settings > label {
+.clock-settings > label,
+.metrics-settings > label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin: 5px 14px 5px 0;
 }
-.clock-settings select {
+.clock-settings select,
+.metrics-settings select {
   margin-left: 6px;
 }
 .grid-settings,

@@ -118,16 +118,19 @@ static class DisplaySubscriptions
 
     internal static Snapshot Current()
     {
+        Snapshot snapshot; bool changed;
         lock (Sync)
         {
             DateTime now = Clock();
-            PruneLocked(now);
+            changed = PruneLocked(now);
             ArmLocked(now);
             var metrics = new HashSet<string>(StringComparer.Ordinal);
             var weather = new HashSet<string>(StringComparer.Ordinal);
             foreach (var lease in Leases.Values) { metrics.UnionWith(lease.metrics); weather.UnionWith(lease.weather); }
-            return new Snapshot(metrics, weather, Leases.Count, timerArmed);
+            snapshot = new Snapshot(metrics, weather, Leases.Count, timerArmed);
         }
+        if (changed && Changed != null) Changed();
+        return snapshot;
     }
 
     internal static void PruneNow()
