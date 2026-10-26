@@ -205,8 +205,61 @@ function sumSteps(list) {
     await new Promise(resolve => setTimeout(resolve, 300));
     assert.equal(rotaryInputs().length, beforeCenter, 'the centre is a dead zone and middle click is off by default');
     assert(releases.length > releasesBefore);
+
+    async function swipe(page) {
+      const target = await page.locator('#deck .wheel-vertical').boundingBox();
+      const sx = target.x + target.width / 2, sy = target.y + 6;
+      await page.mouse.move(sx, sy + 95);
+      await page.mouse.down();
+      for (let i = 1; i <= 19; i++) { await page.mouse.move(sx, sy + 95 - i * 5); await page.waitForTimeout(20); }
+      await page.mouse.up();
+    }
+    const android = await browser.newPage({ viewport: { width: 667, height: 375 } });
+    android.on('pageerror', error => errors.push(String(error)));
+    await android.addInitScript(() => {
+      window.__vibrations = [];
+      navigator.vibrate = ms => { window.__vibrations.push(ms); return true; };
+    });
+    await android.goto(base + '/#connect=test');
+    await android.locator('#deck .wheel-vertical').waitFor();
+    await swipe(android);
+    const vibrations = await android.evaluate(() => window.__vibrations.length);
+    assert(vibrations >= 1 && vibrations <= 3, 'Android vibrates once per finger step at most: ' + vibrations);
+    await android.click('#device-menu-button');
+    assert.match(await android.locator('#feedback-note').innerText(), /振動/);
+    await android.locator('label.menu-switch', { hasText: '操作の手応え' }).click();
+    assert.equal(await android.evaluate(() => localStorage.getItem('tapoard-feedback')), 'off');
+    await android.click('#device-menu-close');
+    await swipe(android);
+    assert.equal(await android.evaluate(() => window.__vibrations.length), vibrations, 'feedback can be turned off on this device');
+    await android.reload();
+    await android.locator('#deck .wheel-vertical').waitFor();
+    assert.equal(await android.locator('#feedback').isChecked(), false, 'the off setting is remembered per device');
+
+    const iphone = await browser.newPage({ viewport: { width: 667, height: 375 } });
+    iphone.on('pageerror', error => errors.push(String(error)));
+    await iphone.addInitScript(() => {
+      delete Navigator.prototype.vibrate;
+      window.__clicks = 0;
+      window.__contexts = 0;
+      window.AudioContext = class {
+        constructor() { window.__contexts++; this.state = 'suspended'; this.currentTime = 0; this.destination = {}; }
+        resume() { this.state = 'running'; return Promise.resolve(); }
+        createOscillator() { return { type: '', frequency: { setValueAtTime() {} }, connect() {}, start() { window.__clicks++; }, stop() {} }; }
+        createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} }; }
+      };
+    });
+    await iphone.goto(base + '/#connect=test');
+    await iphone.locator('#deck .wheel-vertical').waitFor();
+    assert.equal(await iphone.evaluate(() => window.__contexts), 0, 'audio is prepared only after the first touch');
+    await swipe(iphone);
+    const clicks = await iphone.evaluate(() => window.__clicks);
+    assert(clicks >= 1 && clicks <= 3, 'iPhone plays one click per finger step at most: ' + clicks);
+    assert.equal(await iphone.evaluate(() => window.__contexts), 1);
+    await iphone.click('#device-menu-button');
+    assert.match(await iphone.locator('#feedback-note').innerText(), /消音モード/);
     assert.deepEqual(errors, []);
-    console.log('PASS wheel UI: vertical and rotary wheels, settings, steps, middle-click tap, release and busy indicator');
+    console.log('PASS wheel UI: vertical and rotary wheels, settings, steps, middle-click tap, release, busy indicator and per-device vibration/click feedback');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();

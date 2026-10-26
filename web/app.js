@@ -1696,7 +1696,7 @@
       if (!moved && e.type === 'pointerup' && options.middleClick && Date.now() - startTime < 400) {
         sender.button('buttonDown', 'middle');
         sender.button('buttonUp', 'middle');
-        wheelFeedback(1);
+        inputFeedback(true);
       }
       sender.release();
       if (e.cancelable) e.preventDefault();
@@ -1780,7 +1780,7 @@
       if (!moved && startedInCenter && e.type === 'pointerup' && options.middleClick && Date.now() - startTime < 400) {
         sender.button('buttonDown', 'middle');
         sender.button('buttonUp', 'middle');
-        wheelFeedback(1);
+        inputFeedback(true);
       }
       sender.release();
       if (e.cancelable) e.preventDefault();
@@ -1790,7 +1790,71 @@
     tile.addEventListener('pointerup', end);
     tile.addEventListener('pointercancel', end);
   }
-  function wheelFeedback() {}
+  // Optional touch feedback, stored per device. Android vibrates; iPhone has no Vibration API,
+  // so a short Web Audio click is used instead (muted by the iPhone silent switch).
+  var feedbackEnabled = true,
+    feedbackAudio = null,
+    lastFeedback = 0;
+  try {
+    feedbackEnabled = localStorage.getItem('tapoard-feedback') !== 'off';
+  } catch (ignore) {}
+  function canVibrate() {
+    return typeof navigator.vibrate === 'function';
+  }
+  function prepareFeedbackAudio() {
+    if (!feedbackEnabled || canVibrate()) return;
+    var Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return;
+    try {
+      if (!feedbackAudio) feedbackAudio = new Context();
+      if (feedbackAudio.state === 'suspended') feedbackAudio.resume();
+    } catch (ignore) {
+      feedbackAudio = null;
+    }
+  }
+  function playClick() {
+    if (!feedbackAudio || feedbackAudio.state !== 'running') return;
+    var now = feedbackAudio.currentTime,
+      oscillator = feedbackAudio.createOscillator(),
+      gain = feedbackAudio.createGain();
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(1800, now);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.012);
+    oscillator.connect(gain);
+    gain.connect(feedbackAudio.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.015);
+  }
+  // One feedback per finger gesture step (not per step sent to the PC), at most every 35ms.
+  function inputFeedback(strong) {
+    if (!feedbackEnabled) return;
+    var now = Date.now();
+    if (now - lastFeedback < 35) return;
+    lastFeedback = now;
+    if (canVibrate()) navigator.vibrate(strong ? 18 : 8);
+    else playClick();
+  }
+  function wheelFeedback() {
+    inputFeedback(false);
+  }
+  document.addEventListener('pointerdown', prepareFeedbackAudio, { passive: true });
+  if ($('feedback')) {
+    $('feedback').checked = feedbackEnabled;
+    $('feedback-note').textContent = canVibrate()
+      ? 'ホイール・タッチパッド操作時に短く振動します（この端末だけの設定）'
+      : 'ホイール・タッチパッド操作時にクリック音を鳴らします。iPhoneの消音モード中は鳴りません（この端末だけの設定）';
+    $('feedback').onchange = function () {
+      feedbackEnabled = this.checked;
+      try {
+        localStorage.setItem('tapoard-feedback', feedbackEnabled ? 'on' : 'off');
+      } catch (ignore) {}
+      if (feedbackEnabled) {
+        prepareFeedbackAudio();
+        inputFeedback(true);
+      }
+    };
+  }
   function wheelTile(a, preview, index, slotIndex) {
     var options = wheelOptions(a),
       tile = document.createElement('div');
