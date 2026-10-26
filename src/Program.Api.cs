@@ -229,7 +229,8 @@ partial class Program
                 new
                 {
                     apps = apps,
-                    widgetDefinitions = WidgetRegistry.PublicDefinitions(),
+                    // Definitions are fixed per build, so they travel only with the app list.
+                    widgetDefinitions = apps == null ? null : WidgetRegistry.PublicDefinitions(),
                     version = version,
                     appVersion = AppVersion,
                     revision = revision,
