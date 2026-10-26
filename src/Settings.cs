@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-// Persisted in data\settings.json. Property names are part of the file and API format.
+// Persisted in data\settings-v2.json. Property names are part of the file and API format.
 class AppEntry
 {
     public string id { get; set; }
@@ -32,6 +32,7 @@ class AppEntry
 
 class Settings
 {
+    public int schemaVersion { get; set; }
     public string token { get; set; }
     public string pairingKey { get; set; }
     public List<AppEntry> apps { get; set; }

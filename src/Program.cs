@@ -147,13 +147,7 @@ partial class Program
 
     static void Save()
     {
-        Directory.CreateDirectory(Data);
-        var p = Path.Combine(Data, "settings.json");
-        File.WriteAllText(p + ".tmp", Json(config));
-        if (File.Exists(p))
-            File.Replace(p + ".tmp", p, null);
-        else
-            File.Move(p + ".tmp", p);
+        SettingsFile.Save(Data, config);
     }
 
     [STAThread]
@@ -197,19 +191,21 @@ partial class Program
         }
     }
 
-    // Loads data\settings.json (or creates it), migrates older formats and saves the result.
+    // Loads data\settings-v2.json. Only its first creation may read legacy settings.json.
     static void LoadSettings()
     {
-        Directory.CreateDirectory(Data);
-        string p = Path.Combine(Data, "settings.json");
-        config = File.Exists(p)
-            ? new JavaScriptSerializer().Deserialize<Settings>(File.ReadAllText(p))
-            : new Settings
+        config = SettingsFile.Load(
+            Data,
+            delegate
             {
-                token = RandomKey(),
-                pairingKey = ShortKey(),
-                apps = new List<AppEntry>(),
-            };
+                return new Settings
+                {
+                    token = RandomKey(),
+                    pairingKey = ShortKey(),
+                    apps = new List<AppEntry>(),
+                };
+            }
+        );
         if (String.IsNullOrWhiteSpace(config.token))
             config.token = RandomKey();
         if (String.IsNullOrWhiteSpace(config.pairingKey))

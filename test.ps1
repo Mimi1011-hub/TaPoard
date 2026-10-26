@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $base = 'http://127.0.0.1:18781'
-$config = [IO.File]::ReadAllText("$PSScriptRoot\dist\data\settings.json", [Text.Encoding]::UTF8) | ConvertFrom-Json
+$config = [IO.File]::ReadAllText("$PSScriptRoot\dist\data\settings-v2.json", [Text.Encoding]::UTF8) | ConvertFrom-Json
+if ($config.schemaVersion -ne 2) { throw 'Unexpected settings schema version' }
 $headers = @{ Authorization = 'Bearer ' + $config.token }
 $shortHeaders = @{ Authorization = 'Bearer ' + $config.pairingKey }
 if ($config.pairingKey -notmatch '^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$') { throw 'Short pairing key missing or invalid' }
@@ -80,6 +81,7 @@ Assert-Status '/api/import' 403 $headers 'POST' '{}'
 Assert-Status '/api/action' 400 $headers 'POST' '{"action":"launch","id":"missing-test-app"}'
 Assert-Status '/api/action' 400 $headers 'POST' '{"action":"arbitrary-command"}'
 Assert-Status '/data/settings.json' 404 $headers
+Assert-Status '/data/settings-v2.json' 404 $headers
 $p = Get-Process TaPoard
 $cpuStart = $p.TotalProcessorTime.TotalSeconds
 Start-Sleep -Seconds 5

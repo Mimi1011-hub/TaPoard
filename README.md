@@ -58,7 +58,7 @@ Windowsのネットワーク変更通知を受けて、現在のIPv4アドレス
 - 設定：トレイアイコンの右クリックからブラウザを開きます。登録・キー再発行APIはこのPCからだけ使えます。
 - 終了：トレイアイコンの右クリック → 終了。
 
-設定とキーは `dist\data\settings.json` に保存されます。このファイルを共有しないでください。自宅LAN内のHTTP通信であり、通信内容自体はTLSで暗号化しません。外部公開やルーターのポート転送は不要です。先に設定した旧アプリ向けTailscale Serveは停止しています。
+2.0の設定とキーは `dist\data\settings-v2.json` に保存されます。このファイルを共有しないでください。初回だけ旧 `settings.json` から移行し、旧ファイルは変更せず残します。自宅LAN内のHTTP通信であり、通信内容自体はTLSで暗号化しません。外部公開やルーターのポート転送は不要です。先に設定した旧アプリ向けTailscale Serveは停止しています。
 
 ## 負荷とiPhoneの画面
 
@@ -88,7 +88,8 @@ node tests/mdns-check.js <PCの現在のLANのIPv4アドレス>
 - `src\Program.cs`：起動、設定ファイルの読み込みと移行、通知領域アイコン、共有状態
 - `src\Program.Http.cs`：HTTPの受信・応答、静的ファイル配信、認証判定
 - `src\Program.Api.cs`：`/api/*` の各エンドポイント（状態同期、レイアウト、音量、設定保存、操作実行、ペアリング）
-- `src\Settings.cs`：`settings.json` に保存する設定とボタンの形式
+- `src\Settings.cs`：`settings-v2.json` に保存する設定とボタンの形式
+- `src\SettingsFile.cs`：旧設定からの一度限りの移行と、v2設定の安全な保存
 - `src\DeckLayout.cs`：縦横それぞれの枠数・ボタン配置・フェーダー位置の検証と再配置
 - `src\SecureKeys.cs`：接続キーの乱数生成
 - `web\app.js` / `web\style.css`：スマートフォンとPC設定画面の共通Web画面

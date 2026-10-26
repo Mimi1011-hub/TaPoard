@@ -8,7 +8,7 @@ using System.Threading;
 class Release103Tests {
  static void Check(bool condition,string message){if(!condition)throw new Exception(message);}
  static void Reject(Action action,string message){bool rejected=false;try{action();}catch{rejected=true;}Check(rejected,message);}
- static Settings Fixture(){return new Settings{token="test-phone",pairingKey="test-legacy",columns=5,rows=3,keepAwake=false,speakerSlot=0,micSlot=1,pageCount=1,landscapePageCount=1,portraitPageCount=1,devices=new List<PairedDevice>(),apps=new List<AppEntry>{
+ static Settings Fixture(){return new Settings{schemaVersion=2,token="test-phone",pairingKey="test-legacy",columns=5,rows=3,keepAwake=false,speakerSlot=0,micSlot=1,pageCount=1,landscapePageCount=1,portraitPageCount=1,devices=new List<PairedDevice>(),apps=new List<AppEntry>{
   new AppEntry{id="fixture-landscape",orientation="landscape",name="横コピー",type="hotkey",category="common",action="common-copy",iconKey="copy"},
   new AppEntry{id="fixture-portrait",orientation="portrait",name="縦貼り付け",type="hotkey",category="common",action="common-paste",iconKey="paste"}
  }};}

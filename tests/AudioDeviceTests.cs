@@ -29,7 +29,7 @@ class AudioDeviceTests {
   var device=devices.Find(d=>d.available&&d.target=="speaker");Check(device!=null,"available output for tests");
   Check(IconPresets.ValidColor("#3569c8")&&!IconPresets.ValidColor("red;bad")&&!IconPresets.ValidColor("#3569c8\n"),"color validation");
   Check(IconPresets.Exists("headset")&&IconPresets.Exists("earbuds"),"new device icons");
-  var config=new Settings{token="test-phone",pairingKey="test-short",apps=new List<AppEntry>(),columns=5,rows=3,speakerSlot=0,micSlot=1,keepAwake=true};Set("config",config);Set("admin","test-admin");
+  var config=new Settings{schemaVersion=2,token="test-phone",pairingKey="test-short",apps=new List<AppEntry>(),columns=5,rows=3,speakerSlot=0,micSlot=1,keepAwake=true};Set("config",config);Set("admin","test-admin");
   Request("/api/devices","test-phone",null,404);Request("/api/devices","wrong",null,401);
   string listing=Request("/api/devices","test-admin",null,200);Check(listing.Contains(device.id),"admin lists exact endpoint IDs");
   var app=new AppEntry{name="音声テスト",type="audioDevice",deviceTarget="speaker",deviceId=device.id,iconKey="headset",iconColor="#3569c8"};
