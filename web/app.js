@@ -73,6 +73,7 @@
       memoryUsedBytes: 0,
       memoryTotalBytes: 0,
       history: [],
+      gpus: [],
     },
     audioInteraction = false,
     messageTimer = null,
@@ -113,7 +114,9 @@
         ['widget-clock-analog', 'アナログ時計', '2×2・端末時刻'],
         ['widget-metrics-cpu', 'CPU使用率', '1×1・2秒更新'],
         ['widget-metrics-memory', 'メモリ使用率', '1×1・2秒更新'],
-        ['widget-metrics-overview', 'CPU・メモリ', '2×2・60秒グラフ'],
+        ['widget-metrics-gpu', 'GPU使用率', '1×1・GPUを選択'],
+        ['widget-metrics-gpu-memory', 'GPUメモリ', '1×1・GPUを選択'],
+        ['widget-metrics-overview', 'PC情報', '2×2・60秒グラフ'],
       ],
     },
     {
@@ -1264,10 +1267,21 @@
       gpuId: typeof source.gpuId === 'string' ? source.gpuId : '',
     };
   }
-  function metricDescriptor(primary) {
+  function selectedGpu(gpuId) {
+    var gpus = Array.isArray(metricsState.gpus) ? metricsState.gpus : [];
+    if (gpuId) return gpus.filter(function (gpu) { return gpu && gpu.id === gpuId; })[0] || null;
+    return gpus[0] || null;
+  }
+  function gpuMemoryPercent(gpu) {
+    return gpu && gpu.memoryAvailable && gpu.memoryTotalBytes > 0
+      ? (100 * gpu.memoryUsedBytes) / gpu.memoryTotalBytes
+      : null;
+  }
+  function metricDescriptor(primary, gpuId) {
     if (primary === 'memory') return { label: 'メモリ', value: metricsState.memoryPercent, available: metricsState.memoryAvailable, supported: true };
-    if (primary === 'gpu') return { label: 'GPU', value: null, available: false, supported: false };
-    if (primary === 'gpuMemory') return { label: 'GPUメモリ', value: null, available: false, supported: false };
+    var gpu = selectedGpu(gpuId);
+    if (primary === 'gpu') return { label: 'GPU', value: gpu && gpu.utilizationPercent, available: !!(gpu && gpu.utilizationAvailable), supported: !!gpu };
+    if (primary === 'gpuMemory') return { label: 'GPUメモリ', value: gpuMemoryPercent(gpu), available: !!(gpu && gpu.memoryAvailable), supported: !!gpu };
     return { label: 'CPU', value: metricsState.cpuPercent, available: metricsState.cpuAvailable, supported: metricsState.cpuSupported !== false };
   }
   function metricPercent(value, available, supported) {
@@ -1290,6 +1304,15 @@
       path += (path ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
     });
     return path;
+  }
+  function gpuMetricPath(history, gpuId, name) {
+    return metricPath((history || []).map(function (point) {
+      var values = point && Array.isArray(point.gpus) ? point.gpus : [],
+        gpu = values.filter(function (entry) { return entry && entry.id === gpuId; })[0],
+        mapped = {};
+      mapped.value = gpu ? gpu[name] : null;
+      return mapped;
+    }), 'value');
   }
   function appendMetricRow(root, labelText, value, available, className, supported) {
     var row = document.createElement('div');
@@ -1315,9 +1338,14 @@
       tile.appendChild(heading);
       appendMetricRow(tile, 'CPU', metricsState.cpuPercent, metricsState.cpuAvailable, 'metric-cpu', metricsState.cpuSupported !== false);
       appendMetricRow(tile, 'メモリ', metricsState.memoryPercent, metricsState.memoryAvailable, 'metric-memory');
+      var gpu = selectedGpu(options.gpuId),
+        gpuLabel = gpu && gpu.name ? gpu.name : 'GPU';
+      appendMetricRow(tile, 'GPU', gpu && gpu.utilizationPercent, !!(gpu && gpu.utilizationAvailable), 'metric-gpu', !!gpu);
+      appendMetricRow(tile, 'GPUメモリ', gpuMemoryPercent(gpu), !!(gpu && gpu.memoryAvailable), 'metric-gpu-memory', !!gpu);
       var detail = document.createElement('span');
       detail.className = 'metrics-memory-detail';
-      detail.textContent = bytesText(metricsState.memoryUsedBytes) + ' / ' + bytesText(metricsState.memoryTotalBytes);
+      detail.textContent = gpu ? gpuLabel : bytesText(metricsState.memoryUsedBytes) + ' / ' + bytesText(metricsState.memoryTotalBytes);
+      detail.title = gpuLabel;
       tile.appendChild(detail);
       var graph = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       graph.setAttribute('class', 'metrics-graph');
@@ -1329,15 +1357,21 @@
         path.setAttribute('d', metricPath(metricsState.history || [], definition[0]));
         graph.appendChild(path);
       });
+      if (gpu) [['memoryPercent', 'gpu-memory-line'], ['utilizationPercent', 'gpu-line']].forEach(function (definition) {
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', definition[1]);
+        path.setAttribute('d', gpuMetricPath(metricsState.history || [], gpu.id, definition[0]));
+        graph.appendChild(path);
+      });
       tile.appendChild(graph);
       tile.setAttribute(
         'aria-label',
-        'PC情報 CPU ' + metricPercent(metricsState.cpuPercent, metricsState.cpuAvailable, metricsState.cpuSupported !== false) + ' メモリ ' + metricPercent(metricsState.memoryPercent, metricsState.memoryAvailable),
+        'PC情報 CPU ' + metricPercent(metricsState.cpuPercent, metricsState.cpuAvailable, metricsState.cpuSupported !== false) + ' メモリ ' + metricPercent(metricsState.memoryPercent, metricsState.memoryAvailable) + ' GPU ' + metricPercent(gpu && gpu.utilizationPercent, !!(gpu && gpu.utilizationAvailable), !!gpu),
       );
     } else {
       var primary = options.primary;
       if (options.cycle) primary = Math.floor(Date.now() / 4000) % 2 ? 'memory' : 'cpu';
-      var descriptor = metricDescriptor(primary),
+      var descriptor = metricDescriptor(primary, options.gpuId),
         name = document.createElement('span'),
         value = document.createElement('strong');
       name.className = 'metric-name';
@@ -1408,18 +1442,20 @@
         options: { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false },
       };
     }
-    if (action === 'widget-metrics-cpu' || action === 'widget-metrics-memory' || action === 'widget-metrics-overview') {
+    if (action === 'widget-metrics-cpu' || action === 'widget-metrics-memory' || action === 'widget-metrics-gpu' || action === 'widget-metrics-gpu-memory' || action === 'widget-metrics-overview') {
       var overview = action === 'widget-metrics-overview',
-        memory = action === 'widget-metrics-memory';
+        memory = action === 'widget-metrics-memory',
+        gpu = action === 'widget-metrics-gpu',
+        gpuMemory = action === 'widget-metrics-gpu-memory';
       return {
-        name: overview ? 'CPU・メモリ' : memory ? 'メモリ使用率' : 'CPU使用率',
+        name: overview ? 'PC情報' : memory ? 'メモリ使用率' : gpu ? 'GPU使用率' : gpuMemory ? 'GPUメモリ' : 'CPU使用率',
         type: 'metrics',
         category: 'widget',
         size: overview ? 2 : 1,
         width: overview ? 2 : 1,
         height: overview ? 2 : 1,
         hideLabel: true,
-        options: { primary: memory ? 'memory' : 'cpu', cycle: false, gpuId: '' },
+        options: { primary: memory ? 'memory' : gpu ? 'gpu' : gpuMemory ? 'gpuMemory' : 'cpu', cycle: false, gpuId: '' },
       };
     }
     return null;
@@ -2601,15 +2637,41 @@
     var primaryLabel = document.createElement('label');
     primaryLabel.textContent = '1マスで表示する項目';
     var primary = document.createElement('select');
-    [['cpu', 'CPU使用率'], ['memory', 'メモリ使用率']].forEach(function (pair) {
+    [['cpu', 'CPU使用率'], ['memory', 'メモリ使用率'], ['gpu', 'GPU使用率'], ['gpuMemory', 'GPUメモリ使用率']].forEach(function (pair) {
       var option = document.createElement('option');
       option.value = pair[0];
       option.textContent = pair[1];
       primary.appendChild(option);
     });
-    primary.value = fields.options.primary === 'memory' ? 'memory' : 'cpu';
+    primary.value = fields.options.primary;
     primaryLabel.appendChild(primary);
     area.appendChild(primaryLabel);
+    var gpuLabel = document.createElement('label');
+    gpuLabel.textContent = '表示するGPU';
+    var gpuSelect = document.createElement('select'),
+      availableGpus = Array.isArray(metricsState.gpus) ? metricsState.gpus : [];
+    if (!availableGpus.length) {
+      var noGpu = document.createElement('option');
+      noGpu.value = '';
+      noGpu.textContent = 'GPUを検出中／未対応';
+      gpuSelect.appendChild(noGpu);
+    }
+    availableGpus.forEach(function (gpu) {
+      var option = document.createElement('option');
+      option.value = gpu.id;
+      option.textContent = gpu.name || gpu.id;
+      gpuSelect.appendChild(option);
+    });
+    var configuredGpuAvailable = availableGpus.some(function (gpu) { return gpu.id === fields.options.gpuId; });
+    if (fields.options.gpuId && !configuredGpuAvailable) {
+      var missingGpu = document.createElement('option');
+      missingGpu.value = fields.options.gpuId;
+      missingGpu.textContent = '以前のGPU（現在は未接続）';
+      gpuSelect.appendChild(missingGpu);
+    }
+    gpuSelect.value = fields.options.gpuId || (availableGpus[0] ? availableGpus[0].id : '');
+    gpuLabel.appendChild(gpuSelect);
+    area.appendChild(gpuLabel);
     var cycleLabel = document.createElement('label'),
       cycle = document.createElement('input');
     cycle.type = 'checkbox';
@@ -2620,14 +2682,18 @@
     function previewMetrics() {
       fields.options.primary = primary.value;
       fields.options.cycle = cycle.checked;
+      fields.options.gpuId = gpuSelect.value;
+      gpuLabel.hidden = primary.value !== 'gpu' && primary.value !== 'gpuMemory' && (fields.width !== 2 || fields.height !== 2);
       deckApps = rows.map(rowData);
       renderPreview();
     }
     primary.onchange = previewMetrics;
     cycle.onchange = previewMetrics;
+    gpuSelect.onchange = previewMetrics;
+    previewMetrics();
     var note = document.createElement('p');
     note.className = 'editor-feedback';
-    note.textContent = '4マスではCPU・メモリと直近60秒のグラフを同時表示します。表示中だけPCから2秒ごとに取得します。';
+    note.textContent = '4マスではCPU・メモリ・選択したGPUと直近60秒のグラフを表示します。表示中だけPCから2秒ごとに取得します。';
     area.appendChild(note);
     box.appendChild(area);
   }

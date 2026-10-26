@@ -972,6 +972,10 @@ textarea {
 }
 .metrics-widget:active { transform: none; }
 .metrics-inactive { opacity: 0.72; }
+.metrics-large {
+  justify-content: flex-start;
+  gap: 1px !important;
+}
 .metrics-small .metric-name {
   color: #a9b9d6;
   font-size: clamp(8px, 2.2vw, 15px);
@@ -1004,12 +1008,17 @@ textarea {
 }
 .metric-cpu strong { color: #76a4ff; }
 .metric-memory strong { color: #63d2b9; }
+.metric-gpu strong { color: #f7bd61; }
+.metric-gpu-memory strong { color: #d28aff; }
 .metrics-memory-detail {
   z-index: 1;
   align-self: flex-end;
   color: #8f9aae;
   font-size: clamp(6px, 1.4vw, 10px);
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .metrics-graph {
   position: absolute;
@@ -1028,6 +1037,8 @@ textarea {
 }
 .metrics-graph .cpu-line { stroke: #76a4ff; }
 .metrics-graph .memory-line { stroke: #63d2b9; }
+.metrics-graph .gpu-line { stroke: #f7bd61; }
+.metrics-graph .gpu-memory-line { stroke: #d28aff; }
 .preview-grid .metrics-widget { padding: 3px !important; }
 .preview-grid .metrics-heading,
 .preview-grid .metrics-small .metric-name { font-size: clamp(5px, 0.8vw, 8px); }

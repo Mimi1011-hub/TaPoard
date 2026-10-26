@@ -8,6 +8,7 @@ class MetricsPoint
     public long timestamp { get; set; }
     public double? cpuPercent { get; set; }
     public double? memoryPercent { get; set; }
+    public GpuMetricPoint[] gpus { get; set; }
 }
 
 class MetricsSnapshot
@@ -22,6 +23,7 @@ class MetricsSnapshot
     public ulong memoryTotalBytes { get; set; }
     public long sampledAt { get; set; }
     public MetricsPoint[] history { get; set; }
+    public GpuMetricInfo[] gpus { get; set; }
 }
 
 // A single process-wide sampler serves every visible metrics widget. It is armed
@@ -81,6 +83,9 @@ static class MetricsSampler
     static readonly List<MetricsPoint> History = new List<MetricsPoint>();
     internal static Func<SystemCounters> CounterReader = ReadSystemCounters;
     internal static Func<MemoryCounters> MemoryReader = ReadMemoryCounters;
+    internal static Action GpuStarter = GpuMetrics.Start;
+    internal static Func<GpuMetricInfo[]> GpuReader = GpuMetrics.Read;
+    internal static Action GpuStopper = GpuMetrics.Stop;
     internal static Action Changed;
     static bool running;
     static bool timerArmed;
@@ -95,7 +100,7 @@ static class MetricsSampler
 
     internal static void SetActive(bool active)
     {
-        bool sample = false;
+        bool sample = false, stopGpu = false;
         lock (Sync)
         {
             if (active == running)
@@ -108,9 +113,11 @@ static class MetricsSampler
             latest.active = active;
             SampleTimer.Change(Timeout.Infinite, Timeout.Infinite);
             sample = active;
+            stopGpu = !active;
         }
         if (sample)
         {
+            try { GpuStarter(); } catch { }
             TakeSample();
             lock (Sync)
             {
@@ -118,6 +125,8 @@ static class MetricsSampler
                     SampleTimer.Change(IntervalMilliseconds, Timeout.Infinite);
             }
         }
+        else if (stopGpu)
+            try { GpuStopper(); } catch { }
     }
 
     internal static MetricsSnapshot PublicSnapshot()
@@ -136,6 +145,7 @@ static class MetricsSampler
                 memoryTotalBytes = latest.memoryTotalBytes,
                 sampledAt = latest.sampledAt,
                 history = History.ToArray(),
+                gpus = latest.gpus ?? new GpuMetricInfo[0],
             };
         }
     }
@@ -170,6 +180,9 @@ static class MetricsSampler
         SetActive(false);
         CounterReader = ReadSystemCounters;
         MemoryReader = ReadMemoryCounters;
+        GpuStarter = GpuMetrics.Start;
+        GpuReader = GpuMetrics.Read;
+        GpuStopper = GpuMetrics.Stop;
         Changed = null;
     }
 
@@ -196,10 +209,13 @@ static class MetricsSampler
     {
         SystemCounters counters;
         MemoryCounters memory;
+        GpuMetricInfo[] gpus;
         try { counters = CounterReader(); }
         catch { counters = new SystemCounters(); }
         try { memory = MemoryReader(); }
         catch { memory = new MemoryCounters(); }
+        try { gpus = GpuReader() ?? new GpuMetricInfo[0]; }
+        catch { gpus = new GpuMetricInfo[0]; }
         Action changed = null;
         lock (Sync)
         {
@@ -226,8 +242,22 @@ static class MetricsSampler
                 memoryUsedBytes = used,
                 memoryTotalBytes = memory.available ? memory.total : 0,
                 sampledAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                gpus = gpus,
             };
-            History.Add(new MetricsPoint { timestamp = latest.sampledAt, cpuPercent = cpu, memoryPercent = memoryPercent });
+            var gpuPoints = new List<GpuMetricPoint>();
+            foreach (var gpu in gpus)
+            {
+                double? gpuMemory = gpu.memoryAvailable && gpu.memoryTotalBytes != 0
+                    ? (double?)Math.Round(100.0 * gpu.memoryUsedBytes / gpu.memoryTotalBytes, 1, MidpointRounding.AwayFromZero)
+                    : null;
+                gpuPoints.Add(new GpuMetricPoint
+                {
+                    id = gpu.id,
+                    utilizationPercent = gpu.utilizationAvailable ? gpu.utilizationPercent : null,
+                    memoryPercent = gpuMemory,
+                });
+            }
+            History.Add(new MetricsPoint { timestamp = latest.sampledAt, cpuPercent = cpu, memoryPercent = memoryPercent, gpus = gpuPoints.ToArray() });
             if (History.Count > MaximumHistory)
                 History.RemoveRange(0, History.Count - MaximumHistory);
             changed = Changed;
@@ -238,7 +268,7 @@ static class MetricsSampler
 
     static MetricsSnapshot EmptySnapshot()
     {
-        return new MetricsSnapshot { cpuSupported = true, history = new MetricsPoint[0] };
+        return new MetricsSnapshot { cpuSupported = true, history = new MetricsPoint[0], gpus = new GpuMetricInfo[0] };
     }
 
     static SystemCounters ReadSystemCounters()

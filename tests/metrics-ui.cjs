@@ -11,7 +11,14 @@ let metrics = {
   cpuPercent: 25.5, memoryPercent: 50.0,
   memoryUsedBytes: 8589934592, memoryTotalBytes: 17179869184,
   sampledAt: Date.now(),
-  history: [{ timestamp: Date.now() - 2000, cpuPercent: 20, memoryPercent: 49 }, { timestamp: Date.now(), cpuPercent: 25.5, memoryPercent: 50 }],
+  gpus: [
+    { id: 'gpu-a', name: 'Test GPU A', utilizationAvailable: true, utilizationPercent: 35.5, memoryAvailable: true, memoryUsedBytes: 3221225472, memoryTotalBytes: 8589934592 },
+    { id: 'gpu-b', name: 'Test GPU B', utilizationAvailable: true, utilizationPercent: 66.6, memoryAvailable: true, memoryUsedBytes: 1073741824, memoryTotalBytes: 4294967296 },
+  ],
+  history: [
+    { timestamp: Date.now() - 2000, cpuPercent: 20, memoryPercent: 49, gpus: [{ id: 'gpu-a', utilizationPercent: 30, memoryPercent: 30 }] },
+    { timestamp: Date.now(), cpuPercent: 25.5, memoryPercent: 50, gpus: [{ id: 'gpu-a', utilizationPercent: 35.5, memoryPercent: 37.5 }] },
+  ],
 };
 const syncWaiters = new Set();
 const stateVisibleIds = [];
@@ -103,33 +110,48 @@ const server = http.createServer(async (req, res) => {
     assert.equal(await admin.locator('#preview-deck .metrics-small .metric-value').innerText(), '25.5%');
 
     await group.locator('summary').click();
+    const savedGpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
+    const refreshedGpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');
+    await group.locator('.shortcut-row[data-action="widget-metrics-gpu"]').getByRole('button', { name: '追加', exact: true }).click();
+    await savedGpu;
+    await refreshedGpu;
+    await admin.waitForFunction(() => document.querySelectorAll('#preview-deck .metrics-widget').length === 2);
+    assert.equal(apps[1].options.primary, 'gpu');
+    assert.equal(await admin.locator('#preview-deck .metrics-small').nth(1).locator('.metric-value').innerText(), '35.5%');
+    const gpuEditor = admin.locator('.editor').nth(1);
+    await gpuEditor.locator('.metrics-settings select').nth(1).selectOption('gpu-b');
+    assert.equal(await admin.locator('#preview-deck .metrics-small').nth(1).locator('.metric-value').innerText(), '66.6%');
+
+    await group.locator('summary').click();
     const savedOverview = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
     const refreshedOverview = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');
     await group.locator('.shortcut-row[data-action="widget-metrics-overview"]').getByRole('button', { name: '追加', exact: true }).click();
     await savedOverview;
     await refreshedOverview;
-    await admin.waitForFunction(() => document.querySelectorAll('#preview-deck .metrics-widget').length === 2);
-    assert.equal(apps[1].width, 2);
-    assert.equal(apps[1].height, 2);
-    assert.equal(await admin.locator('#preview-deck .metrics-large .metric-row').count(), 2);
+    await admin.waitForFunction(() => document.querySelectorAll('#preview-deck .metrics-widget').length === 3);
+    assert.equal(apps[2].width, 2);
+    assert.equal(apps[2].height, 2);
+    assert.equal(await admin.locator('#preview-deck .metrics-large .metric-row').count(), 4);
     assert((await admin.locator('#preview-deck .metrics-large .cpu-line').getAttribute('d')).length > 0);
+    assert((await admin.locator('#preview-deck .metrics-large .gpu-line').getAttribute('d')).length > 0);
 
     const phone = await browser.newPage({ viewport: { width: 667, height: 375 } });
     phone.on('pageerror', error => errors.push(String(error)));
     await phone.goto(base + '/#connect=test');
-    const cpuTile = phone.locator('#deck .metrics-small');
+    const cpuTile = phone.locator('#deck .metrics-small').first();
     await cpuTile.waitFor();
     await cpuTile.evaluate(node => { node.dataset.identityCheck = 'same-node'; });
     metrics = {
       ...metrics, cpuPercent: 67.8, memoryPercent: 55.5, sampledAt: Date.now(),
-      history: [...metrics.history, { timestamp: Date.now(), cpuPercent: 67.8, memoryPercent: 55.5 }],
+      gpus: [{ ...metrics.gpus[0], utilizationPercent: 72.3 }],
+      history: [...metrics.history, { timestamp: Date.now(), cpuPercent: 67.8, memoryPercent: 55.5, gpus: [{ id: 'gpu-a', utilizationPercent: 72.3, memoryPercent: 37.5 }] }],
     };
     bump(false);
     await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '67.8%');
     assert.equal(await cpuTile.getAttribute('data-identity-check'), 'same-node', 'metrics update rebuilt the full deck');
     assert(stateVisibleIds.some(value => value.includes('metric-0')) || viewCalls.some(call => call.visibleIds.includes('metric-0')));
     assert.deepEqual(errors, []);
-    console.log('PASS metrics UI: 1x1 and 2x2 widgets, history graph, subscription and in-place updates');
+    console.log('PASS metrics UI: CPU, memory, GPU and GPU memory widgets, history graph, subscription and in-place updates');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();
