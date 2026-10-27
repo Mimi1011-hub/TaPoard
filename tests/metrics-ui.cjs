@@ -149,6 +149,21 @@ const server = http.createServer(async (req, res) => {
     bump(false);
     await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '67.8%');
     assert.equal(await cpuTile.getAttribute('data-identity-check'), 'same-node', 'metrics update rebuilt the full deck');
+    const fits = () => phone.evaluate(() => {
+      const tile = document.querySelector('#deck .metrics-small'),
+        value = tile.querySelector('.metric-value'),
+        box = value.getBoundingClientRect(),
+        frame = tile.getBoundingClientRect();
+      return { text: value.textContent, status: value.classList.contains('metric-status'), fits: box.left >= frame.left - 0.5 && box.right <= frame.right + 0.5 && value.scrollWidth <= value.clientWidth + 1 };
+    });
+    metrics = { ...metrics, cpuPercent: 100, sampledAt: Date.now() };
+    bump(false);
+    await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '100.0%');
+    assert.deepEqual(await fits(), { text: '100.0%', status: false, fits: true }, 'the widest percentage fits a 1x1 tile');
+    metrics = { ...metrics, cpuAvailable: false, sampledAt: Date.now() };
+    bump(false);
+    await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '更新待ち');
+    assert.deepEqual(await fits(), { text: '更新待ち', status: true, fits: true }, 'status text uses the smaller style and fits');
     assert(stateVisibleIds.some(value => value.includes('metric-0')) || viewCalls.some(call => call.visibleIds.includes('metric-0')));
     assert.deepEqual(errors, []);
     console.log('PASS metrics UI: CPU, memory, GPU and GPU memory widgets, history graph, subscription and in-place updates');
