@@ -52,15 +52,17 @@ async function api(path, key = 'test-admin', body) {
     assert.equal(settings.landscapeControls.speakerSlot, 0, 'the shared speaker stays');
     assert.equal(await admin.locator('#preview-deck .audio-fader').count(), 1, 'page 2 shows only the mic fader');
 
-    // A page-only shape change.
-    await menu(0, '横3マス（3×1）');
+    // The new 2-row 8-cell fader on page 2 only.
+    await menu(0, '8マス（4×2）');
     settings = (await api('settings')).data;
     const page2 = settings.landscapeControlPages.find(p => p.page === 1);
-    assert.equal(page2.micWidth, 3);
-    assert.equal(page2.micHeight, 1);
+    assert.equal(page2.micWidth, 4);
+    assert.equal(page2.micHeight, 2);
     assert.equal(settings.landscapeControls.micWidth, 1, 'the shared mic stays 1x1');
     const mic = admin.locator('#preview-deck .audio-fader');
-    assert.equal(await mic.evaluate(e => e.style.gridColumn), '2 / span 3');
+    assert.equal(await mic.evaluate(e => e.style.gridColumn), '2 / span 4');
+    assert.equal(await mic.evaluate(e => e.style.gridRow), '1 / span 2');
+    assert(await mic.evaluate(e => e.classList.contains('horizontal')), '4x2 faders use the horizontal layout');
 
     // The catalog shows the hidden speaker again on this page.
     const group = admin.locator('.shortcut-group').first();
@@ -80,8 +82,12 @@ async function api(path, key = 'test-admin', body) {
       ['1 / span 1', '2 / span 1'],
     );
 
+    // Each new fader shape is accepted by the PC; a 5x1 fader is not.
+    for (const [width, height] of [[4, 1], [3, 2], [4, 2]])
+      assert.equal((await api('layout', 'test-admin', { columns: 6, rows: 3, keepAwake: false, orientation: 'landscape', page: 0, speakerRow: 1, speakerColumn: 0, speakerWidth: width, speakerHeight: height, micRow: 0, micColumn: 5, micWidth: 1, micHeight: 1 })).status, 200, width + 'x' + height);
+    assert.equal((await api('layout', 'test-admin', { columns: 6, rows: 3, keepAwake: false, orientation: 'landscape', page: 0, speakerRow: 1, speakerColumn: 0, speakerWidth: 5, speakerHeight: 1, micRow: 0, micColumn: 5, micWidth: 1, micHeight: 1 })).status, 400);
     assert.deepEqual(errors, []);
-    console.log('PASS fader pages UI: per-page hide, show and shape, shared faders on other pages');
+    console.log('PASS fader pages UI: per-page hide, show and shape, 4x1/3x2/4x2 faders, shared faders on other pages');
   } finally {
     if (browser) await browser.close();
     host.kill();

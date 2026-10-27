@@ -975,10 +975,10 @@
       muted = audioState[prefix + 'Muted'],
       available = audioState[prefix + 'Available'] !== false,
       control = controlRect(target, currentOrientation(preview)),
-      horizontal = control.width === 3 && control.height === 1;
+      horizontal = control.width > control.height;
     var tile = document.createElement('div');
     tile.className =
-      'deck-key audio-fader' + (horizontal ? ' horizontal' : '') + (muted ? ' muted' : '') + (!available ? ' unavailable' : '');
+      'deck-key audio-fader' + (horizontal ? ' horizontal' : '') + (horizontal && control.height > 1 ? ' tall' : '') + (muted ? ' muted' : '') + (!available ? ' unavailable' : '');
     var mute = document.createElement(preview ? 'div' : 'button');
     mute.className = 'audio-mute';
     mute.innerHTML = isMic ? micIcon : speakerIcon;
@@ -2931,7 +2931,7 @@
       true,
     );
   }
-  var FADER_SHAPES = [[1, 1, '1マス'], [2, 2, '4マス'], [3, 1, '横3マス']];
+  var FADER_SHAPES = [[1, 1, '1マス'], [2, 2, '4マス'], [3, 1, '横3マス'], [4, 1, '横4マス'], [3, 2, '6マス'], [4, 2, '8マス']];
   function openAudioContextMenu(e, target, slot) {
     if (!admin) return;
     e.preventDefault();

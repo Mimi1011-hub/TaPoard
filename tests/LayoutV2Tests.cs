@@ -102,5 +102,21 @@ class LayoutV2Tests
         pages.landscapeControlPages.Add(new ControlPage { page = 3, micHidden = true });
         Reject(delegate { DeckLayout.Validate(pages); }, "duplicate fader pages are rejected");
         pages.landscapeControlPages.Clear();
+
+        // Larger faders: 4x1, 3x2 and 4x2 are allowed per page, 5x1 is not.
+        foreach (var shape in new[] { new[] { 4, 1 }, new[] { 3, 2 }, new[] { 4, 2 } })
+        {
+            pages.landscapeControlPages.Clear();
+            pages.landscapeControlPages.Add(new ControlPage { page = 0, speaker = new ControlPlacement { row = 1, column = 0, width = shape[0], height = shape[1] }, mic = new ControlPlacement { row = 0, column = 4, width = 1, height = 1 } });
+            DeckLayout.Validate(pages);
+        }
+        Check(true, "4x1, 3x2 and 4x2 faders validate");
+        pages.landscapeControlPages[0].speaker = new ControlPlacement { row = 1, column = 0, width = 5, height = 1 };
+        Reject(delegate { DeckLayout.Validate(pages); }, "a 5x1 fader is rejected");
+        pages.landscapeControlPages[0].speaker = new ControlPlacement { row = 1, column = 1, width = 4, height = 2 };
+        pages.landscapeColumns = 4; pages.landscapeRows = 3;
+        DeckLayout.Reflow(pages, "landscape", 5);
+        DeckLayout.Validate(pages);
+        Check(pages.landscapeControlPages[0].speaker.column == 0 && pages.landscapeControlPages[0].mic.column < 4, "grid reflow keeps per-page faders inside the grid");
     }
 }
