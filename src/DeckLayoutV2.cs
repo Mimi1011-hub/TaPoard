@@ -48,11 +48,72 @@ static class DeckLayout
         else { if (mic) s.landscapeMic = value; else s.landscapeSpeaker = value; }
     }
 
-    internal static ControlLayout GetControls(Settings s, bool portrait)
+    internal static List<ControlPage> ControlPages(Settings s, bool portrait)
     {
-        MigrateControls(s);
+        var pages = portrait ? s.portraitControlPages : s.landscapeControlPages;
+        if (pages == null)
+        {
+            pages = new List<ControlPage>();
+            if (portrait) s.portraitControlPages = pages; else s.landscapeControlPages = pages;
+        }
+        return pages;
+    }
+
+    static ControlPage FindPage(Settings s, bool portrait, int page)
+    {
+        foreach (var entry in ControlPages(s, portrait)) if (entry != null && entry.page == page) return entry;
+        return null;
+    }
+
+    // The fader as shown on one page, or null when that page hides it.
+    internal static ControlPlacement PagePlacement(Settings s, bool portrait, bool mic, int page)
+    {
+        var entry = FindPage(s, portrait, page);
+        if (entry == null) return Placement(s, portrait, mic);
+        if (mic ? entry.micHidden : entry.speakerHidden) return null;
+        return (mic ? entry.mic : entry.speaker) ?? Placement(s, portrait, mic);
+    }
+
+    internal static ControlLayout GetPageControls(Settings s, bool portrait, int page, out bool speakerHidden, out bool micHidden)
+    {
+        var entry = FindPage(s, portrait, page);
+        speakerHidden = entry != null && entry.speakerHidden; micHidden = entry != null && entry.micHidden;
         int columns = Columns(s, portrait);
-        var speaker = Placement(s, portrait, false); var mic = Placement(s, portrait, true);
+        var speaker = (entry != null ? entry.speaker : null) ?? Placement(s, portrait, false);
+        var mic = (entry != null ? entry.mic : null) ?? Placement(s, portrait, true);
+        return Layout(speaker, mic, columns);
+    }
+
+    // Stores one page's faders; a page that matches the shared placement is dropped again.
+    internal static void SetPageControls(Settings s, bool portrait, int page, ControlLayout c, bool speakerHidden, bool micHidden)
+    {
+        if (page < 0 || page >= MaxPages) throw new Exception("ページ番号が正しくありません。");
+        int columns = Math.Max(1, Columns(s, portrait));
+        var speaker = FromLayout(c.speakerRow, c.speakerColumn, c.speakerSlot, c.speakerWidth, c.speakerHeight, c.speakerSize, columns);
+        var mic = FromLayout(c.micRow, c.micColumn, c.micSlot, c.micWidth, c.micHeight, c.micSize, columns);
+        var pages = ControlPages(s, portrait);
+        pages.RemoveAll(entry => entry == null || entry.page == page);
+        if (!speakerHidden && !micHidden && Same(speaker, Placement(s, portrait, false)) && Same(mic, Placement(s, portrait, true))) return;
+        pages.Add(new ControlPage { page = page, speaker = speaker, mic = mic, speakerHidden = speakerHidden, micHidden = micHidden });
+        pages.Sort((a, b) => a.page.CompareTo(b.page));
+    }
+
+    static bool Same(ControlPlacement a, ControlPlacement b)
+    {
+        return a != null && b != null && a.row == b.row && a.column == b.column && a.width == b.width && a.height == b.height;
+    }
+
+    static ControlPlacement FromLayout(int row, int column, int slot, int width, int height, int size, int columns)
+    {
+        return new ControlPlacement
+        {
+            row = row >= 0 ? row : slot / columns, column = column >= 0 ? column : slot % columns,
+            width = Positive(width, size), height = Positive(height, size),
+        };
+    }
+
+    static ControlLayout Layout(ControlPlacement speaker, ControlPlacement mic, int columns)
+    {
         return new ControlLayout
         {
             speakerSlot = speaker.row * columns + speaker.column, micSlot = mic.row * columns + mic.column,
@@ -60,6 +121,12 @@ static class DeckLayout
             speakerRow = speaker.row, speakerColumn = speaker.column, speakerWidth = speaker.width, speakerHeight = speaker.height,
             micRow = mic.row, micColumn = mic.column, micWidth = mic.width, micHeight = mic.height,
         };
+    }
+
+    internal static ControlLayout GetControls(Settings s, bool portrait)
+    {
+        MigrateControls(s);
+        return Layout(Placement(s, portrait, false), Placement(s, portrait, true), Columns(s, portrait));
     }
 
     internal static void SetControls(Settings s, bool portrait, ControlLayout c)
@@ -165,8 +232,9 @@ static class DeckLayout
     static bool Fits(HashSet<string> occupied, TilePosition p, int width, int height, int columns, int rows, Settings s, bool portrait)
     {
         if (p == null || p.page < 0 || p.page >= MaxPages || p.row < 0 || p.column < 0 || p.row + height > rows || p.column + width > columns) return false;
-        var speaker = Placement(s, portrait, false); var mic = Placement(s, portrait, true);
-        if (Overlap(p.row, p.column, width, height, speaker.row, speaker.column, speaker.width, speaker.height) || Overlap(p.row, p.column, width, height, mic.row, mic.column, mic.width, mic.height)) return false;
+        var speaker = PagePlacement(s, portrait, false, p.page); var mic = PagePlacement(s, portrait, true, p.page);
+        if (speaker != null && Overlap(p.row, p.column, width, height, speaker.row, speaker.column, speaker.width, speaker.height)) return false;
+        if (mic != null && Overlap(p.row, p.column, width, height, mic.row, mic.column, mic.width, mic.height)) return false;
         return AreaFree(occupied, p.page, p.row, p.column, width, height);
     }
 
@@ -213,6 +281,13 @@ static class DeckLayout
         var speaker = FindControl(controls, Placement(s, portrait, false), columns, rows); MarkArea(controls, 0, speaker.row, speaker.column, speaker.width, speaker.height);
         var mic = FindControl(controls, Placement(s, portrait, true), columns, rows); MarkArea(controls, 0, mic.row, mic.column, mic.width, mic.height);
         SetPlacement(s, portrait, false, speaker); SetPlacement(s, portrait, true, mic); MirrorLegacy(s, portrait);
+        foreach (var entry in ControlPages(s, portrait))
+        {
+            var pageControls = new HashSet<string>();
+            if (entry.speaker != null) { entry.speaker = FindControl(pageControls, entry.speaker, columns, rows); MarkArea(pageControls, 0, entry.speaker.row, entry.speaker.column, entry.speaker.width, entry.speaker.height); }
+            else if (!entry.speakerHidden) MarkArea(pageControls, 0, speaker.row, speaker.column, speaker.width, speaker.height);
+            if (entry.mic != null) entry.mic = FindControl(pageControls, entry.mic, columns, rows);
+        }
         var occupied = new HashSet<string>();
         foreach (var app in s.apps) if (app.orientation == orientation)
         {
@@ -228,10 +303,29 @@ static class DeckLayout
     }
     internal static int Pages(Settings s, string orientation) { return Math.Max(orientation == "portrait" ? s.portraitPageCount : s.landscapePageCount, RequiredPages(s, orientation)); }
     static bool ControlDimensionsValid(ControlPlacement p) { return p != null && ((p.width == 1 && p.height == 1) || (p.width == 2 && p.height == 2) || (p.width == 3 && p.height == 1)); }
+    static bool ControlFits(ControlPlacement p, int columns, int rows)
+    {
+        return ControlDimensionsValid(p) && p.row >= 0 && p.column >= 0 && p.row + p.height <= rows && p.column + p.width <= columns;
+    }
+
+    static bool PairValid(ControlPlacement a, ControlPlacement b, int columns, int rows)
+    {
+        if (a != null && !ControlFits(a, columns, rows)) return false;
+        if (b != null && !ControlFits(b, columns, rows)) return false;
+        return a == null || b == null || !Overlap(a.row, a.column, a.width, a.height, b.row, b.column, b.width, b.height);
+    }
+
     static bool ControlsValid(Settings s, bool portrait)
     {
         int columns = Columns(s, portrait), rows = Rows(s, portrait); var a = Placement(s, portrait, false); var b = Placement(s, portrait, true);
-        return ControlDimensionsValid(a) && ControlDimensionsValid(b) && a.row >= 0 && a.column >= 0 && b.row >= 0 && b.column >= 0 && a.row + a.height <= rows && a.column + a.width <= columns && b.row + b.height <= rows && b.column + b.width <= columns && !Overlap(a.row, a.column, a.width, a.height, b.row, b.column, b.width, b.height);
+        if (a == null || b == null || !PairValid(a, b, columns, rows)) return false;
+        var seen = new HashSet<int>();
+        foreach (var entry in ControlPages(s, portrait))
+        {
+            if (entry == null || entry.page < 0 || entry.page >= MaxPages || !seen.Add(entry.page)) return false;
+            if (!PairValid(PagePlacement(s, portrait, false, entry.page), PagePlacement(s, portrait, true, entry.page), columns, rows)) return false;
+        }
+        return true;
     }
 
     internal static void Validate(Settings s)

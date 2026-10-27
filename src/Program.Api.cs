@@ -252,6 +252,8 @@ partial class Program
                     micSize = config.micSize,
                     landscapeControls = Controls(false),
                     portraitControls = Controls(true),
+                    landscapeControlPages = ControlPages(false),
+                    portraitControlPages = ControlPages(true),
                     audio = AudioControl.Read(),
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
@@ -301,6 +303,8 @@ partial class Program
                     micSize = config.micSize,
                     landscapeControls = Controls(false),
                     portraitControls = Controls(true),
+                    landscapeControlPages = ControlPages(false),
+                    portraitControlPages = ControlPages(true),
                     audio = AudioControl.Read(),
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
@@ -353,6 +357,8 @@ partial class Program
                     micSize = config.micSize,
                     landscapeControls = Controls(false),
                     portraitControls = Controls(true),
+                    landscapeControlPages = ControlPages(false),
+                    portraitControlPages = ControlPages(true),
                     audio = AudioControl.Read(),
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
@@ -552,6 +558,8 @@ partial class Program
                     micSize = config.micSize,
                     landscapeControls = Controls(false),
                     portraitControls = Controls(true),
+                    landscapeControlPages = ControlPages(false),
+                    portraitControlPages = ControlPages(true),
                     landscapePage = landscapePage,
                     portraitPage = portraitPage,
                     landscapePages = landscapePages,
@@ -565,7 +573,12 @@ partial class Program
     // Applies the fader fields present in the request to the given orientation.
     static void ApplyControlInput(Settings target, bool portrait, Dictionary<string, object> input)
     {
-        var c = DeckLayout.GetControls(target, portrait);
+        // A request with "page" edits only that page; without it the shared placement changes.
+        int page = input.ContainsKey("page") ? Convert.ToInt32(input["page"]) : -1;
+        bool speakerHidden = false, micHidden = false;
+        var c = page >= 0 ? DeckLayout.GetPageControls(target, portrait, page, out speakerHidden, out micHidden) : DeckLayout.GetControls(target, portrait);
+        if (input.ContainsKey("speakerHidden")) speakerHidden = Convert.ToBoolean(input["speakerHidden"]);
+        if (input.ContainsKey("micHidden")) micHidden = Convert.ToBoolean(input["micHidden"]);
         if (input.ContainsKey("speakerSlot"))
         {
             c.speakerSlot = Convert.ToInt32(input["speakerSlot"]);
@@ -594,7 +607,8 @@ partial class Program
         if (input.ContainsKey("micColumn")) c.micColumn = Convert.ToInt32(input["micColumn"]);
         if (input.ContainsKey("micWidth")) c.micWidth = Convert.ToInt32(input["micWidth"]);
         if (input.ContainsKey("micHeight")) c.micHeight = Convert.ToInt32(input["micHeight"]);
-        DeckLayout.SetControls(target, portrait, c);
+        if (page >= 0) DeckLayout.SetPageControls(target, portrait, page, c, speakerHidden, micHidden);
+        else DeckLayout.SetControls(target, portrait, c);
     }
 
     // Volume changes while dragging do not notify other clients; only the final value and mute toggles do.
@@ -826,6 +840,8 @@ partial class Program
         next.micSize = config.micSize;
         DeckLayout.SetControls(next, false, DeckLayout.GetControls(config, false));
         DeckLayout.SetControls(next, true, DeckLayout.GetControls(config, true));
+        next.landscapeControlPages = config.landscapeControlPages;
+        next.portraitControlPages = config.portraitControlPages;
         next.devices = config.devices;
         next.pageCount = config.pageCount;
         next.landscapePageCount = config.landscapePageCount;

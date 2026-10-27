@@ -103,6 +103,25 @@ partial class Program
         };
     }
 
+    // Per-page fader overrides; pages not listed use the orientation's shared controls.
+    static object ControlPages(bool portrait)
+    {
+        var pages = new List<object>();
+        foreach (var entry in DeckLayout.ControlPages(config, portrait))
+        {
+            bool speakerHidden, micHidden;
+            var c = DeckLayout.GetPageControls(config, portrait, entry.page, out speakerHidden, out micHidden);
+            pages.Add(new
+            {
+                page = entry.page, speakerHidden = speakerHidden, micHidden = micHidden,
+                speakerSlot = c.speakerSlot, micSlot = c.micSlot, speakerSize = c.speakerSize, micSize = c.micSize,
+                speakerRow = c.speakerRow, speakerColumn = c.speakerColumn, speakerWidth = c.speakerWidth, speakerHeight = c.speakerHeight,
+                micRow = c.micRow, micColumn = c.micColumn, micWidth = c.micWidth, micHeight = c.micHeight,
+            });
+        }
+        return pages;
+    }
+
     static object Grid(bool portrait)
     {
         return new { columns = DeckLayout.Columns(config, portrait), rows = DeckLayout.Rows(config, portrait) };
