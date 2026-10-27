@@ -164,6 +164,14 @@ const server = http.createServer(async (req, res) => {
     bump(false);
     await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '更新待ち');
     assert.deepEqual(await fits(), { text: '更新待ち', status: true, fits: true }, 'status text uses the smaller style and fits');
+    const selection = await phone.evaluate(() => {
+      const deck = document.getElementById('deck'),
+        style = getComputedStyle(deck),
+        event = new Event('selectstart', { bubbles: true, cancelable: true });
+      deck.querySelector('.deck-key').dispatchEvent(event);
+      return { userSelect: style.userSelect || style.webkitUserSelect, blocked: event.defaultPrevented };
+    });
+    assert.deepEqual(selection, { userSelect: 'none', blocked: true }, 'deck taps cannot start a text selection');
     assert(stateVisibleIds.some(value => value.includes('metric-0')) || viewCalls.some(call => call.visibleIds.includes('metric-0')));
     assert.deepEqual(errors, []);
     console.log('PASS metrics UI: CPU, memory, GPU and GPU memory widgets, history graph, subscription and in-place updates');
