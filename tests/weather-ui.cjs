@@ -17,6 +17,7 @@ const server = http.createServer(async (req, res) => {
   if (path === '/api/state' || path === '/api/sync') { res.end(JSON.stringify(state())); return; }
   if (path === '/api/view') { res.end('{"ok":true,"inputSessions":[]}'); return; }
   if (path === '/api/devices') { res.end('{"devices":[]}'); return; }
+  if (path === '/api/weather/search' && JSON.parse(body).query === 'なし') { res.end('{"results":[]}'); return; }
   if (path === '/api/weather/search' && JSON.parse(body).query === '失敗') { res.writeHead(400); res.end(JSON.stringify({ error: '地域を検索できませんでした。' })); return; }
   if (path === '/api/weather/search') { res.end('{"results":[{"name":"横浜","region":"神奈川県","country":"日本","latitude":35.44,"longitude":139.64,"timezone":"Asia/Tokyo"}]}'); return; }
   if (path === '/api/weather/location') { weatherLocation = { ...JSON.parse(body), configured: true }; res.end(JSON.stringify({ ok: true, weatherLocation, revision: ++revision })); return; }
@@ -44,6 +45,8 @@ const server = http.createServer(async (req, res) => {
     await page.locator('.weather-locate').first().click(); assert.equal(await focused(), 'weather-query', 'the weather editor links to the location search');
     await page.locator('#weather-query').fill('札'); await page.locator('#weather-search').click();
     assert((await page.locator('#weather-results .weather-error').innerText()).includes('2文字以上'), 'a too-short query is explained next to the search box');
+    await page.locator('#weather-query').fill('なし'); await page.locator('#weather-search').click();
+    await page.locator('#weather-results').filter({ hasText: '市・都・府・県まで' }).waitFor({ timeout: 2000 });
     await page.locator('#weather-query').fill('失敗'); await page.locator('#weather-search').click();
     await page.locator('#weather-results .weather-error').filter({ hasText: '検索できませんでした' }).waitFor({ timeout: 2000 });
     weather.configured = false; weatherLocation = { configured: false, name: '', latitude: 0, longitude: 0, timezone: '' }; revision++;

@@ -41,6 +41,7 @@ class WeatherLocationResult
     public double latitude { get; set; }
     public double longitude { get; set; }
     public string timezone { get; set; }
+    public double population { get; set; }
 }
 
 // A single cached Open-Meteo request serves every phone. Network work runs on a
@@ -132,11 +133,41 @@ static class WeatherService
         }
     }
 
+    // Open-Meteo only matches official Japanese names, so "札幌" finds nothing but "札幌市" does.
+    static readonly string[] JapaneseSuffixes = { "市", "都", "府", "県" };
+
     internal static WeatherLocationResult[] Search(string query)
     {
         query = (query ?? "").Trim();
         if (query.Length < 2 || query.Length > 80) throw new Exception("地域名は2～80文字で入力してください。");
-        string url = "https://geocoding-api.open-meteo.com/v1/search?count=8&language=ja&format=json&name=" + Uri.EscapeDataString(query);
+        var result = SearchOnce(query);
+        if (result.Count == 0 && NeedsJapaneseSuffix(query))
+            foreach (string suffix in JapaneseSuffixes)
+            {
+                result = SearchOnce(query + suffix);
+                if (result.Count != 0) break;
+            }
+        // Larger places first, so "横浜" lists 横浜市 before a small village of the same name.
+        var order = new List<KeyValuePair<double, int>>();
+        for (int i = 0; i < result.Count; i++) order.Add(new KeyValuePair<double, int>(result[i].population, i));
+        order.Sort((a, b) => a.Key != b.Key ? b.Key.CompareTo(a.Key) : a.Value.CompareTo(b.Value));
+        var sorted = new WeatherLocationResult[result.Count];
+        for (int i = 0; i < order.Count; i++) sorted[i] = result[order[i].Value];
+        return sorted;
+    }
+
+    static bool NeedsJapaneseSuffix(string query)
+    {
+        bool japanese = false;
+        foreach (char c in query) if (c >= 0x3040 && c <= 0x9FFF) { japanese = true; break; }
+        if (!japanese) return false;
+        string last = query.Substring(query.Length - 1);
+        return System.Array.IndexOf(JapaneseSuffixes, last) < 0 && last != "区" && last != "町" && last != "村";
+    }
+
+    static List<WeatherLocationResult> SearchOnce(string query)
+    {
+        string url = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=ja&format=json&name=" + Uri.EscapeDataString(query);
         var root = Json.DeserializeObject(Downloader(url)) as Dictionary<string, object>;
         var result = new List<WeatherLocationResult>();
         object raw;
@@ -157,13 +188,16 @@ static class WeatherService
                     longitude = Number(entry, "longitude"),
                     timezone = Text(entry, "timezone"),
                 };
+                object population;
+                if (entry.TryGetValue("population", out population) && population != null)
+                    location.population = Convert.ToDouble(population, CultureInfo.InvariantCulture);
                 if (String.IsNullOrWhiteSpace(location.timezone)) location.timezone = "auto";
                 ValidateLocation(location.name, location.latitude, location.longitude, location.timezone);
                 result.Add(location);
             }
             catch { }
         }
-        return result.ToArray();
+        return result;
     }
 
     internal static void ValidateLocation(string name, double latitude, double longitude, string timezone)
