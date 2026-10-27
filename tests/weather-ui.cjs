@@ -8,7 +8,7 @@ const weather = { active: true, configured: true, location: '札幌', available:
   { date: '2026-10-29', code: 3, maximum: 16.3, minimum: 9.2, precipitation: 30 },
 ] };
 const controls = { speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1, speakerRow: 0, speakerColumn: 0, speakerWidth: 1, speakerHeight: 1, micRow: 0, micColumn: 1, micWidth: 1, micHeight: 1 };
-function state() { return { apps, revision, version, weather, weatherLocation, appVersion: '2.0-dev+test', computer: 'Weather PC', phoneConnected: false, landscapeGrid: { columns: 5, rows: 3 }, portraitGrid: { columns: 3, rows: 5 }, landscapeControls: controls, portraitControls: controls, landscapePage: 0, portraitPage: 0, landscapePages: 1, portraitPages: 1, columns: 5, rows: 3, speakerSlot: 0, micSlot: 1, keepAwake: false, audio: { speakerVolume: 50, micVolume: 50, speakerAvailable: true, micAvailable: true, devices: [] }, metrics: { active: false, history: [], gpus: [] } }; }
+function state() { return { apps, revision, version, weather, weatherLocation, appVersion: '2.0', computer: 'Weather PC', phoneConnected: false, landscapeGrid: { columns: 5, rows: 3 }, portraitGrid: { columns: 3, rows: 5 }, landscapeControls: controls, portraitControls: controls, landscapePage: 0, portraitPage: 0, landscapePages: 1, portraitPages: 1, columns: 5, rows: 3, speakerSlot: 0, micSlot: 1, keepAwake: false, audio: { speakerVolume: 50, micVolume: 50, speakerAvailable: true, micAvailable: true, devices: [] }, metrics: { active: false, history: [], gpus: [] } }; }
 const server = http.createServer(async (req, res) => {
   let body = ''; for await (const chunk of req) body += chunk;
   const url = new URL(req.url, 'http://127.0.0.1'), path = url.pathname;

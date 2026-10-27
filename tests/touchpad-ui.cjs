@@ -24,7 +24,7 @@ function sessions(ids) {
 }
 function state(ids) {
   return {
-    apps, revision, version, appVersion: '2.0-dev+test', computer: 'タッチパッドテストPC',
+    apps, revision, version, appVersion: '2.0', computer: 'タッチパッドテストPC',
     landscapeGrid: { columns: 5, rows: 3 }, portraitGrid: { columns: 3, rows: 5 },
     landscapeControls: controls, portraitControls: controls,
     landscapePage: 0, portraitPage: 0, landscapePages: 1, portraitPages: 1,

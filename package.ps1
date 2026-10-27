@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = '2.0-dev'
+$version = '2.0'
 $releaseRoot = Join-Path $PSScriptRoot 'release'
 $stage = Join-Path $releaseRoot 'installer-payload'
 $verify = Join-Path $releaseRoot 'installer-verification'
@@ -37,7 +37,7 @@ foreach ($scriptName in @('setup-lan.ps1','remove-firewall.ps1')) {
     $scriptBytes = [IO.File]::ReadAllBytes($scriptPath)
     if ($scriptBytes.Length -lt 3 -or $scriptBytes[0] -ne 0xEF -or $scriptBytes[1] -ne 0xBB -or $scriptBytes[2] -ne 0xBF) { throw ('PowerShell script is missing UTF-8 BOM: ' + $scriptName) }
 }
-[IO.File]::WriteAllText((Join-Path $stage 'VERSION.txt'), "TaPoard $($buildInfo.DisplayVersion)`r`nWindows 10/11 64-bit`r`n", [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $stage 'VERSION.txt'), "TaPoard $($buildInfo.DisplayVersion)`r`nCommit $($buildInfo.Revision)`r`nWindows 10/11 64-bit`r`n", [Text.UTF8Encoding]::new($false))
 
 $forbidden = Get-ChildItem -LiteralPath $stage -Recurse -Force | Where-Object { $_.Name -match '^settings(?:-v\d+)?\.json(?:\.(?:tmp|bak))?$' -or $_.Name -in @('network.json','network-status.txt','mdns-diagnostic.log') -or $_.FullName -match '[\\/]data[\\/]' }
 if ($forbidden) { throw 'Private runtime data was included in the installer payload.' }
