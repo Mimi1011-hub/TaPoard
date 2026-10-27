@@ -1602,7 +1602,7 @@
             var latest = inputSessionByWidget[widgetId];
             if (latest && latest.sessionId === current.sessionId)
               latest.nextSequence = Math.max(latest.nextSequence, ack.acknowledged + 1);
-            notify('ok');
+            notify(ack.foregroundBlocked ? 'blocked' : 'ok');
           },
           function (e) {
             queue = [];
@@ -1637,10 +1637,14 @@
     inputSenders[widgetId] = sender;
     return sender;
   }
-  function showInputBusy(tile, busy) {
-    tile.classList.toggle('input-busy', busy);
+  // 'busy': another device owns input. 'blocked': Windows ignores input to an elevated window.
+  function showInputNotice(tile, state) {
+    if (state !== 'busy' && state !== 'blocked') return;
+    var label = tile.querySelector('.input-busy-label');
+    if (label) label.textContent = state === 'busy' ? '他端末が操作中' : '管理者権限の画面には\n操作できません';
+    tile.classList.add('input-busy');
     clearTimeout(tile._busyTimer);
-    if (busy) tile._busyTimer = setTimeout(function () { tile.classList.remove('input-busy'); }, 2000);
+    tile._busyTimer = setTimeout(function () { tile.classList.remove('input-busy'); }, state === 'busy' ? 2000 : 3000);
   }
   function wheelOptions(a) {
     var source = (a && a.options) || {},
@@ -1677,7 +1681,7 @@
       startTime = 0,
       offset = 0,
       ridges = tile.querySelector('.wheel-ridges');
-    sender.listen(function (state) { if (state === 'busy') showInputBusy(tile, true); });
+    sender.listen(function (state) { showInputNotice(tile, state); });
     function begin(e) {
       if (tracking) return;
       tracking = true;
@@ -1738,7 +1742,7 @@
       startedInCenter = false,
       startTime = 0,
       dial = tile.querySelector('.wheel-dial');
-    sender.listen(function (state) { if (state === 'busy') showInputBusy(tile, true); });
+    sender.listen(function (state) { showInputNotice(tile, state); });
     function polar(e) {
       var rect = tile.getBoundingClientRect(),
         dx = e.clientX - (rect.left + rect.width / 2),
@@ -1914,7 +1918,7 @@
       restY = 0,
       restScroll = 0;
     sender.listen(function (state) {
-      if (state === 'busy') showInputBusy(tile, true);
+      showInputNotice(tile, state);
     });
     function click(control) {
       sender.button('buttonDown', control);

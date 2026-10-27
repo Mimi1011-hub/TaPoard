@@ -24,6 +24,7 @@ static class InputSessions
         public int acknowledged { get; set; }
         public bool duplicate { get; set; }
         public long serverElapsedMs { get; set; }
+        public bool foregroundBlocked { get; set; }
     }
 
     internal sealed class Snapshot
@@ -172,7 +173,11 @@ static class InputSessions
             session.expires = now.AddSeconds(LifetimeSeconds);
             activeUntil = now.AddSeconds(OwnershipSeconds);
             ArmLocked(now);
-            return new Ack { ok = true, acknowledged = sequence, duplicate = false, serverElapsedMs = watch.ElapsedMilliseconds };
+            return new Ack
+            {
+                ok = true, acknowledged = sequence, duplicate = false, serverElapsedMs = watch.ElapsedMilliseconds,
+                foregroundBlocked = NativeInput.ForegroundElevated(),
+            };
         }
     }
 

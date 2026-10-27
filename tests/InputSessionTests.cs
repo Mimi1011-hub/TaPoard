@@ -54,6 +54,8 @@ class InputSessionTests
         Func<DateTime> oldClock = InputSessions.Clock;
         Func<string> oldIds = InputSessions.IdFactory;
         Func<NativeInputEvent[], int> oldExecutor = NativeInput.Executor;
+        Func<bool> oldElevated = NativeInput.ForegroundElevated;
+        bool elevated = false;
         var apps = new List<AppEntry>
         {
             Widget("wheel-1", "wheel"),
@@ -72,6 +74,7 @@ class InputSessionTests
                 return events.Length;
             };
 
+            NativeInput.ForegroundElevated = delegate { return elevated; };
             NativeInput.KeyCombo(new byte[] { 0x11, 0x43 });
             Check(
                 sent.Count == 1 && sent[0].Length == 4 && sent[0][0].type == "keyDown"
@@ -90,10 +93,15 @@ class InputSessionTests
             var move = new[] { Event("move", null, 7, -3, 0) };
             var ack = InputSessions.Execute("owner-a:view-a", first, 1, move);
             Check(ack.acknowledged == 1 && !ack.duplicate && sent.Count == 1, "first ordered input is executed and acknowledged");
+            Check(!ack.foregroundBlocked, "input to a normal window is not reported as blocked");
             var duplicate = InputSessions.Execute("owner-a:view-a", first, 1, move);
             Check(duplicate.duplicate && sent.Count == 1, "same sequence and content is acknowledged without re-execution");
+            elevated = true;
+            var blocked = InputSessions.Execute("owner-a:view-a", first, 2, move);
+            Check(blocked.acknowledged == 2 && blocked.foregroundBlocked && sent.Count == 2, "input sent while an elevated window is in front is reported as blocked");
+            elevated = false;
             Reject(
-                delegate { InputSessions.Execute("owner-a:view-a", first, 1, new[] { Event("move", null, 8, -3, 0) }); },
+                delegate { InputSessions.Execute("owner-a:view-a", first, 2, new[] { Event("move", null, 8, -3, 0) }); },
                 "same sequence with different content is rejected"
             );
             Check(InputSessions.Current().sessions == 1, "protocol violation invalidates only the offending widget session");
@@ -276,6 +284,7 @@ class InputSessionTests
             InputSessions.Clock = oldClock;
             InputSessions.IdFactory = oldIds;
             NativeInput.Executor = oldExecutor;
+            NativeInput.ForegroundElevated = oldElevated;
         }
     }
 }
