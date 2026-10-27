@@ -17,7 +17,7 @@ const controls = {
 };
 function state() {
   return {
-    apps, revision, version, appVersion: '2.0-dev+test', computer: '時計テストPC',
+    apps, revision, version, appVersion: '2.0', computer: '時計テストPC',
     landscapeGrid: grid, portraitGrid: { columns: 3, rows: 5 },
     landscapeControls: controls, portraitControls: controls,
     landscapePage: 0, portraitPage: 0, landscapePages: 1, portraitPages: 1,

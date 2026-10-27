@@ -20,7 +20,7 @@ class Installer
             .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false);
         return attributes.Length == 1
             ? ((AssemblyInformationalVersionAttribute)attributes[0]).InformationalVersion
-            : "2.0-dev+source";
+            : "2.0+source";
     }
 
     enum FirewallResult

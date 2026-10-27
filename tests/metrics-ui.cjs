@@ -30,7 +30,7 @@ const controls = {
 };
 function state() {
   return {
-    apps, revision, version, metrics, appVersion: '2.0-dev+test', computer: '情報テストPC',
+    apps, revision, version, metrics, appVersion: '2.0', computer: '情報テストPC',
     landscapeGrid: { columns: 5, rows: 3 }, portraitGrid: { columns: 3, rows: 5 },
     landscapeControls: controls, portraitControls: controls,
     landscapePage: 0, portraitPage: 0, landscapePages: 1, portraitPages: 1,
