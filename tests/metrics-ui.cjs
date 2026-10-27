@@ -98,6 +98,7 @@ const server = http.createServer(async (req, res) => {
     admin.on('pageerror', error => errors.push(String(error)));
     await admin.goto(base + '/settings#test');
     const group = admin.locator('.shortcut-group').filter({ hasText: '時計・情報表示' });
+    await admin.locator('.shortcut-group').first().locator('summary').click();
     await group.locator('summary').click();
     const savedCpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
     const refreshedCpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');
@@ -109,7 +110,8 @@ const server = http.createServer(async (req, res) => {
     assert.equal(apps[0].options.primary, 'cpu');
     assert.equal(await admin.locator('#preview-deck .metrics-small .metric-value').innerText(), '25.5%');
 
-    await group.locator('summary').click();
+    assert.equal(await group.evaluate(node => node.open), true, 'saving keeps the open catalog group open');
+    assert.equal(await admin.locator('.shortcut-group').first().evaluate(node => node.open), false, 'saving does not reopen the first catalog group');
     const savedGpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
     const refreshedGpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');
     await group.locator('.shortcut-row[data-action="widget-metrics-gpu"]').getByRole('button', { name: '追加', exact: true }).click();
@@ -122,7 +124,6 @@ const server = http.createServer(async (req, res) => {
     await gpuEditor.locator('.metrics-settings select').nth(1).selectOption('gpu-b');
     assert.equal(await admin.locator('#preview-deck .metrics-small').nth(1).locator('.metric-value').innerText(), '66.6%');
 
-    await group.locator('summary').click();
     const savedOverview = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
     const refreshedOverview = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');
     await group.locator('.shortcut-row[data-action="widget-metrics-overview"]').getByRole('button', { name: '追加', exact: true }).click();

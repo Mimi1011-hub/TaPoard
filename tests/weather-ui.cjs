@@ -35,7 +35,7 @@ const server = http.createServer(async (req, res) => {
     let saved = page.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'POST');
     await group.locator('[data-action="widget-weather-now"] button').click(); await saved; await page.locator('#preview-deck .weather-small').waitFor();
     assert.equal(await page.locator('#preview-deck .weather-temperature').innerText(), '12°');
-    await group.locator('summary').click(); saved = page.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'POST');
+    saved = page.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'POST');
     await group.locator('[data-action="widget-weather-days"] button').click(); await saved; await page.locator('#preview-deck .weather-large').waitFor();
     assert.equal(await page.locator('#preview-deck .weather-days > div').count(), 3);
     assert((await page.locator('#preview-deck .weather-large').getAttribute('title')).includes('Open-Meteo'));
