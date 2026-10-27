@@ -25,7 +25,7 @@ static class WidgetRegistry
         Add(result, "clock", "時計", new[] { "2x2" }, true);
         Add(result, "weather", "天気", new[] { "1x1", "2x2" }, true);
         Add(result, "metrics", "PC情報", new[] { "1x1", "2x2" }, true);
-        Add(result, "wheel", "マウスホイール", new[] { "1x1", "2x2" }, true);
+        Add(result, "wheel", "マウスホイール", new[] { "1x1", "1x2", "2x2" }, true);
         Add(result, "touchpad", "タッチパッド", new[] { "3x2", "2x3" }, true);
         return result;
     }
@@ -128,7 +128,9 @@ static class WidgetRegistry
         else if (definition.type == "wheel")
         {
             string style = EnumValue(source, "style", "vertical", new[] { "vertical", "rotary" });
-            RequireDimensions(app, style == "vertical" ? 1 : 2, style == "vertical" ? 1 : 2, "縦型ホイールは1×1、円形ホイールは2×2です。");
+            int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
+            bool fits = style == "vertical" ? width == 1 && (height == 1 || height == 2) : width == 2 && height == 2;
+            if (!fits) throw new Exception("縦型ホイールは1×1か1×2、円形ホイールは2×2です。");
             normalized["style"] = style;
             normalized["sensitivity"] = IntegerValue(source, "sensitivity", style == "vertical" ? 24 : 18, 1, 200);
             normalized["multiplier"] = IntegerValue(source, "multiplier", 1, 1, 10);

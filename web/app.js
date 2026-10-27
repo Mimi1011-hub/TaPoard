@@ -131,6 +131,7 @@
       note: 'スマートフォンをPCのマウスとして使う部品',
       items: [
         ['widget-wheel-vertical', '縦型ホイール', '1×1・上下スワイプでスクロール'],
+        ['widget-wheel-vertical-tall', '縦型ホイール（縦2マス）', '1×2・長いストロークでスクロール'],
         ['widget-wheel-rotary', '円形ホイール', '2×2・円をなぞってスクロール'],
         ['widget-touchpad-wide', 'タッチパッド（横長）', '3×2・移動／クリック／スクロール'],
         ['widget-touchpad-tall', 'タッチパッド（縦長）', '2×3・移動／クリック／スクロール'],
@@ -2191,15 +2192,16 @@
         options: { primary: memory ? 'memory' : gpu ? 'gpu' : gpuMemory ? 'gpuMemory' : 'cpu', cycle: false, gpuId: '' },
       };
     }
-    if (action === 'widget-wheel-vertical' || action === 'widget-wheel-rotary') {
-      var rotary = action === 'widget-wheel-rotary';
+    if (action === 'widget-wheel-vertical' || action === 'widget-wheel-vertical-tall' || action === 'widget-wheel-rotary') {
+      var rotary = action === 'widget-wheel-rotary',
+        tall = action === 'widget-wheel-vertical-tall';
       return {
         name: rotary ? '円形ホイール' : '縦型ホイール',
         type: 'wheel',
         category: 'widget',
         size: rotary ? 2 : 1,
         width: rotary ? 2 : 1,
-        height: rotary ? 2 : 1,
+        height: rotary || tall ? 2 : 1,
         hideLabel: true,
         options: {
           style: rotary ? 'rotary' : 'vertical',

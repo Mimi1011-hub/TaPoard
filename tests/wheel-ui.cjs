@@ -269,8 +269,24 @@ async function save(page) {
     assert.equal(await iphone.evaluate(() => window.__contexts), 1);
     await iphone.click('#device-menu-button');
     assert.match(await iphone.locator('#feedback-note').innerText(), /消音モード/);
+
+    // The 1x2 vertical wheel spans two rows and keeps the vertical gesture.
+    await group.locator('.shortcut-row[data-action="widget-wheel-vertical-tall"]').getByRole('button', { name: '追加', exact: true }).click();
+    await admin.waitForFunction(() => document.querySelectorAll('#preview-deck .wheel-vertical').length === 2);
+    const tallApp = apps.find(app => app.options.style === 'vertical' && app.height === 2);
+    assert(tallApp, 'the tall wheel is saved as 1x2');
+    assert.equal(tallApp.width, 1);
+    assert.equal(tallApp.options.sensitivity, 24);
+    const tallPreview = admin.locator('#preview-deck .wheel-vertical').nth(1);
+    assert.equal(await tallPreview.evaluate(node => node.style.gridRow.includes('span 2') && !node.style.gridColumn.includes('span 2')), true);
+    const tallPhone = await browser.newPage({ viewport: { width: 667, height: 375 } });
+    tallPhone.on('pageerror', error => errors.push(String(error)));
+    await tallPhone.goto(base + '/#connect=test');
+    await tallPhone.waitForFunction(() => document.querySelectorAll('#deck .wheel-vertical').length === 2);
+    const [shortBox, tallBox] = await tallPhone.locator('#deck .wheel-vertical').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
+    assert(tallBox > shortBox * 1.8, 'the 1x2 wheel is twice as tall on the phone: ' + shortBox + ' / ' + tallBox);
     assert.deepEqual(errors, []);
-    console.log('PASS wheel UI: vertical and rotary wheels, settings, steps, middle-click tap, release, busy indicator and per-device vibration/click feedback');
+    console.log('PASS wheel UI: vertical, 1x2 vertical and rotary wheels, settings, steps, middle-click tap, release, busy indicator and per-device vibration/click feedback');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();
