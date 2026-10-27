@@ -383,6 +383,7 @@ partial class Program
         string raw = QueryValue(r.target, "visibleIds") ?? "";
         string identity = ViewIdentity(r, viewId);
         DisplaySubscriptions.Update(identity, config.apps, raw.Length == 0 ? new string[0] : raw.Split(','), false, true);
+        DisplaySubscriptions.Touch(identity);
         InputSessions.Touch(identity);
     }
 

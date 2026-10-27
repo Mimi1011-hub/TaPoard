@@ -79,6 +79,19 @@ class DisplaySubscriptionTests
             var allExpired = DisplaySubscriptions.Current();
             Check(allExpired.sessions == 0 && !allExpired.timerArmed, "idle state removes every lease and disables the timer");
 
+            DisplaySubscriptions.Update("device-c:view-c", apps, new[] { "metrics-1" }, true, true);
+            for (int i = 0; i < 4; i++)
+            {
+                now = now.AddSeconds(8);
+                DisplaySubscriptions.Touch("device-c:view-c");
+            }
+            Check(DisplaySubscriptions.Current().metrics.SetEquals(new[] { "metrics-1" }), "sync keeps a visible metrics lease alive past ten seconds");
+            DisplaySubscriptions.Touch("unknown-view");
+            Check(DisplaySubscriptions.Current().sessions == 1, "touching an unknown view creates no lease");
+            now = now.AddSeconds(11);
+            DisplaySubscriptions.PruneNow();
+            Check(DisplaySubscriptions.Current().sessions == 0, "a closed view expires once sync stops");
+
             DisplaySubscriptions.Update("device-a:view-a", apps, new[] { "weather-1" }, true, true);
             DisplaySubscriptions.RemoveUnknown(new[] { Widget("metrics-1", "metrics") });
             Check(DisplaySubscriptions.Current().sessions == 0, "deleted widgets are removed from subscriptions immediately");
