@@ -17,6 +17,7 @@ const server = http.createServer(async (req, res) => {
   if (path === '/api/state' || path === '/api/sync') { res.end(JSON.stringify(state())); return; }
   if (path === '/api/view') { res.end('{"ok":true,"inputSessions":[]}'); return; }
   if (path === '/api/devices') { res.end('{"devices":[]}'); return; }
+  if (path === '/api/weather/search' && JSON.parse(body).query === '失敗') { res.writeHead(400); res.end(JSON.stringify({ error: '地域を検索できませんでした。' })); return; }
   if (path === '/api/weather/search') { res.end('{"results":[{"name":"横浜","region":"神奈川県","country":"日本","latitude":35.44,"longitude":139.64,"timezone":"Asia/Tokyo"}]}'); return; }
   if (path === '/api/weather/location') { weatherLocation = { ...JSON.parse(body), configured: true }; res.end(JSON.stringify({ ok: true, weatherLocation, revision: ++revision })); return; }
   const file = path === '/' || path === '/settings' ? 'index.html' : path.slice(1);
@@ -39,6 +40,16 @@ const server = http.createServer(async (req, res) => {
     await group.locator('[data-action="widget-weather-days"] button').click(); await saved; await page.locator('#preview-deck .weather-large').waitFor();
     assert.equal(await page.locator('#preview-deck .weather-days > div').count(), 3);
     assert((await page.locator('#preview-deck .weather-large').getAttribute('title')).includes('Open-Meteo'));
-    assert.deepEqual(errors, []); console.log('PASS weather UI: location search, 1x1 current weather, 2x2 three-day forecast and attribution');
+    const focused = () => page.evaluate(() => document.activeElement && document.activeElement.id);
+    await page.locator('.weather-locate').first().click(); assert.equal(await focused(), 'weather-query', 'the weather editor links to the location search');
+    await page.locator('#weather-query').fill('札'); await page.locator('#weather-search').click();
+    assert((await page.locator('#weather-results .weather-error').innerText()).includes('2文字以上'), 'a too-short query is explained next to the search box');
+    await page.locator('#weather-query').fill('失敗'); await page.locator('#weather-search').click();
+    await page.locator('#weather-results .weather-error').filter({ hasText: '検索できませんでした' }).waitFor({ timeout: 2000 });
+    weather.configured = false; weatherLocation = { configured: false, name: '', latitude: 0, longitude: 0, timezone: '' }; revision++;
+    await page.locator('#preview-deck .weather-small .weather-message').filter({ hasText: '地域が未設定' }).waitFor({ timeout: 5000 });
+    await page.locator('#weather-query').evaluate(node => node.blur());
+    await page.locator('#preview-deck .weather-small').click(); assert.equal(await focused(), 'weather-query', 'an unconfigured preview tile opens the location search');
+    assert.deepEqual(errors, []); console.log('PASS weather UI: location search and errors, 1x1 current weather, 2x2 three-day forecast and attribution, unconfigured guidance');
   } finally { if (browser) await browser.close(); server.closeAllConnections(); server.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
