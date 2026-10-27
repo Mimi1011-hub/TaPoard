@@ -67,6 +67,23 @@ class WidgetRegistryTests
         wheel.options["multiplier"] = 11;
         Reject(delegate { WidgetRegistry.ValidateAndNormalize(wheel); }, "wheel multiplier is range checked");
 
+        var tallWheel = Entry("wheel", 1);
+        tallWheel.width = 1;
+        tallWheel.height = 2;
+        tallWheel.options = new Dictionary<string, object> { { "style", "vertical" } };
+        WidgetRegistry.ValidateAndNormalize(tallWheel);
+        Check((string)tallWheel.options["style"] == "vertical", "a 1x2 vertical wheel is accepted");
+        var wideWheel = Entry("wheel", 1);
+        wideWheel.width = 2;
+        wideWheel.height = 1;
+        wideWheel.options = new Dictionary<string, object> { { "style", "vertical" } };
+        Reject(delegate { WidgetRegistry.ValidateAndNormalize(wideWheel); }, "a 2x1 vertical wheel is rejected");
+        var tallRotary = Entry("wheel", 1);
+        tallRotary.width = 1;
+        tallRotary.height = 2;
+        tallRotary.options = new Dictionary<string, object> { { "style", "rotary" } };
+        Reject(delegate { WidgetRegistry.ValidateAndNormalize(tallRotary); }, "a 1x2 rotary wheel is rejected");
+
         var weather = Entry("weather", 1);
         WidgetRegistry.ValidateAndNormalize(weather);
         Dictionary<string, object> publicEntry = WidgetRegistry.PublicEntry(weather);
