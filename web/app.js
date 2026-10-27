@@ -1393,8 +1393,8 @@
         value = document.createElement('strong');
       name.className = 'metric-name';
       name.textContent = descriptor.label;
-      value.className = 'metric-value';
       value.textContent = metricPercent(descriptor.value, descriptor.available, descriptor.supported);
+      value.className = /%$/.test(value.textContent) ? 'metric-value' : 'metric-value metric-status';
       tile.appendChild(name);
       tile.appendChild(value);
       tile.setAttribute('aria-label', descriptor.label + ' ' + value.textContent);
