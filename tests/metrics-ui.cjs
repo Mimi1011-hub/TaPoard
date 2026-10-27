@@ -155,16 +155,16 @@ const server = http.createServer(async (req, res) => {
         value = tile.querySelector('.metric-value'),
         box = value.getBoundingClientRect(),
         frame = tile.getBoundingClientRect();
-      return { text: value.textContent, status: value.classList.contains('metric-status'), fits: box.left >= frame.left - 0.5 && box.right <= frame.right + 0.5 && value.scrollWidth <= value.clientWidth + 1 };
+      return { text: value.textContent, status: value.classList.contains('metric-status'), fits: box.left >= frame.left - 0.5 && box.right <= frame.right + 0.5 && value.scrollWidth <= value.clientWidth + 1, readable: box.width >= frame.width * 0.6 };
     });
     metrics = { ...metrics, cpuPercent: 100, sampledAt: Date.now() };
     bump(false);
     await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '100.0%');
-    assert.deepEqual(await fits(), { text: '100.0%', status: false, fits: true }, 'the widest percentage fits a 1x1 tile');
+    assert.deepEqual(await fits(), { text: '100.0%', status: false, fits: true, readable: true }, 'the widest percentage fits a 1x1 tile');
     metrics = { ...metrics, cpuAvailable: false, sampledAt: Date.now() };
     bump(false);
     await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '更新待ち');
-    assert.deepEqual(await fits(), { text: '更新待ち', status: true, fits: true }, 'status text uses the smaller style and fits');
+    assert.deepEqual(await fits(), { text: '更新待ち', status: true, fits: true, readable: true }, 'status text uses the smaller style and fits');
     const selection = await phone.evaluate(() => {
       const deck = document.getElementById('deck'),
         style = getComputedStyle(deck),
