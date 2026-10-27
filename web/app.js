@@ -2759,6 +2759,10 @@
       });
   }
 
+  // Rapid taps on deck buttons can otherwise start an iOS text selection that swallows later taps.
+  $('deck').addEventListener('selectstart', function (e) {
+    e.preventDefault();
+  });
   $('prev-page').onclick = function () {
     setPage(page - 1);
   };
