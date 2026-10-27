@@ -3830,12 +3830,19 @@
   }
 
   function renderCatalog() {
-    var root = $('shortcut-groups');
+    var root = $('shortcut-groups'),
+      previous = root.querySelectorAll('details.shortcut-group'),
+      opened = {};
+    // Saving re-renders the catalog; keep whichever groups the user had open.
+    Array.prototype.forEach.call(previous, function (details) {
+      opened[details.dataset.group] = details.open;
+    });
     root.textContent = '';
     catalog.forEach(function (group, groupIndex) {
       var details = document.createElement('details');
       details.className = 'shortcut-group';
-      details.open = groupIndex === 0;
+      details.dataset.group = group.title;
+      details.open = previous.length ? !!opened[group.title] : groupIndex === 0;
       var summary = document.createElement('summary');
       summary.appendChild(shortcutGlyph(group.category));
       var text = document.createElement('span');
