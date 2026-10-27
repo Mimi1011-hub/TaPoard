@@ -80,6 +80,26 @@ static class DisplaySubscriptions
         if (changed && Changed != null) Changed();
     }
 
+    // Sync keeps an already visible view alive without re-sending its widget list.
+    internal static void Touch(string key)
+    {
+        if (String.IsNullOrEmpty(key)) return;
+        bool changed;
+        lock (Sync)
+        {
+            DateTime now = Clock();
+            changed = PruneLocked(now);
+            Lease lease;
+            if (Leases.TryGetValue(key, out lease))
+            {
+                if (lease.metrics.Count != 0) lease.metricsExpires = now.AddSeconds(10);
+                if (lease.weather.Count != 0) lease.weatherExpires = now.AddSeconds(60);
+            }
+            ArmLocked(now);
+        }
+        if (changed && Changed != null) Changed();
+    }
+
     internal static void RemoveUnknown(IEnumerable<AppEntry> configured)
     {
         var metrics = new HashSet<string>(StringComparer.Ordinal);
