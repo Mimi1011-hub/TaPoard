@@ -41,6 +41,10 @@ const server = http.createServer(async (req, res) => {
     await group.locator('[data-action="widget-weather-days"] button').click(); await saved; await page.locator('#preview-deck .weather-large').waitFor();
     assert.equal(await page.locator('#preview-deck .weather-days > div').count(), 3);
     assert((await page.locator('#preview-deck .weather-large').getAttribute('title')).includes('Open-Meteo'));
+    const phone = await browser.newPage({ viewport: { width: 667, height: 375 } }); phone.on('pageerror', e => errors.push(String(e)));
+    await phone.goto('http://127.0.0.1:' + server.address().port + '/#connect=test'); await phone.locator('#deck .weather-large .weather-days span').first().waitFor();
+    const overflow = await phone.evaluate(() => [...document.querySelectorAll('#deck .weather-widget *')].filter(node => { const tile = node.closest('.deck-key').getBoundingClientRect(), box = node.getBoundingClientRect(); return box.width && (box.left < tile.left - 0.5 || box.right > tile.right + 0.5 || box.bottom > tile.bottom + 0.5); }).map(node => node.className || node.textContent));
+    assert.deepEqual(overflow, [], 'weather text fits its tiles on an iPhone 8 sized screen'); await phone.close();
     const focused = () => page.evaluate(() => document.activeElement && document.activeElement.id);
     await page.locator('.weather-locate').first().click(); assert.equal(await focused(), 'weather-query', 'the weather editor links to the location search');
     await page.locator('#weather-query').fill('札'); await page.locator('#weather-search').click();

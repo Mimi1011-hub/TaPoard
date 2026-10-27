@@ -1461,7 +1461,7 @@
       var days = document.createElement('div'); days.className = 'weather-days';
       (weatherState.days || []).slice(0, 3).forEach(function (day, index) {
         var column = document.createElement('div'), date = new Date(day.date + 'T00:00:00');
-        column.innerHTML = '<small>' + (index === 0 ? '今日' : (date.getMonth() + 1) + '/' + date.getDate()) + '</small><b>' + weatherSymbol(day.code) + '</b><span><i>' + weatherTemperature(day.maximum) + '</i> / ' + weatherTemperature(day.minimum) + '</span><em>☂ ' + Math.round(day.precipitation || 0) + '%</em>';
+        column.innerHTML = '<small>' + (index === 0 ? '今日' : (date.getMonth() + 1) + '/' + date.getDate()) + '</small><b>' + weatherSymbol(day.code) + '</b><span><i>' + weatherTemperature(day.maximum) + '</i>/' + weatherTemperature(day.minimum) + '</span><em>☂ ' + Math.round(day.precipitation || 0) + '%</em>';
         days.appendChild(column);
       });
       tile.appendChild(days);
