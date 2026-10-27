@@ -4035,7 +4035,7 @@
       .then(function (response) {
         $('weather-results').textContent = '';
         if (!response.results || !response.results.length) {
-          $('weather-results').textContent = '候補が見つかりませんでした。';
+          $('weather-results').textContent = '候補が見つかりませんでした。「札幌市」「東京都」のように市・都・府・県まで入れるか、ローマ字（Sapporo）で試してください。';
           return;
         }
         response.results.forEach(function (result) {
