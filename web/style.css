@@ -843,24 +843,51 @@ textarea {
   flex: 0 0 30px;
   font-size: 10px;
 }
-/* 3x2 and 4x2 faders: bigger touch targets instead of stretched ones. */
+/* 3x2 and 4x2 faders: icon on top, - bar + in the middle, % below, so the bar gets the full width. */
+.audio-fader.horizontal.tall {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: center;
+  row-gap: 4px;
+  column-gap: 8px;
+  padding: 6px 10px;
+}
+.audio-fader.horizontal.tall .audio-mute {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  width: auto;
+  height: 100%;
+  max-height: 64px;
+  aspect-ratio: 1;
+  flex: none;
+}
+.audio-fader.horizontal.tall .audio-mute svg {
+  height: 80%;
+}
 .audio-fader.horizontal.tall .fader-step {
-  flex-basis: 44px;
-  width: 44px;
-  height: min(70%, 88px);
-  font-size: 24px;
+  grid-row: 2;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
 }
 .audio-fader.horizontal.tall .fader-track {
-  height: 22px;
-  min-height: 22px;
-  border-radius: 11px;
+  grid-row: 2;
+  grid-column: 2;
+  justify-self: stretch;
+  height: 18px;
+  min-height: 18px;
+  border-radius: 9px;
 }
 .audio-fader.horizontal.tall .fader-thumb {
-  width: 16px;
-  height: 36px;
+  width: 14px;
+  height: 30px;
 }
 .audio-fader.horizontal.tall .fader-value {
-  flex-basis: 44px;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  align-self: start;
   font-size: 14px;
 }
 .preview-grid .audio-fader {

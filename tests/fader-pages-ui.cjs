@@ -63,6 +63,11 @@ async function api(path, key = 'test-admin', body) {
     assert.equal(await mic.evaluate(e => e.style.gridColumn), '2 / span 4');
     assert.equal(await mic.evaluate(e => e.style.gridRow), '1 / span 2');
     assert(await mic.evaluate(e => e.classList.contains('horizontal')), '4x2 faders use the horizontal layout');
+    const parts = await mic.evaluate(e => {
+      const box = n => e.querySelector(n).getBoundingClientRect(), tile = e.getBoundingClientRect();
+      return { track: box('.fader-track').width / tile.width, iconAbove: box('.audio-mute').bottom <= box('.fader-track').top, valueBelow: box('.fader-value').top >= box('.fader-track').bottom };
+    });
+    assert(parts.track > 0.6 && parts.iconAbove && parts.valueBelow, 'two-row faders put the icon above and % below a wide bar ' + JSON.stringify(parts));
 
     // The catalog shows the hidden speaker again on this page.
     const group = admin.locator('.shortcut-group').first();
