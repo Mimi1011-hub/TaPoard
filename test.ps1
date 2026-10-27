@@ -45,7 +45,7 @@ Write-Host 'PASS editor, audio faders, adjustable grid, screen-awake fallback, a
 $presetBlock = [regex]::Match($servedScript, 'var presetGroups\s*=\s*\[(.*?)\];\s*var presetMap', [Text.RegularExpressions.RegexOptions]::Singleline).Groups[1].Value
 $webIconKeys = @([regex]::Matches($presetBlock, "\['([^']+)',\s*'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 $serverIconSource = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'src\IconPresets.cs'))
-$serverKeyBlock = [regex]::Match($serverIconSource, 'new HashSet<string>\(StringComparer\.Ordinal\)\{(.*?)\};', [Text.RegularExpressions.RegexOptions]::Singleline).Groups[1].Value
+$serverKeyBlock = [regex]::Match($serverIconSource, 'new HashSet<string>\(StringComparer\.Ordinal\)\s*\{(.*?)\};', [Text.RegularExpressions.RegexOptions]::Singleline).Groups[1].Value
 $serverIconKeys = @([regex]::Matches($serverKeyBlock, '"([a-z0-9-]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 if ($webIconKeys.Count -lt 70) { throw ('Too few icon presets: ' + $webIconKeys.Count) }
 if (Compare-Object $webIconKeys $serverIconKeys) { throw 'Browser and server icon preset lists differ' }
