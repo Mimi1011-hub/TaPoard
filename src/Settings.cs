@@ -62,6 +62,9 @@ class Settings
     public ControlPlacement landscapeMic { get; set; }
     public ControlPlacement portraitSpeaker { get; set; }
     public ControlPlacement portraitMic { get; set; }
+    // Pages listed here override the fader placement above; other pages use it unchanged.
+    public List<ControlPage> landscapeControlPages { get; set; }
+    public List<ControlPage> portraitControlPages { get; set; }
     public int pageCount { get; set; }
     public int landscapePageCount { get; set; }
     public int portraitPageCount { get; set; }
@@ -70,6 +73,15 @@ class Settings
     public double weatherLatitude { get; set; }
     public double weatherLongitude { get; set; }
     public string weatherTimezone { get; set; }
+}
+
+class ControlPage
+{
+    public int page { get; set; }
+    public ControlPlacement speaker { get; set; }
+    public ControlPlacement mic { get; set; }
+    public bool speakerHidden { get; set; }
+    public bool micHidden { get; set; }
 }
 
 class ControlPlacement

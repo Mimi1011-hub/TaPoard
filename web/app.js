@@ -53,6 +53,8 @@
         landscape: { speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1, speakerRow: 0, speakerColumn: 0, speakerWidth: 1, speakerHeight: 1, micRow: 0, micColumn: 1, micWidth: 1, micHeight: 1 },
         portrait: { speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1, speakerRow: 0, speakerColumn: 0, speakerWidth: 1, speakerHeight: 1, micRow: 0, micColumn: 1, micWidth: 1, micHeight: 1 },
       },
+      // Page number -> that page's own faders; other pages use the shared controls above.
+      controlPages: { landscape: {}, portrait: {} },
     },
     appsPerPage = 13,
     audioState = {
@@ -2446,8 +2448,7 @@
     var display = displayGrid(preview),
       columns = display.columns,
       total = display.columns * display.rows,
-      orientation = currentOrientation(preview),
-      controls = controlsFor(orientation);
+      orientation = currentOrientation(preview);
     ensurePlacements(deckApps);
     container.dataset.columns = columns;
     container.style.gridTemplateColumns = 'repeat(' + columns + ',minmax(0,1fr))';
@@ -2466,7 +2467,9 @@
         for (var x = pos.column; x < pos.column + width; x++) used[y * columns + x] = true;
     }
     ['speaker', 'mic'].forEach(function (target) {
-      var slot = controls[target + 'Slot'],
+      var rect = controlRect(target, orientation);
+      if (!rect) return;
+      var slot = rect.row * columns + rect.column,
         tile = audioFader(target, preview, slot);
       if (preview) {
         addControlDropTarget(tile, slot);
@@ -2475,7 +2478,6 @@
           e.dataTransfer.setData('text/plain', 'control-' + target + '-fader');
         };
       }
-      var rect = controlRect(target, orientation);
       put(tile, { page: page, row: rect.row, column: rect.column }, rect.width, rect.height);
     });
     deckApps.forEach(function (a, i) {
@@ -2534,9 +2536,12 @@
   function syncGridControls() {
     var orientation = admin ? previewOrientation : currentOrientation(false),
       grid = gridFor(orientation),
-      controls = controlsFor(orientation),
-      minimumColumns = Math.max(2, controls.speakerWidth || controls.speakerSize || 1, controls.micWidth || controls.micSize || 1),
-      minimumRows = Math.max(2, controls.speakerHeight || controls.speakerSize || 1, controls.micHeight || controls.micSize || 1);
+      minimumColumns = 2,
+      minimumRows = 2;
+    allControls(orientation).forEach(function (controls) {
+      minimumColumns = Math.max(minimumColumns, controls.speakerWidth || controls.speakerSize || 1, controls.micWidth || controls.micSize || 1);
+      minimumRows = Math.max(minimumRows, controls.speakerHeight || controls.speakerSize || 1, controls.micHeight || controls.micSize || 1);
+    });
     deckApps.forEach(function (app) {
       if (app.orientation !== orientation) return;
       minimumColumns = Math.max(minimumColumns, app.width || app.size || 1);
@@ -2565,12 +2570,27 @@
     ['landscape', 'portrait'].forEach(function (o) {
       var source = s[o + 'Controls'] || (typeof s.speakerSlot === 'number' ? s : null),
         grid = layout.grids[o];
-      if (!source) return;
+      if (Array.isArray(s[o + 'ControlPages'])) {
+        layout.controlPages[o] = {};
+        s[o + 'ControlPages'].forEach(function (entry) {
+          var controls = normalizeControls(entry, grid);
+          controls.page = entry.page;
+          controls.speakerHidden = !!entry.speakerHidden;
+          controls.micHidden = !!entry.micHidden;
+          layout.controlPages[o][entry.page] = controls;
+        });
+      }
+      if (source) layout.controls[o] = normalizeControls(source, grid);
+    });
+    $('awake').checked = layout.keepAwake;
+    syncGridControls();
+  }
+  function normalizeControls(source, grid) {
       var speakerSlot = source.speakerSlot || 0,
         micSlot = typeof source.micSlot === 'number' ? source.micSlot : 1,
         speakerSize = source.speakerSize || 1,
         micSize = source.micSize || 1;
-      layout.controls[o] = {
+      return {
         speakerSlot: speakerSlot,
         micSlot: micSlot,
         speakerSize: speakerSize,
@@ -2584,9 +2604,6 @@
         micWidth: source.micWidth || micSize,
         micHeight: source.micHeight || micSize,
       };
-    });
-    $('awake').checked = layout.keepAwake;
-    syncGridControls();
   }
   function deckRenderSignature() {
     var orientation = admin ? previewOrientation : currentOrientation(false);
@@ -2597,6 +2614,7 @@
       pages: pagesByOrientation[orientation] || 1,
       grid: layout.grids[orientation],
       controls: layout.controls[orientation],
+      controlPages: layout.controlPages[orientation],
       audio: {
         speakerVolume: audioState.speakerVolume,
         speakerMuted: audioState.speakerMuted,
@@ -2844,15 +2862,16 @@
   function moveAudioControl(target, destination) {
     var orientation = admin ? previewOrientation : currentOrientation(false),
       grid = gridFor(orientation),
-      total = grid.columns * grid.rows,
-      controls = controlsFor(orientation);
+      total = grid.columns * grid.rows;
     if (destination < 0 || destination >= total) return;
-    var otherTarget = target === 'mic' ? 'speaker' : 'mic',
-      before = Object.assign({}, controls),
+    var edit = editPageControls(orientation),
+      controls = edit.controls,
+      otherTarget = target === 'mic' ? 'speaker' : 'mic',
       destinationRow = Math.floor(destination / grid.columns),
       destinationColumn = destination % grid.columns,
       other = controlRect(otherTarget, orientation);
-    if (destinationRow === other.row && destinationColumn === other.column) {
+    controls[target + 'Hidden'] = false;
+    if (other && destinationRow === other.row && destinationColumn === other.column) {
       controls[otherTarget + 'Row'] = controls[target + 'Row'];
       controls[otherTarget + 'Column'] = controls[target + 'Column'];
       controls[otherTarget + 'Slot'] = controls[target + 'Slot'];
@@ -2864,22 +2883,23 @@
       validatePlacements(rows.map(rowData));
     } catch (e) {
       var blocked = controlConflict(target, orientation);
-      Object.assign(controls, before);
+      edit.revert();
       message(blocked || e.message);
       return;
     }
     saveLayout(
       (orientation === 'portrait' ? '縦' : '横') +
-        '向きの' +
+        '向き' + (page + 1) + 'ページ目の' +
         (target === 'mic' ? 'マイク' : 'スピーカー') +
         '位置を保存しました。',
+      true,
     );
   }
   function setAudioControlShape(target, width, height, label) {
     var orientation = admin ? previewOrientation : currentOrientation(false),
-      controls = controlsFor(orientation),
-      key = target + 'Size',
-      before = Object.assign({}, controls);
+      edit = editPageControls(orientation),
+      controls = edit.controls,
+      key = target + 'Size';
     controls[key] = width === height ? width : 1;
     controls[target + 'Width'] = width;
     controls[target + 'Height'] = height;
@@ -2887,19 +2907,31 @@
       validatePlacements(rows.map(rowData));
     } catch (e) {
       var blocked = controlConflict(target, orientation);
-      Object.assign(controls, before);
+      edit.revert();
       message(blocked || e.message);
       return;
     }
     saveLayout(
       (orientation === 'portrait' ? '縦' : '横') +
-        '向きの' +
+        '向き' + (page + 1) + 'ページ目の' +
         (target === 'mic' ? 'マイク' : 'スピーカー') +
         'フェーダーを' +
         label +
         '表示にしました。',
+      true,
     );
   }
+  function hideAudioControl(target) {
+    var orientation = admin ? previewOrientation : currentOrientation(false),
+      edit = editPageControls(orientation);
+    edit.controls[target + 'Hidden'] = true;
+    saveLayout(
+      (page + 1) + 'ページ目の' + (target === 'mic' ? 'マイク' : 'スピーカー') +
+        'フェーダーを非表示にしました。ショートカット一覧の「このページに表示」で戻せます。',
+      true,
+    );
+  }
+  var FADER_SHAPES = [[1, 1, '1マス'], [2, 2, '4マス'], [3, 1, '横3マス']];
   function openAudioContextMenu(e, target, slot) {
     if (!admin) return;
     e.preventDefault();
@@ -2924,38 +2956,30 @@
       (previewOrientation === 'portrait' ? '縦向き · ' : '横向き · ') + (isMic ? 'マイク' : 'スピーカー');
     text.appendChild(name);
     var hint = document.createElement('small');
-    hint.textContent = '音量フェーダー · ' + (shape === '3x1' ? '横3マス' : shape === '2x2' ? '4マス' : '1マス');
+    hint.textContent = '音量フェーダー · ' + (page + 1) + 'ページ目 · ' + (FADER_SHAPES.filter(function (item) { return item[0] + 'x' + item[1] === shape; })[0] || [1, 1, '1マス'])[2];
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
+    FADER_SHAPES.forEach(function (item) {
+      menu.appendChild(
+        contextButton(
+          item[2] + '（' + item[0] + '×' + item[1] + '）',
+          '',
+          function () {
+            setAudioControlShape(target, item[0], item[1], item[2]);
+          },
+          shape === item[0] + 'x' + item[1],
+        ),
+      );
+    });
     menu.appendChild(
       contextButton(
-        '1マス（1×1）',
+        'このページで非表示',
         '',
         function () {
-          setAudioControlShape(target, 1, 1, '1マス');
+          hideAudioControl(target);
         },
-        shape === '1x1',
-      ),
-    );
-    menu.appendChild(
-      contextButton(
-        '4マス（2×2）',
-        '',
-        function () {
-          setAudioControlShape(target, 2, 2, '4マス');
-        },
-        shape === '2x2',
-      ),
-    );
-    menu.appendChild(
-      contextButton(
-        '横3マス（3×1）',
-        '',
-        function () {
-          setAudioControlShape(target, 3, 1, '横3マス');
-        },
-        shape === '3x1',
+        false,
       ),
     );
     menu.appendChild(
@@ -3109,11 +3133,12 @@
     $('pair').hidden = false;
     $('status').textContent = '未接続';
   };
-  function saveLayout(success) {
+  // pageOnly sends the current page's faders; otherwise the shared faders are saved.
+  function saveLayout(success, pageOnly) {
     var orientation = admin ? previewOrientation : currentOrientation(false),
-      controls = controlsFor(orientation),
-      grid = gridFor(orientation);
-    return api('layout', {
+      controls = pageOnly ? controlsFor(orientation) : layout.controls[orientation === 'portrait' ? 'portrait' : 'landscape'],
+      grid = gridFor(orientation),
+      body = {
       columns: grid.columns,
       rows: grid.rows,
       keepAwake: layout.keepAwake,
@@ -3130,7 +3155,13 @@
       micColumn: controls.micColumn,
       micWidth: controls.micWidth,
       micHeight: controls.micHeight,
-    })
+    };
+    if (pageOnly) {
+      body.page = page;
+      body.speakerHidden = !!controls.speakerHidden;
+      body.micHidden = !!controls.micHidden;
+    }
+    return api('layout', body)
       .then(function (s) {
         deckRevision = s.revision || deckRevision;
         if (admin)
@@ -3896,10 +3927,12 @@
           control = controlFromAction(item[0]),
           custom = customTypeFromAction(item[0]),
           widget = widgetFromAction(item[0]);
-        add.textContent = control ? '標準位置へ' : '追加';
+        add.textContent = control ? 'このページに表示' : '追加';
         add.onclick = function () {
           if (control) {
-            moveAudioControl(control, control === 'speaker' ? 0 : 1);
+            // Shows a hidden fader again where it was on this page.
+            var current = controlsFor(admin ? previewOrientation : currentOrientation(false));
+            moveAudioControl(control, current[control + 'Slot'] || 0);
             return;
           }
           if (custom) {
@@ -4191,16 +4224,39 @@
   function gridFor(orientation) {
     return layout.grids[orientation === 'portrait' ? 'portrait' : 'landscape'];
   }
-  function controlsFor(orientation) {
-    return layout.controls[orientation === 'portrait' ? 'portrait' : 'landscape'];
+  function controlsFor(orientation, pageIndex) {
+    var o = orientation === 'portrait' ? 'portrait' : 'landscape';
+    return layout.controlPages[o][typeof pageIndex === 'number' ? pageIndex : page] || layout.controls[o];
+  }
+  function allControls(orientation) {
+    var o = orientation === 'portrait' ? 'portrait' : 'landscape',
+      pages = layout.controlPages[o];
+    return [layout.controls[o]].concat(Object.keys(pages).map(function (key) { return pages[key]; }));
+  }
+  // Page edits work on that page's own copy; revert() undoes a rejected edit.
+  function editPageControls(orientation) {
+    var o = orientation === 'portrait' ? 'portrait' : 'landscape',
+      pages = layout.controlPages[o],
+      existing = pages[page],
+      before = existing ? Object.assign({}, existing) : null;
+    if (!existing) pages[page] = Object.assign({ page: page, speakerHidden: false, micHidden: false }, layout.controls[o]);
+    return {
+      controls: pages[page],
+      revert: function () {
+        if (before) pages[page] = before;
+        else delete pages[page];
+      },
+    };
   }
   function positionAt(pageIndex, slot, cols) {
     return { page: pageIndex, row: Math.floor(slot / cols), column: slot % cols };
   }
-  function controlRect(target, orientation) {
+  // null when the page hides this fader.
+  function controlRect(target, orientation, pageIndex) {
     var grid = gridFor(orientation),
-      controls = controlsFor(orientation),
-      slot = controls[target + 'Slot'],
+      controls = controlsFor(orientation, pageIndex);
+    if (controls[target + 'Hidden']) return null;
+    var slot = controls[target + 'Slot'],
       size = controls[target + 'Size'] || 1;
     return {
       row: typeof controls[target + 'Row'] === 'number' ? controls[target + 'Row'] : Math.floor(slot / grid.columns),
@@ -4211,33 +4267,33 @@
       columns: grid.columns,
     };
   }
-  // Faders sit at the same place on every page, so name the button on any page that is in the way.
+  // Names the button on this page that is in the fader's way.
   function controlConflict(target, orientation) {
     var rect = controlRect(target, orientation),
-      hit = rows.map(rowData).filter(function (a) {
+      hit = rect && rows.map(rowData).filter(function (a) {
         var p = a[orientation];
-        return (a.orientation || 'landscape') === orientation && p &&
+        return (a.orientation || 'landscape') === orientation && p && p.page === page &&
           rectOverlap({ row: p.row, column: p.column, width: a.width || a.size || 1, height: a.height || a.size || 1 }, rect);
       })[0];
     if (!hit) return '';
-    return (hit[orientation].page + 1) + 'ページ目の「' + (hit.name || 'ボタン') + '」と重なるため動かせません。フェーダーは全ページで同じ位置に表示されるので、先にそのボタンを別の枠へ移動してください。';
+    return (hit[orientation].page + 1) + 'ページ目の「' + (hit.name || 'ボタン') + '」と重なるため動かせません。先にそのボタンを別の枠へ移動してください。';
   }
   function rectOverlap(a, b) {
     return (
+      !!a && !!b &&
       a.row < b.row + b.height && a.row + a.height > b.row && a.column < b.column + b.width && a.column + a.width > b.column
     );
   }
   function controlsFit(orientation) {
-    var speaker = controlRect('speaker', orientation),
-      mic = controlRect('mic', orientation);
-    return (
-      speaker.row >= 0 && speaker.column >= 0 && mic.row >= 0 && mic.column >= 0 &&
-      speaker.row + speaker.height <= speaker.rows &&
-      speaker.column + speaker.width <= speaker.columns &&
-      mic.row + mic.height <= mic.rows &&
-      mic.column + mic.width <= mic.columns &&
-      !rectOverlap(speaker, mic)
-    );
+    var o = orientation === 'portrait' ? 'portrait' : 'landscape';
+    function inside(rect) {
+      return !rect || (rect.row >= 0 && rect.column >= 0 && rect.row + rect.height <= rect.rows && rect.column + rect.width <= rect.columns);
+    }
+    return [-1].concat(Object.keys(layout.controlPages[o]).map(Number)).every(function (pageIndex) {
+      var speaker = controlRect('speaker', o, pageIndex),
+        mic = controlRect('mic', o, pageIndex);
+      return inside(speaker) && inside(mic) && !rectOverlap(speaker, mic);
+    });
   }
   function canPlace(apps, index, pos, width, height, orientation) {
     var grid = gridFor(orientation);
@@ -4254,7 +4310,7 @@
     )
       return false;
     var tile = { row: pos.row, column: pos.column, width: width, height: height };
-    if (rectOverlap(tile, controlRect('speaker', orientation)) || rectOverlap(tile, controlRect('mic', orientation)))
+    if (rectOverlap(tile, controlRect('speaker', orientation, pos.page)) || rectOverlap(tile, controlRect('mic', orientation, pos.page)))
       return false;
     return !apps.some(function (a, i) {
       var p = a[orientation],

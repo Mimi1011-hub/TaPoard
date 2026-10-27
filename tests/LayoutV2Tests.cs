@@ -79,5 +79,28 @@ class LayoutV2Tests
         DeckLayout.Reflow(rectangular, "landscape", 5);
         DeckLayout.Validate(rectangular);
         Check(rectangular.apps[0].width == 3 && rectangular.apps[0].height == 2, "grid reflow preserves rectangular widget dimensions");
+
+        // Per-page faders: page 2 hides the speaker and moves the mic, page 1 keeps the shared ones.
+        var pages = Fixture(); DeckLayout.Migrate(pages);
+        bool speakerHidden, micHidden;
+        var page2 = DeckLayout.GetPageControls(pages, false, 1, out speakerHidden, out micHidden);
+        page2.micRow = 2; page2.micColumn = 4; page2.micSlot = 14;
+        DeckLayout.SetPageControls(pages, false, 1, page2, true, false);
+        pages.apps.Add(Tile("under-shared", "landscape", 3, 2, 1, 0, 0));
+        WidgetRegistry.ValidateAndNormalize(pages.apps[0]);
+        DeckLayout.Validate(pages);
+        Check(DeckLayout.PagePlacement(pages, false, false, 1) == null && DeckLayout.PagePlacement(pages, false, true, 1).column == 4, "a page can hide or move its own faders");
+        pages.apps[0].landscape = new TilePosition { page = 0, row = 0, column = 0 };
+        Reject(delegate { DeckLayout.Validate(pages); }, "other pages still reserve the shared fader space");
+        pages.apps[0].landscape = new TilePosition { page = 1, row = 1, column = 2 };
+        Reject(delegate { DeckLayout.Validate(pages); }, "a page's moved fader is reserved on that page");
+        pages.apps.Clear();
+        var shared = DeckLayout.GetControls(pages, false);
+        DeckLayout.SetPageControls(pages, false, 1, shared, false, false);
+        Check(DeckLayout.ControlPages(pages, false).Count == 0, "a page that matches the shared faders is not stored");
+        pages.landscapeControlPages.Add(new ControlPage { page = 3, speakerHidden = true });
+        pages.landscapeControlPages.Add(new ControlPage { page = 3, micHidden = true });
+        Reject(delegate { DeckLayout.Validate(pages); }, "duplicate fader pages are rejected");
+        pages.landscapeControlPages.Clear();
     }
 }
