@@ -2863,8 +2863,9 @@
     try {
       validatePlacements(rows.map(rowData));
     } catch (e) {
+      var blocked = controlConflict(target, orientation);
       Object.assign(controls, before);
-      message(e.message);
+      message(blocked || e.message);
       return;
     }
     saveLayout(
@@ -2885,8 +2886,9 @@
     try {
       validatePlacements(rows.map(rowData));
     } catch (e) {
+      var blocked = controlConflict(target, orientation);
       Object.assign(controls, before);
-      message(e.message);
+      message(blocked || e.message);
       return;
     }
     saveLayout(
@@ -4208,6 +4210,17 @@
       rows: grid.rows,
       columns: grid.columns,
     };
+  }
+  // Faders sit at the same place on every page, so name the button on any page that is in the way.
+  function controlConflict(target, orientation) {
+    var rect = controlRect(target, orientation),
+      hit = rows.map(rowData).filter(function (a) {
+        var p = a[orientation];
+        return (a.orientation || 'landscape') === orientation && p &&
+          rectOverlap({ row: p.row, column: p.column, width: a.width || a.size || 1, height: a.height || a.size || 1 }, rect);
+      })[0];
+    if (!hit) return '';
+    return (hit[orientation].page + 1) + 'ページ目の「' + (hit.name || 'ボタン') + '」と重なるため動かせません。フェーダーは全ページで同じ位置に表示されるので、先にそのボタンを別の枠へ移動してください。';
   }
   function rectOverlap(a, b) {
     return (

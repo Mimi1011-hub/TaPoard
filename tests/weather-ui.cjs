@@ -37,6 +37,8 @@ const server = http.createServer(async (req, res) => {
     let saved = page.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'POST');
     await group.locator('[data-action="widget-weather-now"] button').click(); await saved; await page.locator('#preview-deck .weather-small').waitFor();
     assert.equal(await page.locator('#preview-deck .weather-temperature').innerText(), '12°');
+    await page.locator('#preview-deck .weather-small').evaluate(tile => { const data = new DataTransfer(); data.setData('text/plain', 'control-speaker-fader'); tile.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: data })); });
+    assert((await page.locator('#message').innerText()).includes('1ページ目の「現在の天気」と重なるため動かせません'), 'a blocked fader move names the button in the way');
     saved = page.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'POST');
     await group.locator('[data-action="widget-weather-days"] button').click(); await saved; await page.locator('#preview-deck .weather-large').waitFor();
     assert.equal(await page.locator('#preview-deck .weather-days > div').count(), 3);
