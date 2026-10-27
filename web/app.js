@@ -4126,7 +4126,7 @@
     api('import', {})
       .then(function (s) {
         importTicket = s.id;
-        $('import-status').textContent = '開いたウィンドウにアイコンをドロップしてください。';
+        $('import-status').textContent = '開いたウィンドウにアイコンをドロップするか、URLを入力してください。';
         pollImport();
       })
       .catch(function (e) {
@@ -4160,11 +4160,10 @@
         (s.result.apps || []).forEach(function (a) {
           if (
             rows.some(function (r) {
-              return (
-                r.orientation === previewOrientation &&
-                r.type === 'app' &&
-                r.path.value.toLowerCase() === a.path.toLowerCase()
-              );
+              if (r.orientation !== previewOrientation || r.type !== a.type) return false;
+              return a.type === 'url'
+                ? r.url.value.trim() === a.url
+                : r.path.value.toLowerCase() === a.path.toLowerCase();
             })
           ) {
             skipped++;
@@ -4175,11 +4174,11 @@
         });
         if (!count) {
           $('import-status').textContent =
-            '追加する新しいアプリはありませんでした。' +
+            '追加する新しいボタンはありませんでした。' +
             (skipped ? ' この向きに登録済みの' + skipped + '個はスキップしました。' : '');
           return;
         }
-        persistRows(count + '個のアプリを追加して自動保存しました。').then(function (ok) {
+        persistRows(count + '個のボタンを追加して自動保存しました。').then(function (ok) {
           $('import-status').textContent = ok
             ? count +
               '個追加して自動保存しました。' +

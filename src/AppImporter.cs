@@ -23,6 +23,49 @@ static class AppImporter
         };
     }
 
+    // A typed or dropped web address becomes a URL button named after its site.
+    internal static AppEntry FromUrl(string url, string name)
+    {
+        url = (url ?? "").Trim();
+        CustomActions.ValidateUrl(url);
+        name = (name ?? "").Trim();
+        if (name.Length == 0)
+        {
+            string host = new Uri(url).Host;
+            name = host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host.Substring(4) : host;
+        }
+        if (name.Length > 80)
+            name = name.Substring(0, 80);
+        return new AppEntry
+        {
+            name = name,
+            path = "",
+            args = "",
+            url = url,
+            text = "",
+            type = "url",
+            category = "custom",
+            iconKey = "globe",
+        };
+    }
+
+    // Browsers drag links as text; only a single http(s) address counts.
+    internal static string DroppedUrl(string text)
+    {
+        if (String.IsNullOrWhiteSpace(text))
+            return null;
+        string first = text.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0].Trim();
+        try
+        {
+            CustomActions.ValidateUrl(first);
+            return first;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     internal static bool ValidPath(string path)
     {
         return !String.IsNullOrWhiteSpace(path)
@@ -38,6 +81,11 @@ static class AppImporter
 sealed class ImportWindow : Form
 {
     readonly Label feedback;
+    readonly Panel dropView;
+    readonly Panel urlView;
+    readonly TextBox urlBox;
+    readonly TextBox nameBox;
+    readonly Label urlFeedback;
     readonly Action<List<AppEntry>> complete;
     bool completed;
 
@@ -63,16 +111,25 @@ sealed class ImportWindow : Form
         feedback = new Label
         {
             Text =
-                "デスクトップやエクスプローラーから\nショートカット（.lnk）・実行ファイル（.exe）を\nまとめて追加できます。",
+                "デスクトップやエクスプローラーから\nショートカット（.lnk）・実行ファイル（.exe）を\nまとめて追加できます。\nブラウザのURLをドロップするとURLボタンになります。",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
         };
         var pick = new Button
         {
             Text = "ファイルを選んで追加",
-            Dock = DockStyle.Bottom,
-            Height = 46,
+            Dock = DockStyle.Fill,
         };
+        var enterUrl = new Button
+        {
+            Text = "URLを入力して追加",
+            Dock = DockStyle.Right,
+            Width = 200,
+        };
+        enterUrl.Click += delegate { ShowUrlView(); };
+        var buttons = new Panel { Dock = DockStyle.Bottom, Height = 46 };
+        buttons.Controls.Add(pick);
+        buttons.Controls.Add(enterUrl);
         pick.Click += delegate
         {
             using (
@@ -88,9 +145,45 @@ sealed class ImportWindow : Form
                     Import(dialog.FileNames);
             }
         };
-        Controls.Add(feedback);
-        Controls.Add(title);
-        Controls.Add(pick);
+        dropView = new Panel { Dock = DockStyle.Fill };
+        dropView.Controls.Add(feedback);
+        dropView.Controls.Add(title);
+        dropView.Controls.Add(buttons);
+        dropView.AllowDrop = true;
+        dropView.DragEnter += EnterFiles;
+        dropView.DragDrop += DropFiles;
+
+        urlView = new Panel { Dock = DockStyle.Fill, Visible = false, Padding = new Padding(24, 16, 24, 0) };
+        var urlTitle = new Label
+        {
+            Text = "URLを入力して追加",
+            Dock = DockStyle.Top,
+            Height = 44,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 14),
+        };
+        var urlLabel = new Label { Text = "開くURL（http:// または https://）", Dock = DockStyle.Top, Height = 22 };
+        urlBox = new TextBox { Dock = DockStyle.Top, MaxLength = 2048 };
+        var nameLabel = new Label { Text = "表示名（空欄ならサイト名）", Dock = DockStyle.Top, Height = 26, TextAlign = ContentAlignment.BottomLeft };
+        nameBox = new TextBox { Dock = DockStyle.Top, MaxLength = 80 };
+        urlFeedback = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Firebrick };
+        var add = new Button { Text = "追加", Dock = DockStyle.Fill };
+        var back = new Button { Text = "戻る", Dock = DockStyle.Right, Width = 120 };
+        add.Click += delegate { ImportUrl(); };
+        back.Click += delegate { ShowDropView(); };
+        var urlButtons = new Panel { Dock = DockStyle.Bottom, Height = 46 };
+        urlButtons.Controls.Add(add);
+        urlButtons.Controls.Add(back);
+        // Docked controls stack in reverse order of adding.
+        urlView.Controls.Add(urlFeedback);
+        urlView.Controls.Add(nameBox);
+        urlView.Controls.Add(nameLabel);
+        urlView.Controls.Add(urlBox);
+        urlView.Controls.Add(urlLabel);
+        urlView.Controls.Add(urlTitle);
+        urlView.Controls.Add(urlButtons);
+        Controls.Add(dropView);
+        Controls.Add(urlView);
         DragEnter += EnterFiles;
         DragDrop += DropFiles;
         title.AllowDrop = true;
@@ -106,16 +199,75 @@ sealed class ImportWindow : Form
         };
     }
 
+    void ShowUrlView()
+    {
+        dropView.Visible = false;
+        urlView.Visible = true;
+        AcceptButton = null;
+        urlFeedback.Text = "";
+        urlBox.Focus();
+    }
+
+    void ShowDropView()
+    {
+        urlView.Visible = false;
+        dropView.Visible = true;
+    }
+
+    protected override bool ProcessDialogKey(Keys keyData)
+    {
+        if (keyData == Keys.Enter && urlView.Visible)
+        {
+            ImportUrl();
+            return true;
+        }
+        return base.ProcessDialogKey(keyData);
+    }
+
+    void ImportUrl()
+    {
+        try
+        {
+            Finish(new List<AppEntry> { AppImporter.FromUrl(urlBox.Text, nameBox.Text) });
+        }
+        catch (Exception e)
+        {
+            urlFeedback.Text = e.Message;
+        }
+    }
+
+    void Finish(List<AppEntry> apps)
+    {
+        completed = true;
+        complete(apps);
+        Close();
+    }
+
+    static string DroppedUrl(IDataObject data)
+    {
+        return data.GetDataPresent(DataFormats.UnicodeText) ? AppImporter.DroppedUrl(data.GetData(DataFormats.UnicodeText) as string) : null;
+    }
+
     void EnterFiles(object sender, DragEventArgs e)
     {
-        e.Effect = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Effect =
+            e.Data.GetDataPresent(DataFormats.FileDrop) || DroppedUrl(e.Data) != null
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
     }
 
     void DropFiles(object sender, DragEventArgs e)
     {
         var files = e.Data.GetData(DataFormats.FileDrop) as string[];
         if (files != null)
+        {
             Import(files);
+            return;
+        }
+        // A link dragged from the browser's address bar or a page.
+        string url = DroppedUrl(e.Data);
+        if (url != null)
+            Finish(new List<AppEntry> { AppImporter.FromUrl(url, "") });
     }
 
     void Import(string[] files)
@@ -127,9 +279,7 @@ sealed class ImportWindow : Form
             var apps = new List<AppEntry>();
             foreach (string file in files)
                 apps.Add(AppImporter.FromPath(file));
-            completed = true;
-            complete(apps);
-            Close();
+            Finish(apps);
         }
         catch (Exception e)
         {
