@@ -115,21 +115,10 @@ sealed class ImportWindow : Form
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
         };
-        var pick = new Button
-        {
-            Text = "ファイルを選んで追加",
-            Dock = DockStyle.Fill,
-        };
-        var enterUrl = new Button
-        {
-            Text = "URLを入力して追加",
-            Dock = DockStyle.Right,
-            Width = 200,
-        };
+        var pick = new Button { Text = "ファイルを選んで追加", Dock = DockStyle.Fill };
+        var enterUrl = new Button { Text = "URLを入力して追加", Dock = DockStyle.Fill };
         enterUrl.Click += delegate { ShowUrlView(); };
-        var buttons = new Panel { Dock = DockStyle.Bottom, Height = 46 };
-        buttons.Controls.Add(pick);
-        buttons.Controls.Add(enterUrl);
+        var buttons = ButtonRow(50, pick, enterUrl);
         pick.Click += delegate
         {
             using (
@@ -168,12 +157,10 @@ sealed class ImportWindow : Form
         nameBox = new TextBox { Dock = DockStyle.Top, MaxLength = 80 };
         urlFeedback = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Firebrick };
         var add = new Button { Text = "追加", Dock = DockStyle.Fill };
-        var back = new Button { Text = "戻る", Dock = DockStyle.Right, Width = 120 };
+        var back = new Button { Text = "戻る", Dock = DockStyle.Fill };
         add.Click += delegate { ImportUrl(); };
         back.Click += delegate { ShowDropView(); };
-        var urlButtons = new Panel { Dock = DockStyle.Bottom, Height = 46 };
-        urlButtons.Controls.Add(add);
-        urlButtons.Controls.Add(back);
+        var urlButtons = ButtonRow(70, add, back);
         // Docked controls stack in reverse order of adding.
         urlView.Controls.Add(urlFeedback);
         urlView.Controls.Add(nameBox);
@@ -197,6 +184,20 @@ sealed class ImportWindow : Form
             if (!completed)
                 complete(null);
         };
+    }
+
+    // Percent columns keep the buttons in proportion at any display scaling.
+    static TableLayoutPanel ButtonRow(float firstPercent, Button first, Button second)
+    {
+        var row = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 46, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, firstPercent));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100 - firstPercent));
+        row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        first.Margin = new Padding(0, 0, 2, 0);
+        second.Margin = new Padding(2, 0, 0, 0);
+        row.Controls.Add(first, 0, 0);
+        row.Controls.Add(second, 1, 0);
+        return row;
     }
 
     void ShowUrlView()
