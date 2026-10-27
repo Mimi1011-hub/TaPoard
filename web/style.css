@@ -843,6 +843,26 @@ textarea {
   flex: 0 0 30px;
   font-size: 10px;
 }
+/* 3x2 and 4x2 faders: bigger touch targets instead of stretched ones. */
+.audio-fader.horizontal.tall .fader-step {
+  flex-basis: 44px;
+  width: 44px;
+  height: min(70%, 88px);
+  font-size: 24px;
+}
+.audio-fader.horizontal.tall .fader-track {
+  height: 22px;
+  min-height: 22px;
+  border-radius: 11px;
+}
+.audio-fader.horizontal.tall .fader-thumb {
+  width: 16px;
+  height: 36px;
+}
+.audio-fader.horizontal.tall .fader-value {
+  flex-basis: 44px;
+  font-size: 14px;
+}
 .preview-grid .audio-fader {
   padding: 3px 2px;
   gap: 2px;

@@ -302,7 +302,7 @@ static class DeckLayout
         int count = 1; bool portrait = orientation == "portrait"; foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null) count = Math.Max(count, Position(app, portrait).page + 1); return count;
     }
     internal static int Pages(Settings s, string orientation) { return Math.Max(orientation == "portrait" ? s.portraitPageCount : s.landscapePageCount, RequiredPages(s, orientation)); }
-    static bool ControlDimensionsValid(ControlPlacement p) { return p != null && ((p.width == 1 && p.height == 1) || (p.width == 2 && p.height == 2) || (p.width == 3 && p.height == 1)); }
+    static bool ControlDimensionsValid(ControlPlacement p) { return p != null && ((p.width == 1 && p.height == 1) || (p.width == 2 && p.height == 2) || (p.width == 3 && p.height == 1) || (p.width == 4 && p.height == 1) || (p.width == 3 && p.height == 2) || (p.width == 4 && p.height == 2)); }
     static bool ControlFits(ControlPlacement p, int columns, int rows)
     {
         return ControlDimensionsValid(p) && p.row >= 0 && p.column >= 0 && p.row + p.height <= rows && p.column + p.width <= columns;
