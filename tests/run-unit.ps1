@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Force tests\bin | Out-Null
 $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $tests = @(
     'SettingsV2Tests', 'WidgetRegistryTests', 'BuildInfoTests', 'LayoutV2Tests', 'DisplaySubscriptionTests',
-    'InputSessionTests', 'MetricsSamplerTests', 'GpuMetricsTests', 'WeatherServiceTests', 'Release103Tests'
+    'InputSessionTests', 'MetricsSamplerTests', 'GpuMetricsTests', 'WeatherServiceTests', 'UrlImportTests', 'Release103Tests'
 )
 $failed = @()
 foreach ($test in $tests) {
