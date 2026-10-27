@@ -19,6 +19,8 @@ class WeatherServiceTests
         WeatherService.Clock = delegate { return now; };
         WeatherService.Downloader = delegate(string url)
         {
+            if (url.Contains("geocoding-api") && url.Contains(Uri.EscapeDataString("府中")))
+                return "{\"results\":[{\"name\":\"府中\",\"latitude\":35.67,\"longitude\":139.48},{\"name\":\"壊れた候補\",\"latitude\":\"x\"},{\"name\":\"府中町\",\"admin1\":\"広島県\",\"latitude\":34.39,\"longitude\":132.5,\"timezone\":\"Asia/Tokyo\"}]}";
             if (url.Contains("geocoding-api"))
                 return "{\"results\":[{\"name\":\"札幌\",\"admin1\":\"北海道\",\"country\":\"日本\",\"latitude\":43.06,\"longitude\":141.35,\"timezone\":\"Asia/Tokyo\"}]}";
             return "{\"current\":{\"temperature_2m\":12.4,\"weather_code\":2},\"daily\":{\"time\":[\"2026-10-27\",\"2026-10-28\",\"2026-10-29\"],\"weather_code\":[2,61,3],\"temperature_2m_max\":[15.1,13.2,16.3],\"temperature_2m_min\":[8.4,7.1,9.2],\"precipitation_probability_max\":[20,80,30]}}";
@@ -29,6 +31,8 @@ class WeatherServiceTests
             WeatherService.Initialize(directory, delegate { changed.Set(); });
             var locations = WeatherService.Search("札幌");
             Check(locations.Length == 1 && locations[0].timezone == "Asia/Tokyo", "geocoding results are normalized on the PC");
+            var mixed = WeatherService.Search("府中");
+            Check(mixed.Length == 2 && mixed[0].timezone == "auto" && mixed[1].name == "府中町", "a malformed candidate is skipped and a missing timezone falls back to auto");
             WeatherService.SetActive(true, settings);
             Check(changed.WaitOne(2000), "visible weather subscription fetches asynchronously");
             var weather = WeatherService.PublicSnapshot(settings);

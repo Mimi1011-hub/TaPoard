@@ -145,17 +145,23 @@ static class WeatherService
         {
             var entry = item as Dictionary<string, object>;
             if (entry == null) continue;
-            var location = new WeatherLocationResult
+            // One malformed candidate must not hide the others; a missing timezone is left to Open-Meteo.
+            try
             {
-                name = Text(entry, "name"),
-                region = Text(entry, "admin1"),
-                country = Text(entry, "country"),
-                latitude = Number(entry, "latitude"),
-                longitude = Number(entry, "longitude"),
-                timezone = Text(entry, "timezone"),
-            };
-            ValidateLocation(location.name, location.latitude, location.longitude, location.timezone);
-            result.Add(location);
+                var location = new WeatherLocationResult
+                {
+                    name = Text(entry, "name"),
+                    region = Text(entry, "admin1"),
+                    country = Text(entry, "country"),
+                    latitude = Number(entry, "latitude"),
+                    longitude = Number(entry, "longitude"),
+                    timezone = Text(entry, "timezone"),
+                };
+                if (String.IsNullOrWhiteSpace(location.timezone)) location.timezone = "auto";
+                ValidateLocation(location.name, location.latitude, location.longitude, location.timezone);
+                result.Add(location);
+            }
+            catch { }
         }
         return result.ToArray();
     }

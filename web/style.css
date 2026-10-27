@@ -1106,6 +1106,8 @@ textarea {
 .weather-temperature { font-size: clamp(18px, 5vw, 38px); line-height: 1; }
 .weather-rain { color: #a9c9ff; font-size: clamp(7px, 2vw, 13px); }
 .weather-message { text-align: center; font-size: clamp(8px, 2vw, 14px); }
+.weather-message small { display: block; margin-top: 4px; color: #aebce2; font-size: 0.75em; font-weight: 400; }
+.preview-grid .weather-widget:not(:has(.weather-temperature, .weather-days)) { cursor: pointer; }
 .weather-large { justify-content: flex-start; gap: 5px !important; padding: 9px !important; }
 .weather-heading { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cfddf4; font-size: clamp(8px, 1.8vw, 13px); }
 .weather-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; width: 100%; flex: 1; }
@@ -1127,6 +1129,10 @@ textarea {
 .weather-search-row input { flex: 1; min-width: 0; }
 .weather-results { display: grid; gap: 6px; margin-top: 8px; }
 .weather-result { width: 100%; text-align: left; }
+.weather-error { margin: 0; color: #ffb4a8; }
+.weather-locate { margin-top: 6px; }
+.weather-location-attention { animation: weather-attention 1.6s ease-out; }
+@keyframes weather-attention { 0%, 40% { border-color: #7fa2ff; box-shadow: 0 0 0 3px #4f74e066; } 100% { box-shadow: none; } }
 .clock-settings select,
 .metrics-settings select {
   margin-left: 6px;

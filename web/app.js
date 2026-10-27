@@ -1438,7 +1438,10 @@
     var large = (a.width || a.size || 1) === 2 && (a.height || a.size || 1) === 2;
     tile.className = 'deck-key weather-widget ' + (large ? 'weather-large' : 'weather-small');
     if (!weatherState.configured) {
-      tile.innerHTML = '<strong class="weather-message">地域を設定</strong>';
+      // The location is chosen on the PC settings page, so the phone says where to go.
+      tile.innerHTML = admin
+        ? '<strong class="weather-message">地域が未設定<small>クリックして設定</small></strong>'
+        : '<strong class="weather-message">地域が未設定<small>PCの設定画面で選択</small></strong>';
       return;
     }
     if (!weatherState.available) {
@@ -1478,8 +1481,18 @@
       tile.ondragstart = function (e) { e.dataTransfer.setData('text/plain', 'tile:' + index); e.dataTransfer.effectAllowed = 'move'; };
       addDropTarget(tile, index, slotIndex);
       tile.oncontextmenu = function (e) { openDeckContextMenu(e, index, a); };
+      tile.onclick = function () { if (!weatherState.configured) focusWeatherLocation(); };
     }
     return tile;
+  }
+  function focusWeatherLocation() {
+    var fieldset = document.querySelector('.weather-location-settings');
+    if (!fieldset) return;
+    fieldset.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    fieldset.classList.remove('weather-location-attention');
+    void fieldset.offsetWidth;
+    fieldset.classList.add('weather-location-attention');
+    $('weather-query').focus({ preventScroll: true });
   }
   function updateWeatherTiles() {
     Array.prototype.forEach.call(document.querySelectorAll('.weather-widget[data-widget-id]'), function (tile) {
@@ -2230,7 +2243,8 @@
         item,
         typeof index === 'number' ? Math.min(index, rows.length) : Math.min(rows.length, (page + 1) * appsPerPage),
       );
-      fields.box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (item.type === 'weather' && !weatherLocation.configured) focusWeatherLocation();
+      else fields.box.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return fields;
     } catch (e) {
       desiredPlacement = null;
@@ -3711,6 +3725,12 @@
       weatherNote.className = 'editor-feedback';
       weatherNote.textContent = fields.width === 2 && fields.height === 2 ? '3日分の最高・最低気温と降水確率を表示します。' : '現在の気温と今日の降水確率を表示します。';
       box.appendChild(weatherNote);
+      var locate = document.createElement('button');
+      locate.type = 'button';
+      locate.className = 'subtle weather-locate';
+      locate.textContent = weatherLocation.configured ? '地域を変更（' + weatherLocation.name + '）' : '地域を設定する';
+      locate.onclick = focusWeatherLocation;
+      box.appendChild(locate);
     }
     buildAppearance(fields, box);
     if (fields.type === 'hotkey' && fields.action.indexOf('audio-') !== 0) buildHotkey(fields, box);
@@ -3995,8 +4015,21 @@
       ? '設定中：' + weatherLocation.name + '（' + weatherLocation.timezone + '）'
       : '地域が未設定です。検索して候補を選んでください。';
   }
+  function weatherError(text) {
+    var error = document.createElement('p');
+    error.className = 'weather-error';
+    error.setAttribute('role', 'alert');
+    error.textContent = text;
+    $('weather-results').textContent = '';
+    $('weather-results').appendChild(error);
+  }
   $('weather-search').onclick = function () {
     var query = $('weather-query').value.trim();
+    if (query.length < 2) {
+      weatherError('地域名を2文字以上入力してください（例：札幌、横浜）。');
+      $('weather-query').focus();
+      return;
+    }
     $('weather-results').textContent = '検索中…';
     api('weather/search', { query: query })
       .then(function (response) {
@@ -4018,12 +4051,12 @@
                 $('weather-results').textContent = '地域を保存しました。天気部品を表示すると予報を取得します。';
                 refresh();
               })
-              .catch(function (e) { button.disabled = false; message(e.message); });
+              .catch(function (e) { button.disabled = false; weatherError('保存できませんでした：' + e.message); });
           };
           $('weather-results').appendChild(button);
         });
       })
-      .catch(function (e) { $('weather-results').textContent = ''; message(e.message); });
+      .catch(function (e) { weatherError('検索できませんでした：' + e.message); });
   };
   $('weather-query').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); $('weather-search').click(); } };
   $('add').onclick = function () {
