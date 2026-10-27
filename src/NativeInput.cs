@@ -34,6 +34,11 @@ static class NativeInput
 
     static readonly object SendSync = new object();
     internal static Func<NativeInputEvent[], int> Executor = SendWindows;
+    // Windows (UIPI) silently drops input aimed at an elevated window such as Task Manager.
+    internal static Func<bool> ForegroundElevated = DetectForegroundElevated;
+    static IntPtr lastForeground = IntPtr.Zero;
+    static bool lastForegroundElevated;
+    static int selfElevated = -1;
 
     internal static void Send(NativeInputEvent[] events)
     {
@@ -139,6 +144,69 @@ static class NativeInput
         }
         return (int)SendInput((uint)native.Length, native, Marshal.SizeOf(typeof(INPUT)));
     }
+
+    static bool DetectForegroundElevated()
+    {
+        try
+        {
+            if (selfElevated < 0) selfElevated = ProcessElevated(GetCurrentProcess(), false) ? 1 : 0;
+            if (selfElevated == 1) return false;
+            IntPtr window = GetForegroundWindow();
+            if (window == IntPtr.Zero) return false;
+            if (window == lastForeground) return lastForegroundElevated;
+            uint processId;
+            GetWindowThreadProcessId(window, out processId);
+            bool elevated = false;
+            IntPtr process = OpenProcess(ProcessQueryLimitedInformation, false, processId);
+            if (process != IntPtr.Zero)
+            {
+                try { elevated = ProcessElevated(process, true); }
+                finally { CloseHandle(process); }
+            }
+            lastForeground = window;
+            lastForegroundElevated = elevated;
+            return elevated;
+        }
+        catch { return false; }
+    }
+
+    // A medium-integrity process cannot open an elevated process token, so a refusal counts as elevated.
+    static bool ProcessElevated(IntPtr process, bool deniedMeansElevated)
+    {
+        IntPtr token;
+        if (!OpenProcessToken(process, TokenQuery, out token)) return deniedMeansElevated;
+        try
+        {
+            int elevation, length;
+            return GetTokenInformation(token, TokenElevation, out elevation, sizeof(int), out length) && elevation != 0;
+        }
+        finally { CloseHandle(token); }
+    }
+
+    const uint ProcessQueryLimitedInformation = 0x1000;
+    const uint TokenQuery = 0x0008;
+    const int TokenElevation = 20;
+
+    [DllImport("user32.dll")]
+    static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern IntPtr OpenProcess(uint access, bool inherit, uint processId);
+
+    [DllImport("kernel32.dll")]
+    static extern IntPtr GetCurrentProcess();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool CloseHandle(IntPtr handle);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    static extern bool OpenProcessToken(IntPtr process, uint access, out IntPtr token);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    static extern bool GetTokenInformation(IntPtr token, int infoClass, out int info, int length, out int returned);
 
     [StructLayout(LayoutKind.Sequential)]
     struct INPUT

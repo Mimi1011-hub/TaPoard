@@ -7,6 +7,7 @@ let apps = [];
 let revision = 1;
 let version = '1';
 let busy = false;
+let elevated = false;
 const nextSequence = {};
 const inputs = [];
 const releases = [];
@@ -76,7 +77,7 @@ const server = http.createServer(async (req, res) => {
     assert.equal(input.sequence, nextSequence[widgetId] || 1, 'the device sends consecutive sequences');
     nextSequence[widgetId] = input.sequence + 1;
     await new Promise(resolve => setTimeout(resolve, 30));
-    res.end(JSON.stringify({ ok: true, acknowledged: input.sequence, duplicate: false, serverElapsedMs: 0 }));
+    res.end(JSON.stringify({ ok: true, acknowledged: input.sequence, duplicate: false, serverElapsedMs: 0, foregroundBlocked: elevated }));
     return;
   }
   if (path === '/api/input/release') { releases.push(JSON.parse(body)); res.end('{"ok":true}'); return; }
@@ -216,8 +217,18 @@ async function save(page) {
     await touch('touchEnd', []);
     await phone.locator('#deck .touchpad-widget.input-busy').waitFor({ timeout: 2000 });
     busy = false;
+    assert.equal(await phone.locator('#deck .touchpad-widget .input-busy-label').innerText(), '他端末が操作中');
+    await phone.waitForFunction(() => !document.querySelector('#deck .touchpad-widget.input-busy'), null, { timeout: 4000 });
+
+    elevated = true;
+    await touch('touchStart', [[x, y]]);
+    await touch('touchMove', [[x + 20, y]]);
+    await touch('touchEnd', []);
+    await phone.locator('#deck .touchpad-widget.input-busy').waitFor({ timeout: 2000 });
+    assert.match(await phone.locator('#deck .touchpad-widget .input-busy-label').innerText(), /管理者権限の画面には\s*操作できません/, 'input dropped by an elevated window is explained on the phone');
+    elevated = false;
     assert.deepEqual(errors, []);
-    console.log('PASS touchpad UI: 3x2 settings, move, tap, two-finger tap and scroll, tap-drag with keepalive, long press and busy indicator');
+    console.log('PASS touchpad UI: 3x2 settings, move, tap, two-finger tap and scroll, tap-drag with keepalive, long press, busy and elevated-window indicators');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();
