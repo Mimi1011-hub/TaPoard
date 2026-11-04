@@ -41,6 +41,7 @@ static class InputSessions
         internal string owner;
         internal string widgetId;
         internal string widgetType;
+        internal int widgetHeight;
         internal Dictionary<string, object> options;
         internal DateTime expires;
         internal int lastSequence;
@@ -104,6 +105,7 @@ static class InputSessions
                     Sessions.Add(session.id, session);
                 }
                 session.widgetType = app.type;
+                session.widgetHeight = DeckLayout.Height(app);
                 session.options = app.options == null
                     ? new Dictionary<string, object>()
                     : new Dictionary<string, object>(app.options, StringComparer.Ordinal);
@@ -375,7 +377,8 @@ static class InputSessions
             }
             if (String.Equals(session.widgetType, "keypad", StringComparison.OrdinalIgnoreCase))
             {
-                if (e.type == "keyTap" && IsKeypadControl(e.control)) continue;
+                // NumLock exists only on the 4x5 keypad; each layout accepts just its own keys.
+                if (e.type == "keyTap" && IsKeypadControl(e.control) && (e.control != "numpad-numlock" || session.widgetHeight == 5)) continue;
                 throw new Exception("このテンキーでは許可されていない入力です。");
             }
             throw new Exception("入力部品の種類が正しくありません。");
@@ -415,7 +418,7 @@ static class InputSessions
         if (String.IsNullOrEmpty(control)) return false;
         if (control.Length == 8 && control.StartsWith("numpad-", StringComparison.Ordinal)
             && control[7] >= '0' && control[7] <= '9') return true;
-        return control == "numpad-enter" || control == "numpad-decimal" || control == "numpad-add"
+        return control == "numpad-enter" || control == "numpad-numlock" || control == "numpad-decimal" || control == "numpad-add"
             || control == "numpad-subtract" || control == "numpad-multiply" || control == "numpad-divide";
     }
 

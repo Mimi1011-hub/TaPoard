@@ -126,6 +126,13 @@ async function save(page) {
     assert.equal(apps[1].options.style, 'analog');
     assert.equal(await admin.locator('.editor').nth(1).locator('.appearance-size option').count(), 1, 'analog clock stays fixed at 2x2');
     assert.equal(await admin.locator('#preview-deck .clock-analog.clock-wide').count(), 0);
+    await group.locator('.shortcut-row[data-action="widget-clock-digital-wide"]').getByRole('button', { name: '追加', exact: true }).click();
+    await admin.waitForFunction(() => document.querySelectorAll('#preview-deck .clock-widget').length === 3);
+    assert.equal(apps[2].options.style, 'digital');
+    assert.equal(apps[2].width, 2);
+    assert.equal(apps[2].height, 1, 'the wide digital clock entry adds a 2x1 clock');
+    apps.splice(2, 1);
+    bump();
 
     const phone = await browser.newPage({ viewport: { width: 667, height: 375 } });
     phone.on('pageerror', error => errors.push(String(error)));

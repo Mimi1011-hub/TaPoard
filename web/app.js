@@ -112,9 +112,11 @@
     {
       category: 'widget',
       title: '時計・情報表示',
+      glyph: 'clock',
       note: 'スマートフォン内で動く低負荷な表示部品',
       items: [
-        ['widget-clock-digital', 'デジタル時計', '2×1／2×2・端末時刻'],
+        ['widget-clock-digital-wide', 'デジタル時計（横長）', '2×1・端末時刻'],
+        ['widget-clock-digital', 'デジタル時計', '2×2・端末時刻'],
         ['widget-clock-analog', 'アナログ時計', '2×2固定・端末時刻'],
         ['widget-weather-now', '現在の天気', '1×1・気温と降水確率'],
         ['widget-weather-days', '3日間の天気', '2×2・最高／最低気温'],
@@ -128,6 +130,7 @@
     {
       category: 'widget',
       title: 'マウス操作',
+      glyph: 'mouse',
       note: 'スマートフォンをPCのマウスとして使う部品',
       items: [
         ['widget-wheel-vertical', '縦型ホイール', '1×1・上下スワイプでスクロール'],
@@ -140,8 +143,12 @@
     {
       category: 'widget',
       title: 'キーボード操作',
+      glyph: 'keyboard',
       note: 'スマートフォンをWindowsのテンキーとして使う部品',
-      items: [['widget-keypad', 'テンキー', '4×4・フェーダーと重ならない4×4の空きが必要']],
+      items: [
+        ['widget-keypad', 'テンキー', '4×4・フェーダーと重ならない4×4の空きが必要'],
+        ['widget-keypad-tall', 'テンキー（縦長）', '4×5・PCキーボードの配置・フェーダーと重ならない4×5の空きが必要'],
+      ],
     },
     {
       category: 'common',
@@ -749,9 +756,18 @@
     else fallbackWake();
   }
 
-  function shortcutGlyph(category) {
+  var widgetGlyphs = {
+    // Line drawings in currentColor, so each widget group gets its own recognizable mark.
+    mouse: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 3v6M6 10h12"/></svg>',
+    keyboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M6 13.5h1M17 13.5h1M9 14.5h6"/></svg>',
+  };
+  function shortcutGlyph(category, glyph) {
     var s = document.createElement('span');
-    s.className = 'shortcut-icon ' + (category || 'app');
+    s.className = 'shortcut-icon ' + (category || 'app') + (glyph ? ' glyph-' + glyph : '');
+    if (widgetGlyphs[glyph]) {
+      s.innerHTML = widgetGlyphs[glyph];
+      return s;
+    }
     s.textContent =
       category === 'audio'
         ? '◖'
@@ -1292,21 +1308,29 @@
       primary: ['cpu', 'memory', 'gpu', 'gpuMemory'].indexOf(source.primary) >= 0 ? source.primary : 'cpu',
       cycle: source.cycle === true,
       gpuId: typeof source.gpuId === 'string' ? source.gpuId : '',
+      gpuName: typeof source.gpuName === 'string' ? source.gpuName : '',
     };
   }
-  function selectedGpu(gpuId) {
-    var gpus = Array.isArray(metricsState.gpus) ? metricsState.gpus : [];
-    if (gpuId) return gpus.filter(function (gpu) { return gpu && gpu.id === gpuId; })[0] || null;
-    return gpus[0] || null;
+  // Windows gives a GPU a new LUID (our id) after a restart or driver update, so a saved id
+  // can go stale; fall back to the saved GPU name, then to the first GPU.
+  function selectedGpu(gpuId, gpuName) {
+    var gpus = (Array.isArray(metricsState.gpus) ? metricsState.gpus : []).filter(Boolean);
+    function first(test) { return gpus.filter(test)[0] || null; }
+    return (
+      (gpuId && first(function (gpu) { return gpu.id === gpuId; })) ||
+      (gpuName && first(function (gpu) { return gpu.name === gpuName; })) ||
+      gpus[0] ||
+      null
+    );
   }
   function gpuMemoryPercent(gpu) {
     return gpu && gpu.memoryAvailable && gpu.memoryTotalBytes > 0
       ? (100 * gpu.memoryUsedBytes) / gpu.memoryTotalBytes
       : null;
   }
-  function metricDescriptor(primary, gpuId) {
+  function metricDescriptor(primary, gpuId, gpuName) {
     if (primary === 'memory') return { label: 'メモリ', value: metricsState.memoryPercent, available: metricsState.memoryAvailable, supported: true };
-    var gpu = selectedGpu(gpuId);
+    var gpu = selectedGpu(gpuId, gpuName);
     if (primary === 'gpu') return { label: 'GPU', value: gpu && gpu.utilizationPercent, available: !!(gpu && gpu.utilizationAvailable), supported: !!gpu };
     if (primary === 'gpuMemory') return { label: 'GPUメモリ', value: gpuMemoryPercent(gpu), available: !!(gpu && gpu.memoryAvailable), supported: !!gpu };
     return { label: 'CPU', value: metricsState.cpuPercent, available: metricsState.cpuAvailable, supported: metricsState.cpuSupported !== false };
@@ -1365,7 +1389,7 @@
       tile.appendChild(heading);
       appendMetricRow(tile, 'CPU', metricsState.cpuPercent, metricsState.cpuAvailable, 'metric-cpu', metricsState.cpuSupported !== false);
       appendMetricRow(tile, 'メモリ', metricsState.memoryPercent, metricsState.memoryAvailable, 'metric-memory');
-      var gpu = selectedGpu(options.gpuId),
+      var gpu = selectedGpu(options.gpuId, options.gpuName),
         gpuLabel = gpu && gpu.name ? gpu.name : 'GPU';
       appendMetricRow(tile, 'GPU', gpu && gpu.utilizationPercent, !!(gpu && gpu.utilizationAvailable), 'metric-gpu', !!gpu);
       appendMetricRow(tile, 'GPUメモリ', gpuMemoryPercent(gpu), !!(gpu && gpu.memoryAvailable), 'metric-gpu-memory', !!gpu);
@@ -1398,7 +1422,7 @@
     } else {
       var primary = options.primary;
       if (options.cycle) primary = Math.floor(Date.now() / 4000) % 2 ? 'memory' : 'cpu';
-      var descriptor = metricDescriptor(primary, options.gpuId),
+      var descriptor = metricDescriptor(primary, options.gpuId, options.gpuName),
         name = document.createElement('span'),
         value = document.createElement('strong');
       name.className = 'metric-name';
@@ -2103,16 +2127,32 @@
     tile.dataset.size = a.size || 1;
     tile.dataset.width = a.width || 4;
     tile.dataset.height = a.height || 4;
-    [
-      ['7', 'numpad-7'], ['8', 'numpad-8'], ['9', 'numpad-9'], ['÷', 'numpad-divide'],
-      ['4', 'numpad-4'], ['5', 'numpad-5'], ['6', 'numpad-6'], ['×', 'numpad-multiply'],
-      ['1', 'numpad-1'], ['2', 'numpad-2'], ['3', 'numpad-3'], ['−', 'numpad-subtract'],
-      ['0', 'numpad-0'], ['.', 'numpad-decimal'], ['Enter', 'numpad-enter'], ['＋', 'numpad-add'],
-    ].forEach(function (item) {
+    var tall = (a.height || 4) === 5;
+    if (tall) tile.classList.add('keypad-tall');
+    // [label, key, column, row, column span, row span]; the 4x5 layout follows a PC numpad.
+    (tall
+      ? [
+          ['Num', 'numpad-numlock', 1, 1, 1, 1, 'NumLock'], ['÷', 'numpad-divide', 2, 1], ['×', 'numpad-multiply', 3, 1], ['−', 'numpad-subtract', 4, 1],
+          ['7', 'numpad-7', 1, 2], ['8', 'numpad-8', 2, 2], ['9', 'numpad-9', 3, 2], ['＋', 'numpad-add', 4, 2, 1, 2],
+          ['4', 'numpad-4', 1, 3], ['5', 'numpad-5', 2, 3], ['6', 'numpad-6', 3, 3],
+          ['1', 'numpad-1', 1, 4], ['2', 'numpad-2', 2, 4], ['3', 'numpad-3', 3, 4], ['Enter', 'numpad-enter', 4, 4, 1, 2],
+          ['0', 'numpad-0', 1, 5, 2, 1], ['.', 'numpad-decimal', 3, 5],
+        ]
+      : [
+          ['7', 'numpad-7'], ['8', 'numpad-8'], ['9', 'numpad-9'], ['÷', 'numpad-divide'],
+          ['4', 'numpad-4'], ['5', 'numpad-5'], ['6', 'numpad-6'], ['×', 'numpad-multiply'],
+          ['1', 'numpad-1'], ['2', 'numpad-2'], ['3', 'numpad-3'], ['−', 'numpad-subtract'],
+          ['0', 'numpad-0'], ['.', 'numpad-decimal'], ['Enter', 'numpad-enter'], ['＋', 'numpad-add'],
+        ]
+    ).forEach(function (item) {
       var key = document.createElement(preview ? 'span' : 'button');
       key.className = 'keypad-key';
       key.textContent = item[0];
-      key.setAttribute('aria-label', item[0]);
+      key.setAttribute('aria-label', item[6] || item[0]);
+      if (item[2]) {
+        key.style.gridColumn = item[2] + ' / span ' + (item[4] || 1);
+        key.style.gridRow = item[3] + ' / span ' + (item[5] || 1);
+      }
       if (sender) key.onclick = function (e) {
         e.preventDefault();
         sender.keyTap(item[1]);
@@ -2202,27 +2242,28 @@
     return action === 'custom-url' ? 'url' : action === 'custom-clipboard' ? 'clipboard' : '';
   }
   function widgetFromAction(action) {
-    if (action === 'widget-clock-digital' || action === 'widget-clock-analog') {
-      var analog = action === 'widget-clock-analog';
+    if (action === 'widget-clock-digital' || action === 'widget-clock-digital-wide' || action === 'widget-clock-analog') {
+      var analog = action === 'widget-clock-analog',
+        wide = action === 'widget-clock-digital-wide';
       return {
         name: analog ? 'アナログ時計' : 'デジタル時計',
         type: 'clock',
         category: 'widget',
-        size: 2,
+        size: wide ? 1 : 2,
         width: 2,
-        height: 2,
+        height: wide ? 1 : 2,
         hideLabel: true,
         options: { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false },
       };
     }
-    if (action === 'widget-keypad') {
+    if (action === 'widget-keypad' || action === 'widget-keypad-tall') {
       return {
         name: 'テンキー',
         type: 'keypad',
         category: 'widget',
         size: 1,
         width: 4,
-        height: 4,
+        height: action === 'widget-keypad-tall' ? 5 : 4,
         hideLabel: true,
         options: {},
       };
@@ -2253,7 +2294,7 @@
         width: overview ? 2 : 1,
         height: overview ? 2 : 1,
         hideLabel: true,
-        options: { primary: memory ? 'memory' : gpu ? 'gpu' : gpuMemory ? 'gpuMemory' : 'cpu', cycle: false, gpuId: '' },
+        options: { primary: memory ? 'memory' : gpu ? 'gpu' : gpuMemory ? 'gpuMemory' : 'cpu', cycle: false, gpuId: '', gpuName: '' },
       };
     }
     if (action === 'widget-wheel-vertical' || action === 'widget-wheel-vertical-tall' || action === 'widget-wheel-rotary') {
@@ -2318,7 +2359,7 @@
       desiredPlacement = null;
       message(
         item.type === 'keypad' && /空き枠/.test(e.message)
-          ? 'テンキーには音量フェーダーと重ならない4×4の空き枠が必要です。画面の枠数を5×5以上にするか、そのページのフェーダーを非表示にしてください。'
+          ? 'テンキーには音量フェーダーと重ならない' + item.width + '×' + item.height + 'の空き枠が必要です。画面の枠数を増やすか、そのページのフェーダーを非表示にしてください。'
           : e.message,
       );
       return null;
@@ -3533,14 +3574,15 @@
       option.textContent = gpu.name || gpu.id;
       gpuSelect.appendChild(option);
     });
-    var configuredGpuAvailable = availableGpus.some(function (gpu) { return gpu.id === fields.options.gpuId; });
-    if (fields.options.gpuId && !configuredGpuAvailable) {
-      var missingGpu = document.createElement('option');
-      missingGpu.value = fields.options.gpuId;
-      missingGpu.textContent = '以前のGPU（現在は未接続）';
-      gpuSelect.appendChild(missingGpu);
+    // A stale saved id resolves to the same-named (or first) GPU; saving stores its current id.
+    var resolvedGpu = selectedGpu(fields.options.gpuId, fields.options.gpuName);
+    if (!availableGpus.length && fields.options.gpuId) {
+      var savedGpu = document.createElement('option');
+      savedGpu.value = fields.options.gpuId;
+      savedGpu.textContent = fields.options.gpuName || '保存済みのGPU';
+      gpuSelect.appendChild(savedGpu);
     }
-    gpuSelect.value = fields.options.gpuId || (availableGpus[0] ? availableGpus[0].id : '');
+    gpuSelect.value = resolvedGpu ? resolvedGpu.id : fields.options.gpuId || '';
     gpuLabel.appendChild(gpuSelect);
     area.appendChild(gpuLabel);
     var cycleLabel = document.createElement('label'),
@@ -3554,6 +3596,9 @@
       fields.options.primary = primary.value;
       fields.options.cycle = cycle.checked;
       fields.options.gpuId = gpuSelect.value;
+      var chosenGpu = availableGpus.filter(function (gpu) { return gpu && gpu.id === gpuSelect.value; })[0];
+      if (chosenGpu) fields.options.gpuName = String(chosenGpu.name || '').slice(0, 128);
+      else if (typeof fields.options.gpuName !== 'string') fields.options.gpuName = '';
       gpuLabel.hidden = primary.value !== 'gpu' && primary.value !== 'gpuMemory' && (fields.width !== 2 || fields.height !== 2);
       deckApps = rows.map(rowData);
       renderPreview();
@@ -3954,7 +3999,7 @@
       details.dataset.group = group.title;
       details.open = previous.length ? !!opened[group.title] : groupIndex === 0;
       var summary = document.createElement('summary');
-      summary.appendChild(shortcutGlyph(group.category));
+      summary.appendChild(shortcutGlyph(group.category, group.glyph));
       var text = document.createElement('span');
       text.innerHTML = '<strong>' + group.title + '</strong><small>' + group.note + '</small>';
       summary.appendChild(text);

@@ -560,6 +560,24 @@ body.admin-view main {
 .shortcut-icon.app {
   background: #343b58;
 }
+.shortcut-icon.glyph-clock {
+  background: linear-gradient(145deg, #4c7cf0, #2a4aa8);
+}
+.shortcut-icon.glyph-mouse {
+  background: linear-gradient(145deg, #2fbf8f, #17795f);
+}
+.shortcut-icon.glyph-keyboard {
+  background: linear-gradient(145deg, #f0a03c, #b0611a);
+}
+.shortcut-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .editor-heading .shortcut-icon {
   width: 44px;
   height: 44px;
@@ -1036,6 +1054,8 @@ textarea {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  justify-items: stretch;
   gap: 5px !important;
   background: linear-gradient(145deg, #171b25, #08090d);
 }
@@ -1061,6 +1081,7 @@ button.keypad-key:active {
   background: #26375f;
   box-shadow: inset 0 0 12px #7196ff44;
 }
+.keypad-widget.keypad-tall { grid-template-rows: repeat(5, minmax(0, 1fr)); }
 .preview-grid .keypad-widget { cursor: grab; gap: 2px !important; padding: 3px !important; }
 .preview-grid .keypad-key { border-radius: 3px; font-size: clamp(5px, 0.7vw, 9px); }
 .metrics-widget {
