@@ -191,6 +191,10 @@ class InputSessionTests
                 delegate { InputSessions.Execute("owner-a:view-a", keypad, 2, new[] { Event("keyTap", "vk-41", 0, 0, 0) }); },
                 "keypad rejects arbitrary keyboard input"
             );
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", keypad, 2, new[] { Event("keyTap", "numpad-backspace", 0, 0, 0) }); },
+                "keypad rejects keys that are not on the 4x4 layout"
+            );
             InputSessions.ClearAll(); sent.Clear();
 
             var padApps = new List<AppEntry> { Widget("pad-2", "touchpad") };

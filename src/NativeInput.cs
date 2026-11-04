@@ -94,7 +94,6 @@ static class NativeInput
         if (control == "shift") return 0x10;
         if (control == "alt") return 0x12;
         if (control == "numpad-enter") return 0x0D;
-        if (control == "numpad-backspace") return 0x08;
         if (control == "numpad-multiply") return 0x6A;
         if (control == "numpad-add") return 0x6B;
         if (control == "numpad-subtract") return 0x6D;
