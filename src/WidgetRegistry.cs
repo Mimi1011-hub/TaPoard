@@ -27,7 +27,7 @@ static class WidgetRegistry
         Add(result, "metrics", "PC情報", new[] { "1x1", "2x2" }, true);
         Add(result, "wheel", "マウスホイール", new[] { "1x1", "1x2", "2x2" }, true);
         Add(result, "touchpad", "タッチパッド", new[] { "3x2", "2x3" }, true);
-        Add(result, "keypad", "テンキー", new[] { "4x4" }, true);
+        Add(result, "keypad", "テンキー", new[] { "4x4", "4x5" }, true);
         return result;
     }
 
@@ -130,6 +130,8 @@ static class WidgetRegistry
             );
             normalized["cycle"] = BooleanValue(source, "cycle", false);
             normalized["gpuId"] = ShortText(source, "gpuId", "", 128);
+            // The id is a Windows LUID that changes after a restart; the name lets the phone find the same GPU again.
+            normalized["gpuName"] = ShortText(source, "gpuName", "", 128);
             RejectUnknown(source, normalized);
         }
         else if (definition.type == "wheel")
@@ -163,7 +165,8 @@ static class WidgetRegistry
         }
         else if (definition.type == "keypad")
         {
-            RequireDimensions(app, 4, 4, "テンキーは4×4です。");
+            if (DeckLayout.Width(app) != 4 || (DeckLayout.Height(app) != 4 && DeckLayout.Height(app) != 5))
+                throw new Exception("テンキーは4×4または4×5です。");
             RejectUnknown(source, normalized);
         }
         app.options = normalized;

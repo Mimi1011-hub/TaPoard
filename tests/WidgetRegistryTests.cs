@@ -119,6 +119,19 @@ class WidgetRegistryTests
         keypad.height = 4;
         WidgetRegistry.ValidateAndNormalize(keypad);
         Check(keypad.options.Count == 0, "4x4 keypad is accepted without client-controlled key options");
+        keypad.height = 5;
+        WidgetRegistry.ValidateAndNormalize(keypad);
+        Check(keypad.options.Count == 0, "4x5 keypad is accepted");
+        keypad.height = 3;
+        Reject(delegate { WidgetRegistry.ValidateAndNormalize(keypad); }, "keypad rejects sizes other than 4x4 and 4x5");
+        var gpuMetric = Entry("metrics", 1);
+        gpuMetric.options = new Dictionary<string, object> { { "primary", "gpu" }, { "gpuId", "luid_0x00000000_0x0000abcd" }, { "gpuName", "Test GPU" } };
+        WidgetRegistry.ValidateAndNormalize(gpuMetric);
+        Check((string)gpuMetric.options["gpuName"] == "Test GPU", "metrics keep the GPU name so a restart can find the same GPU");
+        var legacyMetric = Entry("metrics", 1);
+        legacyMetric.options = new Dictionary<string, object> { { "primary", "gpu" }, { "gpuId", "luid_0x00000000_0x0000abcd" } };
+        WidgetRegistry.ValidateAndNormalize(legacyMetric);
+        Check((string)legacyMetric.options["gpuName"] == "", "2.0 metrics without a GPU name still load");
         var definitions = WidgetRegistry.PublicDefinitions() as List<object>;
         Check(definitions != null && definitions.Count == 11, "all current widget definitions are public");
     }

@@ -165,6 +165,14 @@ const server = http.createServer(async (req, res) => {
     bump(false);
     await phone.waitForFunction(() => document.querySelector('#deck .metrics-small .metric-value').textContent === '更新待ち');
     assert.deepEqual(await fits(), { text: '更新待ち', status: true, fits: true, readable: true }, 'status text uses the smaller style and fits');
+    assert.equal(apps[1].options.gpuName, 'Test GPU B', 'the chosen GPU name is saved with its id');
+    // After a Windows restart every GPU gets a new LUID; the saved name still finds the same GPU.
+    metrics = {
+      ...metrics, sampledAt: Date.now(),
+      gpus: [{ ...metrics.gpus[0], id: 'gpu-a-reboot' }, { id: 'gpu-b-reboot', name: 'Test GPU B', utilizationAvailable: true, utilizationPercent: 44.4, memoryAvailable: true, memoryUsedBytes: 1073741824, memoryTotalBytes: 4294967296 }],
+    };
+    bump(false);
+    await phone.waitForFunction(() => document.querySelectorAll('#deck .metrics-small')[1].querySelector('.metric-value').textContent === '44.4%');
     const selection = await phone.evaluate(() => {
       const deck = document.getElementById('deck'),
         style = getComputedStyle(deck),

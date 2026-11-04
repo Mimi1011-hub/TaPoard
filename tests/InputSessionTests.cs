@@ -192,8 +192,17 @@ class InputSessionTests
                 "keypad rejects arbitrary keyboard input"
             );
             Reject(
-                delegate { InputSessions.Execute("owner-a:view-a", keypad, 2, new[] { Event("keyTap", "numpad-backspace", 0, 0, 0) }); },
+                delegate { InputSessions.Execute("owner-a:view-a", keypad, 2, new[] { Event("keyTap", "numpad-numlock", 0, 0, 0) }); },
                 "keypad rejects keys that are not on the 4x4 layout"
+            );
+            InputSessions.ClearAll(); sent.Clear();
+            var tallKeypad = Widget("keypad-tall", "keypad");
+            tallKeypad.width = 4; tallKeypad.height = 5;
+            string tall = InputSessions.Prepare("owner-a:view-a", new List<AppEntry> { tallKeypad }, new[] { "keypad-tall" })[0].sessionId;
+            InputSessions.Execute("owner-a:view-a", tall, 1, new[] { Event("keyTap", "numpad-numlock", 0, 0, 0) });
+            Check(
+                sent.Count == 1 && sent[0].Length == 2 && sent[0][0].control == "numpad-numlock" && sent[0][1].type == "keyUp",
+                "4x5 keypad sends its NumLock key"
             );
             InputSessions.ClearAll(); sent.Clear();
 
