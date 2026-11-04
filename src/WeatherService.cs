@@ -314,7 +314,7 @@ static class WeatherService
     {
         ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
         var request = (HttpWebRequest)WebRequest.Create(url);
-        request.UserAgent = "TaPoard/2.0 (+https://open-meteo.com/)";
+        request.UserAgent = "TaPoard/" + BuildInfo.ReleaseVersion + " (+https://open-meteo.com/)";
         request.Timeout = 8000;
         request.ReadWriteTimeout = 8000;
         using (var response = request.GetResponse())

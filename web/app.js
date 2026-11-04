@@ -141,7 +141,7 @@
       category: 'widget',
       title: 'キーボード操作',
       note: 'スマートフォンをWindowsのテンキーとして使う部品',
-      items: [['widget-keypad', 'テンキー', '4×4・数字と四則演算']],
+      items: [['widget-keypad', 'テンキー', '4×4・フェーダーと重ならない4×4の空きが必要']],
     },
     {
       category: 'common',
@@ -2110,7 +2110,7 @@
       ['0', 'numpad-0'], ['.', 'numpad-decimal'], ['Enter', 'numpad-enter'], ['＋', 'numpad-add'],
     ].forEach(function (item) {
       var key = document.createElement(preview ? 'span' : 'button');
-      key.className = 'keypad-key' + (item[2] ? ' keypad-' + item[2] : '');
+      key.className = 'keypad-key';
       key.textContent = item[0];
       key.setAttribute('aria-label', item[0]);
       if (sender) key.onclick = function (e) {
@@ -2316,7 +2316,11 @@
       return fields;
     } catch (e) {
       desiredPlacement = null;
-      message(e.message);
+      message(
+        item.type === 'keypad' && /空き枠/.test(e.message)
+          ? 'テンキーには音量フェーダーと重ならない4×4の空き枠が必要です。画面の枠数を5×5以上にするか、そのページのフェーダーを非表示にしてください。'
+          : e.message,
+      );
       return null;
     }
   }

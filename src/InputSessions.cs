@@ -415,7 +415,7 @@ static class InputSessions
         if (String.IsNullOrEmpty(control)) return false;
         if (control.Length == 8 && control.StartsWith("numpad-", StringComparison.Ordinal)
             && control[7] >= '0' && control[7] <= '9') return true;
-        return control == "numpad-enter" || control == "numpad-backspace" || control == "numpad-decimal" || control == "numpad-add"
+        return control == "numpad-enter" || control == "numpad-decimal" || control == "numpad-add"
             || control == "numpad-subtract" || control == "numpad-multiply" || control == "numpad-divide";
     }
 
