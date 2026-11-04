@@ -13,7 +13,7 @@ try {
     $revision = 'unknown'
 }
 # A clean release build shows the plain version; anything else carries its commit state.
-$displayVersion = if ($revision -match '^[0-9a-f]{7,40}$') { '2.0' } else { '2.0+' + $revision }
+$displayVersion = if ($revision -match '^[0-9a-f]{7,40}$') { '2.1' } else { '2.1+' + $revision }
 $source = "using System.Reflection;`r`n[assembly: AssemblyInformationalVersion(`"$displayVersion`")]`r`n"
 $parent = Split-Path -Parent $OutputPath
 if ($parent) { New-Item -ItemType Directory -Force -Path $parent | Out-Null }

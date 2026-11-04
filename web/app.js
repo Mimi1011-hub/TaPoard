@@ -114,8 +114,8 @@
       title: '時計・情報表示',
       note: 'スマートフォン内で動く低負荷な表示部品',
       items: [
-        ['widget-clock-digital', 'デジタル時計', '2×2・端末時刻'],
-        ['widget-clock-analog', 'アナログ時計', '2×2・端末時刻'],
+        ['widget-clock-digital', 'デジタル時計', '2×1／2×2・端末時刻'],
+        ['widget-clock-analog', 'アナログ時計', '2×2固定・端末時刻'],
         ['widget-weather-now', '現在の天気', '1×1・気温と降水確率'],
         ['widget-weather-days', '3日間の天気', '2×2・最高／最低気温'],
         ['widget-metrics-cpu', 'CPU使用率', '1×1・2秒更新'],
@@ -136,6 +136,12 @@
         ['widget-touchpad-wide', 'タッチパッド（横長）', '3×2・移動／クリック／スクロール'],
         ['widget-touchpad-tall', 'タッチパッド（縦長）', '2×3・移動／クリック／スクロール'],
       ],
+    },
+    {
+      category: 'widget',
+      title: 'キーボード操作',
+      note: 'スマートフォンをWindowsのテンキーとして使う部品',
+      items: [['widget-keypad', 'テンキー', '4×4・数字と四則演算']],
     },
     {
       category: 'common',
@@ -1230,12 +1236,13 @@
     tile.className = 'deck-key clock-widget clock-' + options.style;
     if (options.hour12) tile.classList.add('clock-12h');
     if (!options.showSeconds) tile.classList.add('clock-no-seconds');
+    if ((a.height || a.size || 2) === 1) tile.classList.add('clock-wide');
     tile.title = a.name || (options.style === 'analog' ? 'アナログ時計' : 'デジタル時計');
     tile._clockOptions = options;
     tile.dataset.appIndex = index;
-    tile.dataset.size = 2;
-    tile.dataset.width = 2;
-    tile.dataset.height = 2;
+    tile.dataset.size = a.size || 2;
+    tile.dataset.width = a.width || a.size || 2;
+    tile.dataset.height = a.height || a.size || 2;
     if (options.style === 'analog') {
       var face = document.createElement('div');
       face.className = 'clock-face';
@@ -1641,6 +1648,7 @@
       move: function (dx, dy) { if (dx || dy) push({ type: 'move', dx: dx, dy: dy }); },
       wheel: function (delta) { if (delta) push({ type: 'wheel', delta: delta }); },
       button: function (type, control) { push({ type: type, control: control }); },
+      keyTap: function (control) { if (control) push({ type: 'keyTap', control: control }); },
       keepalive: function () {
         var current = session();
         if (current && !inFlight && !queue.length)
@@ -2085,6 +2093,50 @@
     } else if (a.id) bindTouchpadGesture(tile, a, options);
     return tile;
   }
+  function keypadTile(a, preview, index, slotIndex) {
+    var tile = document.createElement('div'),
+      sender = !preview && a.id ? inputSender(a.id) : null;
+    tile.className = 'deck-key keypad-widget';
+    tile.title = a.name || 'テンキー';
+    tile.dataset.widgetId = a.id || '';
+    tile.dataset.appIndex = index;
+    tile.dataset.size = a.size || 1;
+    tile.dataset.width = a.width || 4;
+    tile.dataset.height = a.height || 4;
+    [
+      ['7', 'numpad-7'], ['8', 'numpad-8'], ['9', 'numpad-9'], ['÷', 'numpad-divide'],
+      ['4', 'numpad-4'], ['5', 'numpad-5'], ['6', 'numpad-6'], ['×', 'numpad-multiply'],
+      ['1', 'numpad-1'], ['2', 'numpad-2'], ['3', 'numpad-3'], ['−', 'numpad-subtract'],
+      ['0', 'numpad-0'], ['.', 'numpad-decimal'], ['Enter', 'numpad-enter'], ['＋', 'numpad-add'],
+    ].forEach(function (item) {
+      var key = document.createElement(preview ? 'span' : 'button');
+      key.className = 'keypad-key' + (item[2] ? ' keypad-' + item[2] : '');
+      key.textContent = item[0];
+      key.setAttribute('aria-label', item[0]);
+      if (sender) key.onclick = function (e) {
+        e.preventDefault();
+        sender.keyTap(item[1]);
+        sender.release();
+      };
+      tile.appendChild(key);
+    });
+    var busy = document.createElement('span');
+    busy.className = 'input-busy-label';
+    busy.textContent = '他端末が操作中';
+    tile.appendChild(busy);
+    tile.setAttribute('aria-label', a.name || 'テンキー');
+    if (sender) sender.listen(function (state) { showInputNotice(tile, state); });
+    if (preview) {
+      tile.draggable = true;
+      tile.ondragstart = function (e) {
+        e.dataTransfer.setData('text/plain', 'tile:' + index);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      addDropTarget(tile, index, slotIndex);
+      tile.oncontextmenu = function (e) { openDeckContextMenu(e, index, a); };
+    }
+    return tile;
+  }
   function wheelTile(a, preview, index, slotIndex) {
     var options = wheelOptions(a),
       tile = document.createElement('div');
@@ -2161,6 +2213,18 @@
         height: 2,
         hideLabel: true,
         options: { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false },
+      };
+    }
+    if (action === 'widget-keypad') {
+      return {
+        name: 'テンキー',
+        type: 'keypad',
+        category: 'widget',
+        size: 1,
+        width: 4,
+        height: 4,
+        hideLabel: true,
+        options: {},
       };
     }
     if (action === 'widget-weather-now' || action === 'widget-weather-days') {
@@ -2377,6 +2441,7 @@
     if (a.type === 'weather') return weatherTile(a, preview, index, slotIndex);
     if (a.type === 'wheel') return wheelTile(a, preview, index, slotIndex);
     if (a.type === 'touchpad') return touchpadTile(a, preview, index, slotIndex);
+    if (a.type === 'keypad') return keypadTile(a, preview, index, slotIndex);
     var b = document.createElement(preview ? 'div' : 'button');
     b.className = 'deck-key';
     b.title = a.name;
@@ -2673,7 +2738,7 @@
           app.orientation === orientation &&
           position &&
           position.page === page &&
-          (app.type === 'metrics' || app.type === 'weather' || app.type === 'wheel' || app.type === 'touchpad')
+          (app.type === 'metrics' || app.type === 'weather' || app.type === 'wheel' || app.type === 'touchpad' || app.type === 'keypad')
         );
       })
       .map(function (app) { return app.id; })
@@ -3063,11 +3128,13 @@
                       ? 'マウスホイール'
                       : a.type === 'touchpad'
                         ? 'タッチパッド'
+                        : a.type === 'keypad'
+                          ? 'テンキー'
               : 'アプリ';
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
-    if (a.type !== 'clock' && a.type !== 'metrics' && a.type !== 'wheel' && a.type !== 'touchpad')
+    if (a.type !== 'clock' && a.type !== 'metrics' && a.type !== 'wheel' && a.type !== 'touchpad' && a.type !== 'keypad')
       menu.appendChild(
         contextButton('アイコンを選ぶ', '', function () {
           if (rows[index]) openIconPicker(rows[index]);
@@ -3399,20 +3466,7 @@
     var legend = document.createElement('legend');
     legend.textContent = '時計の表示';
     area.appendChild(legend);
-    var styleLabel = document.createElement('label');
-    styleLabel.textContent = '種類';
-    var style = document.createElement('select');
-    [['digital', 'デジタル'], ['analog', 'アナログ']].forEach(function (pair) {
-      var option = document.createElement('option');
-      option.value = pair[0];
-      option.textContent = pair[1];
-      style.appendChild(option);
-    });
-    style.value = fields.options.style;
-    styleLabel.appendChild(style);
-    area.appendChild(styleLabel);
-    var digitalOnly = [];
-    function check(name, text, onlyDigital) {
+    function check(name, text) {
       var label = document.createElement('label'),
         input = document.createElement('input');
       input.type = 'checkbox';
@@ -3420,7 +3474,6 @@
       label.appendChild(input);
       label.appendChild(document.createTextNode(text));
       area.appendChild(label);
-      if (onlyDigital) digitalOnly.push(label);
       input.onchange = function () {
         fields.options[name] = input.checked;
         deckApps = rows.map(rowData);
@@ -3429,19 +3482,11 @@
       return input;
     }
     check('showSeconds', '秒を表示');
-    check('showDate', '日付を表示', true);
-    check('showWeekday', '曜日を表示', true);
-    check('hour12', '12時間表示（AM / PM）', true);
-    function syncStyle() {
-      fields.options.style = style.value;
-      digitalOnly.forEach(function (label) {
-        label.hidden = style.value !== 'digital';
-      });
-      deckApps = rows.map(rowData);
-      renderPreview();
+    if (fields.options.style === 'digital') {
+      check('showDate', '日付を表示');
+      check('showWeekday', '曜日を表示');
+      check('hour12', '12時間表示（AM / PM）');
     }
-    style.onchange = syncStyle;
-    syncStyle();
     var note = document.createElement('p');
     note.className = 'editor-feedback';
     note.textContent = 'スマートフォンの時刻を使います。時計のためのPC通信は行いません。';
@@ -3724,6 +3769,8 @@
                       ? 'WHEEL'
                       : fields.type === 'touchpad'
                         ? 'TOUCHPAD'
+                      : fields.type === 'keypad'
+                        ? 'KEYPAD'
               : 'APP';
     heading.appendChild(kind);
     box.appendChild(heading);
@@ -3777,7 +3824,7 @@
       refreshEditorIcon(fields);
     };
     refreshEditorIcon(fields);
-    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather' && fields.type !== 'wheel' && fields.type !== 'touchpad') {
+    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather' && fields.type !== 'wheel' && fields.type !== 'touchpad' && fields.type !== 'keypad') {
       var iconButton = document.createElement('button');
       iconButton.type = 'button';
       iconButton.className = 'subtle icon-select-button';
@@ -4445,7 +4492,10 @@
           oldHeight = fields.height,
           oldPosition = fields[fields.orientation];
         fields[name] = Number(input.value);
-        if (name === 'size') fields.width = fields.height = fields.size;
+        if (name === 'size') {
+          fields.width = fields.type === 'clock' ? 2 : fields.size;
+          fields.height = fields.size;
+        }
         try {
           validatePlacements(rows.map(rowData));
           status.textContent = '「設定を保存」で反映します。';
@@ -4465,7 +4515,7 @@
               validatePlacements(rows.map(rowData));
               page = candidate.page;
               pageByOrientation[fields.orientation] = page;
-              status.textContent = '4マス分の空き枠へ自動移動しました。「設定を保存」で反映します。';
+              status.textContent = fields.width + '×' + fields.height + 'の空き枠へ自動移動しました。「設定を保存」で反映します。';
               preview();
               return;
             } catch (ignore) {
@@ -4482,16 +4532,22 @@
       label.appendChild(input);
       area.appendChild(label);
     }
-    select(
-      fields.type === 'clock' ? '時計の大きさ' : 'ボタンの大きさ',
-      'size',
-      fields.type === 'clock'
-        ? [[2, '4マス（2×2）']]
-        : [
-            [1, '1マス（1×1）'],
-            [2, '4マス（2×2）'],
-          ],
-    );
+    if (fields.type !== 'keypad')
+      select(
+        fields.type === 'clock' ? '時計の大きさ' : 'ボタンの大きさ',
+        'size',
+        fields.type === 'clock'
+          ? fields.options && fields.options.style === 'analog'
+            ? [[2, '4マス（2×2）']]
+            : [
+                [1, '横長2マス（2×1）'],
+                [2, '4マス（2×2）'],
+              ]
+          : [
+              [1, '1マス（1×1）'],
+              [2, '4マス（2×2）'],
+            ],
+      );
     select('文字サイズ', 'fontSize', [
       [8, '小さめ 8'],
       [11, '標準 11'],

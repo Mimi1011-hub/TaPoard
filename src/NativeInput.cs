@@ -31,6 +31,7 @@ static class NativeInput
     const uint MiddleUp = 0x0040;
     const uint MouseWheel = 0x0800;
     const uint KeyUp = 0x0002;
+    const uint ExtendedKey = 0x0001;
 
     static readonly object SendSync = new object();
     internal static Func<NativeInputEvent[], int> Executor = SendWindows;
@@ -92,6 +93,18 @@ static class NativeInput
         if (control == "ctrl") return 0x11;
         if (control == "shift") return 0x10;
         if (control == "alt") return 0x12;
+        if (control == "numpad-enter") return 0x0D;
+        if (control == "numpad-backspace") return 0x08;
+        if (control == "numpad-multiply") return 0x6A;
+        if (control == "numpad-add") return 0x6B;
+        if (control == "numpad-subtract") return 0x6D;
+        if (control == "numpad-decimal") return 0x6E;
+        if (control == "numpad-divide") return 0x6F;
+        if (control != null && control.StartsWith("numpad-", StringComparison.Ordinal) && control.Length == 8)
+        {
+            char digit = control[7];
+            if (digit >= '0' && digit <= '9') return (byte)(0x60 + digit - '0');
+        }
         if (control != null && control.StartsWith("vk-", StringComparison.Ordinal) && control.Length == 5)
         {
             byte value;
@@ -137,7 +150,8 @@ static class NativeInput
             {
                 native[i].type = InputKeyboard;
                 native[i].data.ki.virtualKey = VirtualKey(item.control);
-                native[i].data.ki.flags = item.type == "keyUp" ? KeyUp : 0;
+                native[i].data.ki.flags = (item.type == "keyUp" ? KeyUp : 0)
+                    | (item.control == "numpad-enter" || item.control == "numpad-divide" ? ExtendedKey : 0);
             }
             else
                 throw new Exception("対応していない入力です。");

@@ -111,18 +111,21 @@ async function save(page) {
     assert.equal(await admin.locator('#preview-deck .clock-widget').evaluate(node => node.style.gridColumn.includes('span 2')), true);
 
     const clockSettings = admin.locator('.editor .clock-settings');
-    await clockSettings.locator('select').selectOption('analog');
-    await admin.locator('#preview-deck .clock-face').waitFor();
-    await save(admin);
-    assert.equal(apps[0].options.style, 'analog');
+    assert.equal(await clockSettings.locator('select').count(), 0, 'clock type is fixed when the widget is added');
     assert.equal(await admin.locator('.editor .icon-select-button').count(), 0);
-
-    await clockSettings.locator('select').selectOption('digital');
     const checks = clockSettings.locator('input[type="checkbox"]');
     await checks.nth(3).check();
+    await admin.locator('.editor .appearance-size').selectOption('1');
     await save(admin);
+    assert.equal(apps[0].width, 2);
+    assert.equal(apps[0].height, 1);
     assert.equal(apps[0].options.hour12, true);
     assert.match(await admin.locator('#preview-deck .clock-time').innerText(), / (AM|PM)$/);
+    await group.locator('.shortcut-row[data-action="widget-clock-analog"]').getByRole('button', { name: '追加', exact: true }).click();
+    await admin.locator('#preview-deck .clock-face').waitFor();
+    assert.equal(apps[1].options.style, 'analog');
+    assert.equal(await admin.locator('.editor').nth(1).locator('.appearance-size option').count(), 1, 'analog clock stays fixed at 2x2');
+    assert.equal(await admin.locator('#preview-deck .clock-analog.clock-wide').count(), 0);
 
     const phone = await browser.newPage({ viewport: { width: 667, height: 375 } });
     phone.on('pageerror', error => errors.push(String(error)));
@@ -131,22 +134,22 @@ async function save(page) {
     await phoneClock.waitFor();
     const first = await phoneClock.innerText();
     await phone.waitForFunction(previous => document.querySelector('#deck .clock-time').textContent !== previous, first, { timeout: 2500 });
-    const fits = () => phone.locator('#deck .clock-widget').evaluate(tile => {
+    const fits = () => phone.locator('#deck .clock-digital').evaluate(tile => {
       const node = tile.querySelector('.clock-time'), range = document.createRange();
       range.selectNodeContents(node);
       const text = range.getBoundingClientRect(), box = tile.getBoundingClientRect();
       return text.left >= box.left - 1 && text.right <= box.right + 1 && text.top >= box.top - 1 && text.bottom <= box.bottom + 1;
     });
-    assert(await fits(), '12-hour time fits a 2x2 tile on a 5x3 grid');
+    assert(await fits(), '12-hour time fits a 2x1 tile on a 5x3 grid');
     grid = { columns: 8, rows: 5 };
     bump();
     await phone.waitForFunction(() => document.querySelector('#deck').dataset.columns === '8');
-    assert(await fits(), '12-hour time fits a 2x2 tile on a dense 8x5 grid');
+    assert(await fits(), '12-hour time fits a 2x1 tile on a dense 8x5 grid');
     assert(stateVisibleIds.length > 0);
     assert(stateVisibleIds.every(value => value === ''), 'clock must not create a display subscription');
     assert(viewCalls.every(call => Array.isArray(call.visibleIds) && call.visibleIds.length === 0), 'clock view announcements must stay empty');
     assert.deepEqual(errors, []);
-    console.log('PASS clock UI: 2x2 digital/analog settings, local ticking and no display subscription');
+    console.log('PASS clock UI: 2x1/2x2 fixed digital and analog clocks, local ticking and no display subscription');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();
