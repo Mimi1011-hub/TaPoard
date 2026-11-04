@@ -61,6 +61,7 @@ class InputSessionTests
             Widget("wheel-1", "wheel"),
             Widget("touch-1", "touchpad"),
             Widget("clock-1", "clock"),
+            Widget("keypad-1", "keypad"),
         };
         try
         {
@@ -177,6 +178,20 @@ class InputSessionTests
                 "wheel steps per request are bounded"
             );
             InputSessions.Release("owner-a:view-a", configured);
+
+            InputSessions.ClearAll(); sent.Clear();
+            string keypad = InputSessions.Prepare("owner-a:view-a", apps, new[] { "keypad-1" })[0].sessionId;
+            InputSessions.Execute("owner-a:view-a", keypad, 1, new[] { Event("keyTap", "numpad-7", 0, 0, 0) });
+            Check(
+                sent.Count == 1 && sent[0].Length == 2 && sent[0][0].type == "keyDown"
+                    && sent[0][0].control == "numpad-7" && sent[0][1].type == "keyUp",
+                "keypad tap becomes one bounded numpad key press"
+            );
+            Reject(
+                delegate { InputSessions.Execute("owner-a:view-a", keypad, 2, new[] { Event("keyTap", "vk-41", 0, 0, 0) }); },
+                "keypad rejects arbitrary keyboard input"
+            );
+            InputSessions.ClearAll(); sent.Clear();
 
             var padApps = new List<AppEntry> { Widget("pad-2", "touchpad") };
             padApps[0].options["longPress"] = "none"; padApps[0].options["reverseScroll"] = true;

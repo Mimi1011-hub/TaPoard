@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = '2.0'
+$version = '2.1'
 $releaseRoot = Join-Path $PSScriptRoot 'release'
 $stage = Join-Path $releaseRoot 'installer-payload'
 $verify = Join-Path $releaseRoot 'installer-verification'

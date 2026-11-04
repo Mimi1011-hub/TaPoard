@@ -22,11 +22,12 @@ static class WidgetRegistry
         Add(result, "url", "URL", new[] { "1x1", "2x2" }, false);
         Add(result, "clipboard", "テキストコピー", new[] { "1x1", "2x2" }, false);
         Add(result, "audioDevice", "音声機器", new[] { "1x1", "2x2" }, false);
-        Add(result, "clock", "時計", new[] { "2x2" }, true);
+        Add(result, "clock", "時計", new[] { "2x1", "2x2" }, true);
         Add(result, "weather", "天気", new[] { "1x1", "2x2" }, true);
         Add(result, "metrics", "PC情報", new[] { "1x1", "2x2" }, true);
         Add(result, "wheel", "マウスホイール", new[] { "1x1", "1x2", "2x2" }, true);
         Add(result, "touchpad", "タッチパッド", new[] { "3x2", "2x3" }, true);
+        Add(result, "keypad", "テンキー", new[] { "4x4" }, true);
         return result;
     }
 
@@ -98,8 +99,14 @@ static class WidgetRegistry
         var normalized = new Dictionary<string, object>();
         if (definition.type == "clock")
         {
-            RequireDimensions(app, 2, 2, "時計は2×2です。");
-            normalized["style"] = EnumValue(source, "style", "digital", new[] { "digital", "analog" });
+            string clockStyle = EnumValue(source, "style", "digital", new[] { "digital", "analog" });
+            int clockWidth = DeckLayout.Width(app), clockHeight = DeckLayout.Height(app);
+            bool validClockSize = clockStyle == "analog"
+                ? clockWidth == 2 && clockHeight == 2
+                : clockWidth == 2 && (clockHeight == 1 || clockHeight == 2);
+            if (!validClockSize)
+                throw new Exception(clockStyle == "analog" ? "アナログ時計は2×2です。" : "デジタル時計は2×1または2×2です。");
+            normalized["style"] = clockStyle;
             normalized["showSeconds"] = BooleanValue(source, "showSeconds", true);
             normalized["showDate"] = BooleanValue(source, "showDate", true);
             normalized["showWeekday"] = BooleanValue(source, "showWeekday", true);
@@ -152,6 +159,11 @@ static class WidgetRegistry
             normalized["twoFingerScroll"] = BooleanValue(source, "twoFingerScroll", true);
             normalized["reverseScroll"] = BooleanValue(source, "reverseScroll", false);
             normalized["longPress"] = EnumValue(source, "longPress", "none", new[] { "none", "rightClick", "drag" });
+            RejectUnknown(source, normalized);
+        }
+        else if (definition.type == "keypad")
+        {
+            RequireDimensions(app, 4, 4, "テンキーは4×4です。");
             RejectUnknown(source, normalized);
         }
         app.options = normalized;

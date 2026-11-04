@@ -71,7 +71,7 @@ static class InputSessions
         if (requested.Count > 40) throw new Exception("表示部品が多すぎます。");
         var allowed = new Dictionary<string, AppEntry>(StringComparer.Ordinal);
         foreach (var app in configured)
-            if (requested.Contains(app.id) && (IsType(app, "wheel") || IsType(app, "touchpad"))) allowed[app.id] = app;
+            if (requested.Contains(app.id) && (IsType(app, "wheel") || IsType(app, "touchpad") || IsType(app, "keypad"))) allowed[app.id] = app;
 
         DateTime now = Clock();
         lock (Sync)
@@ -257,7 +257,7 @@ static class InputSessions
     internal static void RemoveUnknown(IEnumerable<AppEntry> configured)
     {
         var allowed = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var app in configured) if (IsType(app, "wheel") || IsType(app, "touchpad")) allowed.Add(app.id);
+        foreach (var app in configured) if (IsType(app, "wheel") || IsType(app, "touchpad") || IsType(app, "keypad")) allowed.Add(app.id);
         lock (Sync)
         {
             var remove = new List<Session>();
@@ -343,6 +343,10 @@ static class InputSessions
                 if (e.control != "ctrl" && e.control != "shift" && e.control != "alt")
                     throw new Exception("修飾キーが正しくありません。");
             }
+            else if (e.type == "keyTap")
+            {
+                if (!IsKeypadControl(e.control)) throw new Exception("テンキーが正しくありません。");
+            }
             else throw new Exception("入力種類が正しくありません。");
         }
     }
@@ -369,6 +373,11 @@ static class InputSessions
                     && (Option(session, "tapToClick", true) || OptionText(session, "longPress", "none") == "rightClick")) continue;
                 throw new Exception("このタッチパッド設定では許可されていない入力です。");
             }
+            if (String.Equals(session.widgetType, "keypad", StringComparison.OrdinalIgnoreCase))
+            {
+                if (e.type == "keyTap" && IsKeypadControl(e.control)) continue;
+                throw new Exception("このテンキーでは許可されていない入力です。");
+            }
             throw new Exception("入力部品の種類が正しくありません。");
         }
     }
@@ -391,9 +400,23 @@ static class InputSessions
                 for (int i = modifiers.Count - 1; i >= 0; i--) result.Add(new NativeInputEvent { type = "keyUp", control = modifiers[i] });
             }
             else if (e.type == "wheel") result.Add(new NativeInputEvent { type = "wheel", delta = sign * e.delta });
+            else if (e.type == "keyTap")
+            {
+                result.Add(new NativeInputEvent { type = "keyDown", control = e.control });
+                result.Add(new NativeInputEvent { type = "keyUp", control = e.control });
+            }
             else result.Add(e);
         }
         return result.ToArray();
+    }
+
+    static bool IsKeypadControl(string control)
+    {
+        if (String.IsNullOrEmpty(control)) return false;
+        if (control.Length == 8 && control.StartsWith("numpad-", StringComparison.Ordinal)
+            && control[7] >= '0' && control[7] <= '9') return true;
+        return control == "numpad-enter" || control == "numpad-backspace" || control == "numpad-decimal" || control == "numpad-add"
+            || control == "numpad-subtract" || control == "numpad-multiply" || control == "numpad-divide";
     }
 
     static int OptionNumber(Session session, string name, int fallback)

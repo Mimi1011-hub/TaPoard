@@ -47,9 +47,16 @@ class WidgetRegistryTests
         app.options = new Dictionary<string, object> { { "unsafe", true } };
         Reject(delegate { WidgetRegistry.ValidateAndNormalize(app); }, "legacy actions reject unexpected options");
 
-        var clock = Entry("clock", 2);
+        var clock = Entry("clock", 1);
+        clock.width = 2;
+        clock.height = 1;
         WidgetRegistry.ValidateAndNormalize(clock);
-        Check((string)clock.options["style"] == "digital" && (bool)clock.options["showSeconds"], "clock defaults are normalized");
+        Check((string)clock.options["style"] == "digital" && (bool)clock.options["showSeconds"], "2x1 clock defaults are normalized");
+        var analogWide = Entry("clock", 1);
+        analogWide.width = 2;
+        analogWide.height = 1;
+        analogWide.options = new Dictionary<string, object> { { "style", "analog" } };
+        Reject(delegate { WidgetRegistry.ValidateAndNormalize(analogWide); }, "analog clock remains fixed at 2x2");
         clock.options["unknown"] = true;
         Reject(delegate { WidgetRegistry.ValidateAndNormalize(clock); }, "unknown clock option is rejected");
 
@@ -107,7 +114,12 @@ class WidgetRegistryTests
             Reject(delegate { WidgetRegistry.ValidateAndNormalize(strict); }, "integer options reject " + wrong.GetType().Name);
         }
         Check((bool)touchpad.options["reverseScroll"] == false && (string)touchpad.options["longPress"] == "none", "touchpad scroll direction and long press default to normal and unassigned");
+        var keypad = Entry("keypad", 1);
+        keypad.width = 4;
+        keypad.height = 4;
+        WidgetRegistry.ValidateAndNormalize(keypad);
+        Check(keypad.options.Count == 0, "4x4 keypad is accepted without client-controlled key options");
         var definitions = WidgetRegistry.PublicDefinitions() as List<object>;
-        Check(definitions != null && definitions.Count == 10, "all current and planned widget definitions are public");
+        Check(definitions != null && definitions.Count == 11, "all current widget definitions are public");
     }
 }
