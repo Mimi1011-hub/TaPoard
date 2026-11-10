@@ -5086,11 +5086,8 @@
       },
     };
     // Pressing where there is no button moves the window, like its button row; near the
-    // window's edges it resizes it. A quick second press maximises / restores.
+    // window's edges it resizes it. (Double-click to maximise is only on the button row.)
     var hostState = { resizable: false, barVisible: true },
-      lastEmptyPress = 0,
-      lastEmptyX = 0,
-      lastEmptyY = 0,
       EDGE = 10,
       INTERACTIVE = 'button, a, input, select, textarea, label, .audio-fader, .touchpad-widget, .wheel-widget, .keypad-widget, .device-menu, .deck-context-menu, #pair, #offline';
     function postHost(message) {
@@ -5116,12 +5113,7 @@
         postHost('resize:' + edge);
         return;
       }
-      var now = Date.now(),
-        second = now - lastEmptyPress < 450 && Math.abs(e.clientX - lastEmptyX) < 6 && Math.abs(e.clientY - lastEmptyY) < 6;
-      lastEmptyPress = second ? 0 : now;
-      lastEmptyX = e.clientX;
-      lastEmptyY = e.clientY;
-      postHost(second ? 'maximize' : 'drag');
+      postHost('drag');
     }, true);
     document.addEventListener('pointermove', function (e) {
       if (e.buttons) return;
