@@ -340,7 +340,7 @@ sealed class PcWindow : Form
 
     int Border
     {
-        get { return maximized || fullscreen ? 0 : Math.Max(4, (int)Math.Round(6 * UiScale)); }
+        get { return maximized || fullscreen ? 0 : Math.Max(5, (int)Math.Round(8 * UiScale)); }
     }
 
     bool BarHidden
@@ -391,9 +391,10 @@ sealed class PcWindow : Form
         get
         {
             var cp = base.CreateParams;
-            // WS_POPUP | WS_CLIPCHILDREN | WS_MINIMIZEBOX | WS_SYSMENU: no frame, but minimisable
-            // from the taskbar. NOACTIVATE keeps the user's app focused when the deck is clicked.
-            cp.Style = unchecked((int)0x80000000) | 0x02000000 | 0x00020000 | 0x00080000;
+            // WS_POPUP | WS_CLIPCHILDREN | WS_MINIMIZEBOX | WS_SYSMENU | WS_THICKFRAME. Windows only
+            // resizes windows that have a sizing frame; WM_NCCALCSIZE below hides that frame, so the
+            // window still looks frameless. NOACTIVATE keeps the user's app focused on deck clicks.
+            cp.Style = unchecked((int)0x80000000) | 0x02000000 | 0x00020000 | 0x00080000 | 0x00040000;
             cp.ExStyle |= WS_EX_NOACTIVATE | WS_EX_APPWINDOW;
             return cp;
         }
@@ -438,7 +439,16 @@ sealed class PcWindow : Form
             return;
         webStarted = true;
         web.AcceleratorKey = (vk, down) => down && HandleShortcut(vk);
-        web.NavigationCompleted = PushPageState;
+        web.NavigationCompleted = delegate
+        {
+            lastPushed = null;
+            PushPageState();
+        };
+        // The deck page asks to move or resize the window when its empty area is pressed.
+        web.WebMessage = delegate(string message)
+        {
+            BeginInvoke(new MethodInvoker(delegate { PageRequest(message); }));
+        };
         web.ProcessFailed = delegate
         {
             BeginInvoke(new MethodInvoker(RestartWeb));
@@ -485,8 +495,118 @@ sealed class PcWindow : Form
             { "info", options.showInfo },
             { "aspect", options.aspect },
             { "viewOnly", viewOnly },
+            { "host", true },
+            { "resizable", !maximized && !fullscreen },
+            { "barVisible", !BarHidden },
         };
-        web.ExecuteScript("window.tapoardPc&&window.tapoardPc.set(" + new JavaScriptSerializer().Serialize(state) + ")");
+        string json = new JavaScriptSerializer().Serialize(state);
+        if (json == lastPushed)
+            return;
+        lastPushed = json;
+        web.ExecuteScript("window.tapoardPc&&window.tapoardPc.set(" + json + ")");
+    }
+
+    string lastPushed;
+
+    // "drag", "maximize" or "resize:<edge>" from a press on the deck's empty area.
+    void PageRequest(string message)
+    {
+        if (message == "drag")
+            StartPointerTrack("");
+        else if (message == "maximize")
+            ToggleMaximize();
+        else if (message != null && message.StartsWith("resize:") && !maximized && !fullscreen)
+        {
+            string edge = message.Substring(7);
+            if (Array.IndexOf(new[] { "left", "right", "top", "bottom", "topleft", "topright", "bottomleft", "bottomright" }, edge) >= 0)
+                StartPointerTrack(edge);
+        }
+    }
+
+    // The press happened inside the browser (another process), so Windows' own move/size loop
+    // cannot see the held button. Follow the real button state instead until it is released.
+    readonly System.Windows.Forms.Timer pointerTimer = new System.Windows.Forms.Timer { Interval = 10 };
+    Point trackCursor;
+    Rectangle trackBounds;
+    string trackEdge;
+
+    static bool PrimaryButtonDown()
+    {
+        int vk = SystemInformation.MouseButtonsSwapped ? 0x02 : 0x01;
+        return (GetAsyncKeyState(vk) & 0x8000) != 0;
+    }
+
+    void StartPointerTrack(string edge)
+    {
+        if (fullscreen || !PrimaryButtonDown())
+            return;
+        if (edge == "" && maximized)
+            LeaveMaximizedUnderCursor();
+        trackCursor = Cursor.Position;
+        trackBounds = Bounds;
+        trackEdge = edge;
+        if (pointerTimer.Tag == null)
+        {
+            pointerTimer.Tag = true;
+            pointerTimer.Tick += delegate { TrackPointer(); };
+        }
+        pointerTimer.Start();
+    }
+
+    void TrackPointer()
+    {
+        if (!PrimaryButtonDown())
+        {
+            pointerTimer.Stop();
+            PositionOverlays();
+            PersistState();
+            return;
+        }
+        Point now = Cursor.Position;
+        int dx = now.X - trackCursor.X,
+            dy = now.Y - trackCursor.Y;
+        Rectangle r = trackBounds;
+        if (trackEdge == "")
+        {
+            r.Offset(dx, dy);
+        }
+        else
+        {
+            int minW = (int)(260 * UiScale),
+                minH = (int)(180 * UiScale);
+            int left = r.Left,
+                top = r.Top,
+                right = r.Right,
+                bottom = r.Bottom;
+            if (trackEdge.Contains("left")) left = Math.Min(r.Left + dx, right - minW);
+            if (trackEdge.Contains("right")) right = Math.Max(r.Right + dx, left + minW);
+            if (trackEdge.StartsWith("top")) top = Math.Min(r.Top + dy, bottom - minH);
+            if (trackEdge.StartsWith("bottom")) bottom = Math.Max(r.Bottom + dy, top + minH);
+            r = Rectangle.FromLTRB(left, top, right, bottom);
+        }
+        if (r != Bounds)
+            Bounds = r;
+    }
+
+    void LeaveMaximizedUnderCursor()
+    {
+        Point cursor = Cursor.Position;
+        double ratio = (cursor.X - Left) / (double)Math.Max(1, Width);
+        maximized = false;
+        Rectangle r = restoreBounds;
+        r.X = cursor.X - (int)(r.Width * ratio);
+        r.Y = cursor.Y - BarHeight / 2;
+        Bounds = r;
+        LayoutChildren();
+    }
+
+    [DllImport("user32.dll")]
+    static extern short GetAsyncKeyState(int key);
+
+    static IntPtr CursorLParam()
+    {
+        Point p = Cursor.Position;
+        return new IntPtr((p.Y << 16) | (p.X & 0xffff));
     }
 
     internal void ShowFromOutside(bool wantFullscreen)
@@ -785,20 +905,11 @@ sealed class PcWindow : Form
     {
         if (fullscreen)
             return;
+        // Like Windows: leave the maximised state under the cursor and keep dragging.
         if (maximized)
-        {
-            // Like Windows: leave the maximised state under the cursor and keep dragging.
-            Point cursor = Cursor.Position;
-            double ratio = (cursor.X - Left) / (double)Math.Max(1, Width);
-            maximized = false;
-            Rectangle r = restoreBounds;
-            r.X = cursor.X - (int)(r.Width * ratio);
-            r.Y = cursor.Y - BarHeight / 2;
-            Bounds = r;
-            LayoutChildren();
-        }
+            LeaveMaximizedUnderCursor();
         ReleaseCapture();
-        SendMessage(Handle, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), IntPtr.Zero);
+        SendMessage(Handle, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), CursorLParam());
         PositionOverlays();
         saveTimer.Stop();
         saveTimer.Start();
@@ -855,6 +966,7 @@ sealed class PcWindow : Form
         PositionOverlays();
         UpdateReveal();
         revealTimer.Enabled = BarHidden;
+        PushPageState();
         Invalidate();
     }
 
@@ -941,6 +1053,16 @@ sealed class PcWindow : Form
         {
             case WM_NCHITTEST:
                 m.Result = new IntPtr(HitTest(m.LParam));
+                return;
+            case 0x0083: // WM_NCCALCSIZE: the whole window is client area (no visible sizing frame).
+                if (m.WParam != IntPtr.Zero)
+                {
+                    m.Result = IntPtr.Zero;
+                    return;
+                }
+                break;
+            case 0x0086: // WM_NCACTIVATE: keep Windows from painting a frame on (de)activation.
+                m.Result = new IntPtr(1);
                 return;
             case WM_MOUSEACTIVATE:
                 // MA_NOACTIVATE: clicking the deck leaves the user's app in front.

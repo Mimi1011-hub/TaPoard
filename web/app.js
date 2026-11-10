@@ -5080,9 +5080,54 @@
         }
         document.body.classList.toggle('pc-fill', s.aspect === 'fill');
         badge.hidden = !s.viewOnly;
+        hostState.resizable = !!s.resizable;
+        hostState.barVisible = !!s.barVisible;
         render();
       },
     };
+    // Pressing where there is no button moves the window, like its button row; near the
+    // window's edges it resizes it. A quick second press maximises / restores.
+    var hostState = { resizable: false, barVisible: true },
+      lastEmptyPress = 0,
+      lastEmptyX = 0,
+      lastEmptyY = 0,
+      EDGE = 10,
+      INTERACTIVE = 'button, a, input, select, textarea, label, .audio-fader, .touchpad-widget, .wheel-widget, .keypad-widget, .device-menu, .deck-context-menu, #pair, #offline';
+    function postHost(message) {
+      if (window.chrome && chrome.webview && chrome.webview.postMessage) chrome.webview.postMessage(message);
+    }
+    function edgeAt(x, y) {
+      if (!hostState.resizable) return '';
+      var top = !hostState.barVisible && y < EDGE,
+        bottom = y >= window.innerHeight - EDGE,
+        left = x < EDGE,
+        right = x >= window.innerWidth - EDGE;
+      return (top ? 'top' : bottom ? 'bottom' : '') + (left ? 'left' : right ? 'right' : '');
+    }
+    var edgeCursors = { top: 'ns-resize', bottom: 'ns-resize', left: 'ew-resize', right: 'ew-resize', topleft: 'nwse-resize', bottomright: 'nwse-resize', topright: 'nesw-resize', bottomleft: 'nesw-resize' };
+    function emptyTarget(target) {
+      return !(target && target.closest && target.closest(INTERACTIVE));
+    }
+    document.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 || !emptyTarget(e.target)) return;
+      var edge = edgeAt(e.clientX, e.clientY);
+      e.preventDefault();
+      if (edge) {
+        postHost('resize:' + edge);
+        return;
+      }
+      var now = Date.now(),
+        second = now - lastEmptyPress < 450 && Math.abs(e.clientX - lastEmptyX) < 6 && Math.abs(e.clientY - lastEmptyY) < 6;
+      lastEmptyPress = second ? 0 : now;
+      lastEmptyX = e.clientX;
+      lastEmptyY = e.clientY;
+      postHost(second ? 'maximize' : 'drag');
+    }, true);
+    document.addEventListener('pointermove', function (e) {
+      if (e.buttons) return;
+      var edge = emptyTarget(e.target) ? edgeAt(e.clientX, e.clientY) : '';
+      document.documentElement.style.cursor = edge ? edgeCursors[edge] : '';
+    }, { passive: true });
     // The window has no browser menu; a right click never opens one.
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     // Wheel over the deck (not over a wheel or touchpad widget) turns the page.
@@ -5105,6 +5150,67 @@
     }, { passive: false });
   }
   if (pcWindow) setupPcWindow();
+  // 3.0: swipe left / right on the deck to turn pages. Per device (phone browser or PC window).
+  // Widgets with their own gestures (faders, wheels, touchpad, keypad) never turn pages, and in
+  // the PC window a swipe starts on a button because the empty area moves the window.
+  function setupSwipePages() {
+    var swipeOn = localStorage.getItem('tapoard-swipe') !== 'off',
+      track = null,
+      suppressClick = false,
+      deck = $('deck');
+    function apply() {
+      $('swipe-pages').checked = swipeOn;
+      document.body.classList.toggle('swipe-pages', swipeOn);
+    }
+    $('swipe-pages').onchange = function () {
+      swipeOn = $('swipe-pages').checked;
+      try {
+        localStorage.setItem('tapoard-swipe', swipeOn ? 'on' : 'off');
+      } catch (ignore) {}
+      apply();
+    };
+    apply();
+    deck.addEventListener('pointerdown', function (e) {
+      track = null;
+      if (!swipeOn || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      var t = e.target;
+      if (t.closest('.audio-fader, .touchpad-widget, .wheel-widget, .keypad-widget')) return;
+      if (pcWindow && !t.closest('button.deck-key')) return;
+      track = { id: e.pointerId, x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY, time: Date.now() };
+    }, true);
+    deck.addEventListener('pointermove', function (e) {
+      if (!track || e.pointerId !== track.id) return;
+      track.lastX = e.clientX;
+      track.lastY = e.clientY;
+    }, true);
+    function finish(e) {
+      if (!track || e.pointerId !== track.id) return;
+      var t = track;
+      track = null;
+      if (e.type === 'pointerup') {
+        t.lastX = e.clientX;
+        t.lastY = e.clientY;
+      }
+      var dx = t.lastX - t.x,
+        dy = t.lastY - t.y,
+        needed = Math.max(40, Math.min(120, deck.clientWidth * 0.08));
+      if (Date.now() - t.time > 900 || Math.abs(dx) < needed || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      // The press began on a button: the swipe must not also run it.
+      suppressClick = true;
+      setTimeout(function () { suppressClick = false; }, 500);
+      var next = page + (dx < 0 ? 1 : -1);
+      if (next >= 0 && next < pageCount) setPage(next);
+    }
+    document.addEventListener('pointerup', finish, true);
+    document.addEventListener('pointercancel', finish, true);
+    deck.addEventListener('click', function (e) {
+      if (!suppressClick) return;
+      suppressClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+  }
+  if (!admin) setupSwipePages();
   // 3.0 settings page: firewall help under the QR codes and the PC window entry.
   function firewallText(s) {
     var where = s.networks ? '（' + s.networks + '）' : '',
