@@ -260,6 +260,22 @@ static class DpiAwareness
         catch (EntryPointNotFoundException) { }
     }
 
+    [DllImport("user32.dll")]
+    static extern uint GetDpiForSystem();
+
+    internal static int SystemDpi()
+    {
+        try
+        {
+            uint dpi = GetDpiForSystem();
+            return dpi == 0 ? 96 : (int)dpi;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return 96;
+        }
+    }
+
     internal static int ForWindow(IntPtr window)
     {
         try
@@ -382,9 +398,14 @@ sealed class PcWindow : Form
         };
         // Full screen is entered once the window exists, so the remembered bounds stay intact.
         pendingFullscreen = startFullscreen;
+        // Create the window directly at its remembered place. Moving it there after creation
+        // would cross monitors with different scaling, and Windows would shrink or grow it.
+        dpi = DpiAwareness.SystemDpi();
+        Bounds = InitialBounds();
     }
 
-    bool pendingFullscreen;
+    bool pendingFullscreen,
+        inSizeMove;
 
     protected override CreateParams CreateParams
     {
@@ -408,8 +429,9 @@ sealed class PcWindow : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
+        // The window was created at its remembered bounds (see the constructor), so it already
+        // sits on the right monitor with that monitor's scaling; nothing is resized here.
         dpi = DpiAwareness.ForWindow(Handle);
-        Bounds = InitialBounds();
         maximized = options.maximized;
         if (maximized)
         {
@@ -511,7 +533,9 @@ sealed class PcWindow : Form
     // "drag", "maximize" or "resize:<edge>" from a press on the deck's empty area.
     void PageRequest(string message)
     {
-        if (message == "drag")
+        if (message == "raise")
+            Raise();
+        else if (message == "drag")
             StartPointerTrack("");
         else if (message == "maximize")
             ToggleMaximize();
@@ -832,6 +856,64 @@ sealed class PcWindow : Form
         grip.SetTopmost(options.topmost);
     }
 
+    bool IsTopmostNow()
+    {
+        return (GetWindowLong(Handle, GWL_EXSTYLE) & 0x8) != 0;
+    }
+
+    DateTime lastTopmostRepair = DateTime.MinValue;
+
+    // "Always on top" must hold whatever else happens to the window (other windows, display
+    // changes, restore from the taskbar). If Windows dropped it, put it back.
+    void KeepTopmost()
+    {
+        if (!options.topmost || !IsHandleCreated || IsTopmostNow())
+            return;
+        if ((DateTime.UtcNow - lastTopmostRepair).TotalMilliseconds < 300)
+            return;
+        lastTopmostRepair = DateTime.UtcNow;
+        BeginInvoke(new MethodInvoker(ApplyTopmost));
+    }
+
+    // Brings the window above other apps without taking the keyboard from them.
+    internal void Raise()
+    {
+        if (!options.topmost)
+        {
+            // Windows ignores HWND_TOP from a background app; passing through the topmost band
+            // and back leaves the window at the top of the normal windows instead.
+            SetWindowPos(Handle, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+            SetWindowPos(Handle, new IntPtr(-2), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+        }
+        else
+            ApplyTopmost();
+    }
+
+    // If Windows moved or resized a full-screen / maximised window (display or scaling change),
+    // fit it to its monitor again instead of leaving the layout half switched.
+    bool refitPending;
+
+    void RefitLater()
+    {
+        if (refitPending || (!fullscreen && !maximized) || pointerTimer.Enabled)
+            return;
+        Rectangle target = MonitorArea(fullscreen);
+        if (Bounds == target)
+            return;
+        refitPending = true;
+        BeginInvoke(new MethodInvoker(delegate
+        {
+            refitPending = false;
+            if (fullscreen || maximized)
+            {
+                Rectangle area = MonitorArea(fullscreen);
+                if (Bounds != area)
+                    Bounds = area;
+                LayoutChildren();
+            }
+        }));
+    }
+
     void ApplyLayered()
     {
         int ex = GetWindowLong(Handle, GWL_EXSTYLE);
@@ -922,7 +1004,9 @@ sealed class PcWindow : Form
 
     internal void BarPressed()
     {
-        // Clicking the bar (not the deck) makes the window active so its shortcuts work.
+        // Clicking the bar (not the deck) brings the window to the front and makes it active
+        // so its shortcuts work.
+        Raise();
         ActivateWindow();
     }
 
@@ -1065,9 +1149,23 @@ sealed class PcWindow : Form
                 m.Result = new IntPtr(1);
                 return;
             case WM_MOUSEACTIVATE:
-                // MA_NOACTIVATE: clicking the deck leaves the user's app in front.
+                // MA_NOACTIVATE: clicking the deck keeps the keyboard in the user's app, but the
+                // window itself comes to the front when it was behind another app.
+                Raise();
                 m.Result = new IntPtr(3);
                 return;
+            case 0x0047: // WM_WINDOWPOSCHANGED
+                base.WndProc(ref m);
+                KeepTopmost();
+                RefitLater();
+                return;
+            case 0x007E: // WM_DISPLAYCHANGE
+                base.WndProc(ref m);
+                RefitLater();
+                return;
+            case 0x0231: // WM_ENTERSIZEMOVE
+                inSizeMove = true;
+                break;
             case WM_GETMINMAXINFO:
                 base.WndProc(ref m);
                 var info = (MINMAXINFO)Marshal.PtrToStructure(m.LParam, typeof(MINMAXINFO));
@@ -1078,9 +1176,19 @@ sealed class PcWindow : Form
             case WM_DPICHANGED:
                 dpi = (int)((m.WParam.ToInt64() >> 16) & 0xffff);
                 var suggested = (RECT)Marshal.PtrToStructure(m.LParam, typeof(RECT));
-                if (!fullscreen && !maximized)
-                    Bounds = Rectangle.FromLTRB(suggested.left, suggested.top, suggested.right, suggested.bottom);
+                var rect = Rectangle.FromLTRB(suggested.left, suggested.top, suggested.right, suggested.bottom);
+                // Follow Windows' new size only while the user drags the window to another
+                // monitor; a programmatic placement keeps the size it was given.
+                if (pointerTimer.Enabled && trackEdge == "")
+                {
+                    trackBounds = rect;
+                    trackCursor = Cursor.Position;
+                    Bounds = rect;
+                }
+                else if (inSizeMove && !fullscreen && !maximized)
+                    Bounds = rect;
                 LayoutChildren();
+                RefitLater();
                 m.Result = IntPtr.Zero;
                 return;
             case WM_HOTKEY:
@@ -1088,6 +1196,7 @@ sealed class PcWindow : Form
                     SetViewOnly(!viewOnly);
                 return;
             case WM_EXITSIZEMOVE:
+                inSizeMove = false;
                 base.WndProc(ref m);
                 PositionOverlays();
                 PersistState();
