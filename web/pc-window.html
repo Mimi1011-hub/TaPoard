@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+ <title>TaPoard PC 用ウィンドウの設定</title>
+ <link rel="stylesheet" href="/style.css">
+ <script defer src="/pc-window.js"></script>
+</head>
+<body class="pcw-page">
+<main>
+ <header><div><small>PC WINDOW</small><h1>TaP<span>oard</span></h1></div><div id="status">PC 用ウィンドウ</div></header>
+ <section class="settings-body pcw-section">
+  <h2>PC 用ウィンドウの設定</h2>
+  <p>この PC の画面に、スマートフォンと同じ操作画面をウィンドウで表示します。変更はすぐ保存され、開いているウィンドウにも反映されます。</p>
+  <p id="pcw-runtime" class="pcw-warning" hidden>この PC には Microsoft Edge WebView2 ランタイムが見つかりません。Windows Update を実行してから、もう一度お試しください。</p>
+  <div class="pcw-actions"><button id="pcw-open" type="button">PC 用ウィンドウを開く</button><button id="pcw-open-full" type="button" class="subtle">全画面で開く</button></div>
+  <form id="pcw-form" class="pcw-form">
+   <label>TaPoard の起動時
+    <select name="startup"><option value="none">ウィンドウを開かない（従来どおりブラウザの設定画面）</option><option value="window">PC 用ウィンドウを開く</option><option value="fullscreen">PC 用ウィンドウを全画面で開く</option></select>
+   </label>
+   <label>起動時の「常に最前面」
+    <select name="startTopmost"><option value="last">前回の状態を使う</option><option value="on">オン</option><option value="off">オフ</option></select>
+   </label>
+   <label>ボタンの大きさ
+    <select name="buttonSize"><option value="small">小</option><option value="medium">中</option><option value="large">大（タッチ向け）</option></select>
+   </label>
+   <label>操作画面の縦横比
+    <select name="aspect"><option value="keep">保つ（余白は黒帯）</option><option value="fill">ウィンドウに合わせて伸ばす</option></select>
+   </label>
+   <label>不透明度 <output id="pcw-opacity-value">100%</output>
+    <input name="opacity" type="range" min="30" max="100" step="5">
+   </label>
+   <label class="pcw-check"><input name="autoHideBar" type="checkbox">ボタン列を自動で隠す（マウスを上の端に持っていくと出ます）</label>
+   <label class="pcw-check"><input name="showInfo" type="checkbox">情報表示（描画 fps・PC との往復・最後の操作の応答時間）</label>
+   <label class="pcw-check"><input name="confirmClose" type="checkbox">閉じるときに確認する</label>
+  </form>
+  <p id="pcw-message" role="status"></p>
+ </section>
+ <section class="settings-body pcw-section">
+  <h2>使い方</h2>
+  <ul class="pcw-list">
+   <li>ボタン列の空いている所をドラッグするとウィンドウを移動できます。ダブルクリックで最大化、ウィンドウの端で大きさを変えられます。位置・大きさ・最前面のオン／オフは次回も使われます。</li>
+   <li>操作画面のボタンを押しても、作業中のアプリからフォーカスを奪いません。ショートカットは今まで使っていたアプリへ届きます。</li>
+   <li>マウス：クリックはタップ、ドラッグはスワイプ、ホイールはページ切り替え。マウスホイール部品の上では回したぶんスクロールし、タッチパッド部品の上では右クリックが右クリック、ホイールがスクロールになります。</li>
+   <li>見るだけモードではクリックがウィンドウを通り抜け、後ろのアプリを操作できます。どこからでも Ctrl+Alt+V で戻せます（通知領域の TaPoard メニューからも戻せます）。</li>
+   <li>全画面やボタン列を隠しているときは、上の真ん中の「つまみ」を押すとメニューが出ます。</li>
+  </ul>
+  <h3>ショートカットキー（ウィンドウを選んでいるとき）</h3>
+  <table class="pcw-keys">
+   <tr><th>Esc</th><td>ウィンドウを閉じる（TaPoard は通知領域で動き続けます）</td></tr>
+   <tr><th>F11 / Alt+Enter</th><td>全画面とウィンドウの切り替え</td></tr>
+   <tr><th>Ctrl+T</th><td>常に最前面のオン／オフ</td></tr>
+   <tr><th>Ctrl+I</th><td>情報表示のオン／オフ</td></tr>
+   <tr><th>Ctrl+,</th><td>この設定ページを開く</td></tr>
+   <tr><th>Ctrl+Alt+V</th><td>見るだけモードのオン／オフ（どこからでも）</td></tr>
+  </table>
+  <p>キーボード入力をスマートフォンや別の PC へ転送する機能はありません。</p>
+ </section>
+ <footer>TAPOARD <span><b>Version 3.0</b>　軽く、すぐに、手元から。</span></footer>
+</main>
+</body>
+</html>

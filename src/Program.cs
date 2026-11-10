@@ -191,7 +191,23 @@ partial class Program
                 ui = new Control();
                 var handle = ui.Handle;
                 CreateTrayIcon();
-                if (Array.IndexOf(args, "--silent") < 0)
+                InitPcWindow();
+                string startup = StartupMode();
+                if (startup != "none")
+                {
+                    // Opening the PC window replaces opening the browser settings at startup.
+                    try
+                    {
+                        OpenPcWindow(startup == "fullscreen");
+                    }
+                    catch (Exception e)
+                    {
+                        ShowNotice(e.Message);
+                        if (Array.IndexOf(args, "--silent") < 0)
+                            OpenSettings();
+                    }
+                }
+                else if (Array.IndexOf(args, "--silent") < 0)
                     OpenSettings();
                 Application.Run();
             }
@@ -201,6 +217,7 @@ partial class Program
             }
             finally
             {
+                PcWindowService.Close();
                 if (server != null)
                     server.Stop();
                 DisplaySubscriptions.Changed = null;
@@ -288,6 +305,14 @@ partial class Program
             Visible = true,
         };
         var menu = new ContextMenuStrip();
+        var openWindow = new ToolStripMenuItem("PC 用ウィンドウを開く", null, delegate { OpenPcWindowFromTray(); });
+        openWindow.Font = new Font(openWindow.Font, FontStyle.Bold);
+        var leaveViewOnly = new ToolStripMenuItem("見るだけモードを解除（Ctrl+Alt+V）", null, delegate { PcWindowService.SetViewOnly(false); });
+        menu.Items.Add(openWindow);
+        menu.Items.Add(leaveViewOnly);
+        menu.Items.Add("PC 用ウィンドウの設定", null, delegate { OpenPcWindowSettings(); });
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Opening += delegate { leaveViewOnly.Visible = PcWindowService.ViewOnly; };
         menu.Items.Add(
             "設定をブラウザで開く",
             null,

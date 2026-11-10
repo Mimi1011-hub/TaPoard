@@ -18,6 +18,13 @@ try {
         if (!(Get-NetFirewallRule -Name $entry.Name -ErrorAction SilentlyContinue)) { throw ($entry.Name + 'を確認できませんでした。') }
         Write-InstallLog ('created ' + $entry.Name + ' ' + $entry.Protocol + '/' + $entry.Port)
     }
+    # Cancelling the Windows "allow access" prompt leaves block rules for this exe, and block
+    # rules win over allow rules. Remove only inbound block rules that name this exact program.
+    $blocks = @(Get-NetFirewallApplicationFilter -Program $program -ErrorAction SilentlyContinue | Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Block' })
+    foreach ($block in $blocks) {
+        Remove-NetFirewallRule -Name $block.Name -ErrorAction Stop
+        Write-InstallLog ('removed block rule ' + $block.DisplayName)
+    }
     Write-InstallLog 'completed'
     Write-Host ('TaPoardのLAN接続を許可しました: http://' + $options.hostName + ':18781/')
     exit 0

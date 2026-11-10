@@ -37,6 +37,11 @@ partial class Program
             return;
         }
 
+        if (path == "/api/ping" && method == "GET")
+        {
+            Reply(s, 200, JsonType, "{\"ok\":true}");
+            return;
+        }
         if (path == "/api/state" && method == "GET")
         {
             GetState(r);
@@ -61,6 +66,16 @@ partial class Program
         if (path == "/api/devices" && method == "GET" && r.isAdmin)
         {
             ReplyJson(s, 200, new { devices = AudioDevices.List() });
+            return;
+        }
+        if (path == "/api/pc-window" && method == "GET" && r.isAdmin)
+        {
+            ReplyJson(s, 200, PcWindowView());
+            return;
+        }
+        if (path == "/api/firewall" && method == "GET" && r.isAdmin)
+        {
+            ReplyJson(s, 200, FirewallCheck.Status(Root));
             return;
         }
         if (method != "POST")
@@ -115,6 +130,7 @@ partial class Program
                 || !input.TryGetValue("sequence", out rawSequence) || !input.TryGetValue("events", out rawEvents))
                 throw new Exception("入力要求が正しくありません。");
             string owner = ViewIdentity(r, Convert.ToString(rawView));
+            PcWindowService.YieldFocus();
             var ack = InputSessions.Execute(
                 owner,
                 Convert.ToString(rawSession),
@@ -145,6 +161,19 @@ partial class Program
         }
         else if (path == "/api/action")
             RunAction(r, input);
+        else if (path == "/api/pc-window" && r.isAdmin)
+            SavePcWindow(r, input);
+        else if (path == "/api/pc-window/open" && r.isAdmin)
+        {
+            object full;
+            OpenPcWindow(input.TryGetValue("fullscreen", out full) && Convert.ToBoolean(full));
+            ReplyJson(s, 200, PcWindowView());
+        }
+        else if (path == "/api/firewall/repair" && r.isAdmin)
+        {
+            FirewallCheck.StartRepair(Root);
+            ReplyJson(s, 200, FirewallCheck.Status(Root));
+        }
         else
             Reply(s, 403, JsonType, "{}");
     }
@@ -850,6 +879,7 @@ partial class Program
         next.weatherLatitude = config.weatherLatitude;
         next.weatherLongitude = config.weatherLongitude;
         next.weatherTimezone = config.weatherTimezone;
+        next.pcWindow = config.pcWindow;
     }
 
     // Issues new phone keys and forgets every paired device.
@@ -867,12 +897,14 @@ partial class Program
             Save();
             Signal();
         }
+        PcWindowService.TokenChanged();
     }
 
     static void RunAction(Request r, Dictionary<string, object> input)
     {
         string resultMessage = "操作を送信しました。";
         string action = Convert.ToString(input["action"]);
+        PcWindowService.YieldFocus();
         if (action == "up" || action == "down" || action == "mute")
         {
             InputSessions.ReleaseActive();

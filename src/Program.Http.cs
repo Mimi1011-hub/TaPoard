@@ -19,6 +19,8 @@ partial class Program
     {
         "/",
         "/settings",
+        "/pc-window",
+        "/pc-window.js",
         "/app.js",
         "/qrcode.js",
         "/nosleep.min.js",
@@ -146,7 +148,10 @@ partial class Program
 
     static void ServeFile(Stream s, string path)
     {
-        string file = path == "/" || path == "/settings" ? "index.html" : path.Substring(1);
+        string file =
+            path == "/" || path == "/settings" ? "index.html"
+            : path == "/pc-window" ? "pc-window.html"
+            : path.Substring(1);
         string type =
             file.EndsWith("js") ? "application/javascript"
             : file.EndsWith("css") ? "text/css"
