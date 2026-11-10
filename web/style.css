@@ -2855,3 +2855,15 @@ body.pc-window #disconnect {
 body.swipe-pages:not(.admin-view) .deck-frame {
   touch-action: pan-y pinch-zoom;
 }
+
+/* 3.0: the PC window shows the page and the menu in its own button row. */
+body.pc-window:not(.admin-view) .deck-toolbar {
+  display: none;
+}
+body.pc-window,
+body.pc-window main {
+  touch-action: none;
+}
+#controls {
+  overflow-x: clip;
+}
