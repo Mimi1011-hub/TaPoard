@@ -5105,7 +5105,13 @@
     function emptyTarget(target) {
       return !(target && target.closest && target.closest(INTERACTIVE));
     }
+    // A press on the empty area waits for the first movement: a quick sideways flick turns the
+    // page (when swiping is on), anything else - holding first, or moving up/down - moves the
+    // window. With swiping off the window follows at once.
+    var pending = null;
     document.addEventListener('pointerdown', function (e) {
+      postHost('raise');
+      pending = null;
       if (e.button !== 0 || !emptyTarget(e.target)) return;
       var edge = edgeAt(e.clientX, e.clientY);
       e.preventDefault();
@@ -5113,8 +5119,31 @@
         postHost('resize:' + edge);
         return;
       }
-      postHost('drag');
+      if (!swipePagesOn()) {
+        postHost('drag');
+        return;
+      }
+      pending = { id: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now(), mode: '' };
     }, true);
+    document.addEventListener('pointermove', function (e) {
+      if (!pending || e.pointerId !== pending.id || pending.mode) return;
+      var dx = e.clientX - pending.x,
+        dy = e.clientY - pending.y;
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Date.now() - pending.time < 250 && Math.abs(dx) > Math.abs(dy) * 1.5) pending.mode = 'swipe';
+      else {
+        pending.mode = 'drag';
+        postHost('drag');
+      }
+    }, true);
+    function endPending(e) {
+      if (!pending || e.pointerId !== pending.id) return;
+      var p = pending;
+      pending = null;
+      if (p.mode === 'swipe') swipeTurn(e.clientX - p.x, e.clientY - p.y, Date.now() - p.time);
+    }
+    document.addEventListener('pointerup', endPending, true);
+    document.addEventListener('pointercancel', endPending, true);
     document.addEventListener('pointermove', function (e) {
       if (e.buttons) return;
       var edge = emptyTarget(e.target) ? edgeAt(e.clientX, e.clientY) : '';
@@ -5145,9 +5174,23 @@
   // 3.0: swipe left / right on the deck to turn pages. Per device (phone browser or PC window).
   // Widgets with their own gestures (faders, wheels, touchpad, keypad) never turn pages, and in
   // the PC window a swipe starts on a button because the empty area moves the window.
+  var swipeOn = true;
+  try {
+    swipeOn = localStorage.getItem('tapoard-swipe') !== 'off';
+  } catch (ignore) {}
+  function swipePagesOn() {
+    return swipeOn;
+  }
+  // Turns the page for a finished swipe; returns true when it counted as one.
+  function swipeTurn(dx, dy, ms) {
+    var needed = Math.max(40, Math.min(120, $('deck').clientWidth * 0.08));
+    if (ms > 900 || Math.abs(dx) < needed || Math.abs(dx) < Math.abs(dy) * 1.5) return false;
+    var next = page + (dx < 0 ? 1 : -1);
+    if (next >= 0 && next < pageCount) setPage(next);
+    return true;
+  }
   function setupSwipePages() {
-    var swipeOn = localStorage.getItem('tapoard-swipe') !== 'off',
-      track = null,
+    var track = null,
       suppressClick = false,
       deck = $('deck');
     function apply() {
@@ -5183,15 +5226,10 @@
         t.lastX = e.clientX;
         t.lastY = e.clientY;
       }
-      var dx = t.lastX - t.x,
-        dy = t.lastY - t.y,
-        needed = Math.max(40, Math.min(120, deck.clientWidth * 0.08));
-      if (Date.now() - t.time > 900 || Math.abs(dx) < needed || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (!swipeTurn(t.lastX - t.x, t.lastY - t.y, Date.now() - t.time)) return;
       // The press began on a button: the swipe must not also run it.
       suppressClick = true;
       setTimeout(function () { suppressClick = false; }, 500);
-      var next = page + (dx < 0 ? 1 : -1);
-      if (next >= 0 && next < pageCount) setPage(next);
     }
     document.addEventListener('pointerup', finish, true);
     document.addEventListener('pointercancel', finish, true);
