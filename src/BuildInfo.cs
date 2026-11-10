@@ -2,7 +2,7 @@ using System.Reflection;
 
 static class BuildInfo
 {
-    internal const string ReleaseVersion = "2.1";
+    internal const string ReleaseVersion = "3.0";
 
     internal static string DisplayVersion
     {

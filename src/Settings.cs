@@ -73,6 +73,7 @@ class Settings
     public double weatherLatitude { get; set; }
     public double weatherLongitude { get; set; }
     public string weatherTimezone { get; set; }
+    public PcWindowOptions pcWindow { get; set; }
 }
 
 class ControlPage

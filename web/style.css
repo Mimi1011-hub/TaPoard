@@ -2609,3 +2609,245 @@ footer #app-version {
   color: #c9d6f5;
   pointer-events: none;
 }
+
+/* ---- 3.0 PC window: the deck fills TaPoard's own window ---- */
+body.pc-window {
+  background: #000;
+  overflow: hidden;
+}
+body.pc-window:not(.admin-view) main {
+  max-width: none;
+  height: 100vh;
+  margin: 0;
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+}
+body.pc-window header,
+body.pc-window footer {
+  display: none;
+}
+body.pc-window #pair,
+body.pc-window #controls:not([hidden]) {
+  flex: 1;
+  min-height: 0;
+}
+body.pc-window #pair {
+  overflow: auto;
+}
+body.pc-window #controls:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+body.pc-window:not(.admin-view) .deck-toolbar {
+  flex: none;
+  margin: 0 2px 6px;
+}
+body.pc-window:not(.admin-view) .deck-frame {
+  flex: 1;
+  min-height: 0;
+  max-width: none !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  box-shadow: none;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Keep the grid's columns:rows shape and leave black bars, like a video. */
+body.pc-window:not(.admin-view) .deck-frame > .deck-grid {
+  width: min(100cqw, 100cqh * var(--deck-ratio, 1.6667));
+  height: auto;
+  max-height: 100cqh;
+}
+body.pc-window.pc-fill:not(.admin-view) .deck-frame > .deck-grid {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto !important;
+}
+body.pc-window #empty {
+  flex: none;
+  margin: 6px 0 0;
+}
+body.pc-window #message {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  translate: -50% 0;
+  z-index: 300;
+  margin: 0;
+  min-height: 0;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #000c;
+  pointer-events: none;
+}
+body.pc-window #message:empty {
+  display: none;
+}
+/* Phone-only switches in the hamburger menu do not apply to the PC window. */
+body.pc-window .device-menu .menu-switch,
+body.pc-window #disconnect {
+  display: none;
+}
+#pc-info {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 350;
+  padding: 7px 10px;
+  border: 1px solid #ffffff22;
+  border-radius: 8px;
+  background: #000000c4;
+  color: #cfe0ff;
+  font: 11px/1.55 ui-monospace, Consolas, monospace;
+  white-space: pre;
+  pointer-events: none;
+}
+#pc-view-only {
+  position: fixed;
+  left: 10px;
+  bottom: 10px;
+  z-index: 350;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #1d2a52d9;
+  color: #dfe7ff;
+  font-size: 11px;
+  pointer-events: none;
+}
+#pc-info[hidden],
+#pc-view-only[hidden] {
+  display: none;
+}
+
+/* ---- 3.0 settings page: PC window entry and firewall help ---- */
+.pc-window-entry,
+.firewall-help {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid #30343d;
+  border-radius: 12px;
+  background: #14161a;
+}
+.pc-window-entry > div:first-child,
+.firewall-help p {
+  flex: 1 1 320px;
+  margin: 0;
+}
+.pc-window-entry p {
+  margin: 4px 0 0;
+}
+.pc-window-buttons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.firewall-help {
+  border-color: #5a4a22;
+  background: #1b1810;
+}
+.firewall-help strong {
+  display: block;
+  color: #f1d58a;
+}
+.firewall-dialog {
+  max-width: 720px;
+}
+.firewall-steps {
+  padding-left: 22px;
+}
+.firewall-steps li {
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #a2a7b3;
+}
+.firewall-steps strong {
+  display: block;
+  color: #e6e8ee;
+}
+.firewall-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+#firewall-status {
+  color: #c9d6ff;
+}
+
+/* ---- 3.0 PC window settings page (/pc-window) ---- */
+.pcw-section h2 {
+  margin-top: 4px;
+}
+.pcw-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0 18px;
+}
+.pcw-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 6px 18px;
+}
+.pcw-form select {
+  display: block;
+  width: 100%;
+  margin: 6px 0 12px;
+  padding: 10px;
+  border: 1px solid #3a3d46;
+  border-radius: 6px;
+  background: #121317;
+  color: white;
+  font: inherit;
+  font-size: 14px;
+}
+.pcw-form input[type="range"] {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.pcw-check {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+}
+.pcw-warning {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #3a1d1d;
+  color: #ffcccc;
+}
+.pcw-list li {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #a2a7b3;
+  margin: 6px 0;
+}
+.pcw-keys {
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #c7cbd4;
+}
+.pcw-keys th,
+.pcw-keys td {
+  padding: 6px 12px 6px 0;
+  text-align: left;
+  border-bottom: 1px solid #2a2d34;
+}
+.pcw-keys th {
+  white-space: nowrap;
+  color: #e6e8ee;
+}

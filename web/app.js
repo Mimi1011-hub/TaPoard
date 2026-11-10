@@ -4,6 +4,9 @@
     return document.getElementById(id);
   };
   var admin = location.pathname === '/settings';
+  // 3.0: the deck inside TaPoard's own PC window (WebView2). The query survives the key cleanup below.
+  var pcWindow = !admin && (/(^|&)view=pc(&|$)/.test(location.search.slice(1)) || sessionStorage.getItem('tapoard-pc-window') === '1');
+  if (pcWindow) sessionStorage.setItem('tapoard-pc-window', '1');
   var scannedKey = '';
   if (!admin && location.hash.indexOf('#connect=') === 0)
     try {
@@ -81,14 +84,15 @@
     weatherLocation = { configured: false, name: '', latitude: 0, longitude: 0, timezone: '' },
     audioInteraction = false,
     messageTimer = null,
-    clockTimer = null;
+    clockTimer = null,
+    pcStats = { action: null, ping: null };
   if (admin) {
     document.body.classList.add('admin-view');
     sessionStorage.setItem('tapoard-admin', key);
     history.replaceState(null, '', '/settings');
   } else if (key) {
     localStorage.setItem('tapoard-key', key);
-    if (scannedKey) history.replaceState(null, '', '/');
+    if (scannedKey) history.replaceState(null, '', pcWindow ? '/?view=pc' : '/');
   }
 
   var catalog = [
@@ -690,7 +694,8 @@
       timeout = setTimeout(function () {
         controller.abort();
       }, limit || 4000),
-      hasBody = data !== undefined;
+      hasBody = data !== undefined,
+      started = Date.now();
     return fetch('/api/' + path, {
       method: hasBody ? 'POST' : 'GET',
       headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
@@ -710,6 +715,7 @@
             }
             throw new Error(x.error || '操作に失敗しました');
           }
+          if (pcWindow && (path === 'action' || path === 'input')) pcStats.action = Date.now() - started;
           return x;
         });
       })
@@ -731,6 +737,7 @@
   }
   function fallbackWake() {
     if (
+      pcWindow ||
       !$('awake').checked ||
       !key ||
       document.hidden ||
@@ -743,6 +750,7 @@
     if (result && result.catch) result.catch(function () {});
   }
   function wake() {
+    if (pcWindow) return;
     if (!$('awake').checked || !connected || document.hidden) return;
     if (navigator.wakeLock && window.isSecureContext)
       navigator.wakeLock
@@ -1776,6 +1784,7 @@
     tile.addEventListener('pointermove', move);
     tile.addEventListener('pointerup', end);
     tile.addEventListener('pointercancel', end);
+    bindPcWheelSteps(tile, sender);
   }
   // Rotary wheel: the angle swept around the tile centre becomes steps, so the feel does not
   // depend on tile size. The centre is a dead zone (and the middle-click tap target).
@@ -1862,6 +1871,23 @@
     tile.addEventListener('pointermove', move);
     tile.addEventListener('pointerup', end);
     tile.addEventListener('pointercancel', end);
+    bindPcWheelSteps(tile, sender);
+  }
+  // PC window: the mouse wheel over a wheel widget turns it one step per notch (wheel up = up).
+  function bindPcWheelSteps(tile, sender) {
+    if (!pcWindow) return;
+    var rest = 0;
+    tile.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      rest += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+      var notches = rest > 0 ? Math.floor(rest / 100) : Math.ceil(rest / 100);
+      if (!notches && Math.abs(e.deltaY) >= 1 && e.deltaMode !== 0) notches = e.deltaY > 0 ? 1 : -1;
+      if (!notches) return;
+      rest -= notches * 100;
+      sender.steps(-notches);
+      sender.release();
+    }, { passive: false });
   }
   // Optional touch feedback, stored per device. Android vibrates; iPhone has no Vibration API,
   // so a short Web Audio click is used instead (muted by the iPhone silent switch).
@@ -2005,6 +2031,14 @@
       sender.move(x, y);
     }
     function begin(e) {
+      // PC window: the right mouse button is the right click (the two-finger tap on a phone).
+      if (pcWindow && e.pointerType === 'mouse' && e.button === 2) {
+        click('right');
+        sender.release();
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (pointers[e.pointerId]) return;
       if (tile.setPointerCapture) try { tile.setPointerCapture(e.pointerId); } catch (ignore) {}
       pointers[e.pointerId] = { x: e.clientX, y: e.clientY, time: e.timeStamp || Date.now() };
@@ -2081,6 +2115,15 @@
     tile.addEventListener('pointermove', move);
     tile.addEventListener('pointerup', end);
     tile.addEventListener('pointercancel', end);
+    if (pcWindow)
+      tile.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var delta = -Math.round((e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY) * 1.2);
+        if (!delta) return;
+        sender.wheel(Math.max(-1200, Math.min(1200, delta)));
+        sender.release();
+      }, { passive: false });
   }
   function touchpadTile(a, preview, index, slotIndex) {
     var options = touchpadOptions(a),
@@ -4972,6 +5015,170 @@
   $('preview-new-page').onclick = function () {
     setPage(layoutPages());
   };
+  // 3.0 PC window: full-window deck, mouse wheel pages, and the info overlay the window toggles.
+  function setupPcWindow() {
+    document.body.classList.add('pc-window');
+    var info = document.createElement('div'),
+      badge = document.createElement('div'),
+      frames = 0,
+      fps = 0,
+      since = performance.now(),
+      raf = null,
+      pingTimer = null,
+      wheelRest = 0,
+      wheelAt = 0;
+    info.id = 'pc-info';
+    info.hidden = true;
+    info.setAttribute('aria-live', 'off');
+    badge.id = 'pc-view-only';
+    badge.hidden = true;
+    badge.textContent = '見るだけモード　Ctrl+Alt+V で戻す';
+    document.body.appendChild(info);
+    document.body.appendChild(badge);
+    function ms(value) {
+      return value === null ? '—' : value + ' ms';
+    }
+    function render() {
+      info.textContent =
+        '描画 ' + fps + ' fps\n' +
+        'PC との往復 ' + ms(pcStats.ping) + '\n' +
+        '最後の操作 ' + ms(pcStats.action) + '\n' +
+        (connected ? '接続中' : '未接続');
+    }
+    function tick(now) {
+      frames++;
+      if (now - since >= 1000) {
+        fps = Math.round((frames * 1000) / (now - since));
+        frames = 0;
+        since = now;
+        render();
+      }
+      raf = requestAnimationFrame(tick);
+    }
+    function ping() {
+      var started = Date.now();
+      api('ping')
+        .then(function () { pcStats.ping = Date.now() - started; })
+        .catch(function () { pcStats.ping = null; })
+        .finally(render);
+    }
+    window.tapoardPc = {
+      set: function (s) {
+        s = s || {};
+        var on = !!s.info;
+        info.hidden = !on;
+        if (on && raf === null) {
+          since = performance.now();
+          frames = 0;
+          raf = requestAnimationFrame(tick);
+          ping();
+          pingTimer = setInterval(ping, 2000);
+        } else if (!on && raf !== null) {
+          cancelAnimationFrame(raf);
+          clearInterval(pingTimer);
+          raf = null;
+        }
+        document.body.classList.toggle('pc-fill', s.aspect === 'fill');
+        badge.hidden = !s.viewOnly;
+        render();
+      },
+    };
+    // The window has no browser menu; a right click never opens one.
+    document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    // Wheel over the deck (not over a wheel or touchpad widget) turns the page.
+    $('controls').addEventListener('wheel', function (e) {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        return;
+      }
+      if (!$('device-menu-backdrop').hidden) return;
+      e.preventDefault();
+      var now = Date.now();
+      if (now - wheelAt > 400) wheelRest = 0;
+      wheelAt = now;
+      wheelRest += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+      if (Math.abs(wheelRest) < 80) return;
+      var next = page + (wheelRest > 0 ? 1 : -1);
+      wheelRest = 0;
+      if (next < 0 || next >= pageCount) return;
+      setPage(next);
+    }, { passive: false });
+  }
+  if (pcWindow) setupPcWindow();
+  // 3.0 settings page: firewall help under the QR codes and the PC window entry.
+  function firewallText(s) {
+    var where = s.networks ? '（' + s.networks + '）' : '',
+      parts = [];
+    if (s.profile === 'public') parts.push('いまのネットワーク' + where + 'は「パブリック」です。手順 1 で「プライベート」にしてください。');
+    else if (s.profile === 'private') parts.push('いまのネットワーク' + where + 'は「プライベート」です。');
+    else if (s.profile === 'domain') parts.push('いまのネットワーク' + where + 'は「ドメイン」です。会社のネットワークでは管理者の設定が優先されます。');
+    else parts.push('ネットワークの種類を確認できませんでした。');
+    if (s.rulesChecked)
+      parts.push(s.httpRule && s.mdnsRule ? 'TaPoard の通信の許可は登録されています。' : 'TaPoard の通信の許可が見つかりません。「はい」で追加してください。');
+    if (s.blockRules) parts.push('TaPoard を止める設定が ' + s.blockRules + ' 件あります。「はい」で取り除けます。');
+    if (s.blockAllInbound && s.profile === 'public') parts.push('パブリック ネットワークでは「すべての着信接続をブロック」がオンになっています。');
+    return parts.join(' ');
+  }
+  function refreshFirewall() {
+    return api('firewall', undefined, 15000)
+      .then(function (s) {
+        $('firewall-status').textContent = firewallText(s);
+        $('firewall-yes').disabled = !s.scriptAvailable || s.repair === 'running';
+        if (!s.scriptAvailable) $('firewall-result').textContent = 'この TaPoard には許可を追加するスクリプトがありません。インストーラーから入れた TaPoard で実行してください。';
+        return s;
+      })
+      .catch(function (e) {
+        $('firewall-status').textContent = e.message;
+      });
+  }
+  function waitForRepair() {
+    setTimeout(function () {
+      refreshFirewall().then(function (s) {
+        if (!s) return;
+        $('firewall-result').textContent = s.repairMessage || '';
+        if (s.repair === 'running') waitForRepair();
+      });
+    }, 1500);
+  }
+  function closeFirewallHelp() {
+    $('firewall-backdrop').hidden = true;
+  }
+  if (admin) {
+    $('firewall-help').onclick = function () {
+      $('firewall-backdrop').hidden = false;
+      $('firewall-result').textContent = '';
+      $('firewall-status').textContent = 'この PC の状態を確認しています…';
+      refreshFirewall();
+    };
+    $('firewall-close').onclick = closeFirewallHelp;
+    $('firewall-no').onclick = closeFirewallHelp;
+    $('firewall-backdrop').addEventListener('click', function (e) {
+      if (e.target === $('firewall-backdrop')) closeFirewallHelp();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('firewall-backdrop').hidden) closeFirewallHelp();
+    });
+    $('firewall-yes').onclick = function () {
+      $('firewall-yes').disabled = true;
+      api('firewall/repair', {}, 15000)
+        .then(function (s) {
+          $('firewall-result').textContent = s.repairMessage || '';
+          waitForRepair();
+        })
+        .catch(function (e) {
+          $('firewall-result').textContent = e.message;
+          $('firewall-yes').disabled = false;
+        });
+    };
+    $('open-pc-window').onclick = function () {
+      api('pc-window/open', { fullscreen: false }, 15000)
+        .then(function () { message('PC 用ウィンドウを開きました。'); })
+        .catch(function (e) { message(e.message); });
+    };
+    $('pc-window-settings-link').onclick = function () {
+      this.href = '/pc-window#' + key;
+    };
+  }
   if (admin) {
     $('pair').hidden = true;
     $('settings').hidden = false;

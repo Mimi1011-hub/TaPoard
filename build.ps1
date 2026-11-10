@@ -6,6 +6,8 @@ $buildInfo = & .\tools\build-info.ps1 -OutputPath (Join-Path $PSScriptRoot 'test
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 New-Item -ItemType Directory -Force dist\web | Out-Null
 Copy-Item web\* dist\web -Recurse -Force
+# The firewall repair button in the settings page runs this copy (as the installer does).
+[IO.File]::WriteAllText((Join-Path $PSScriptRoot 'dist\setup-lan.ps1'), [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'packaging\setup-lan.ps1'), [Text.Encoding]::UTF8), [Text.UTF8Encoding]::new($true))
 Get-ChildItem web -File | ForEach-Object {
     $published = Join-Path 'dist\web' $_.Name
     if ((Get-FileHash $_.FullName).Hash -ne (Get-FileHash $published).Hash) {
