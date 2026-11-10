@@ -448,6 +448,9 @@ sealed class PcWindow : Form
     {
         base.OnShown(e);
         ApplyTopmost();
+        // Opening the window always shows it in front of other apps, even when "always on
+        // top" is off (a window shown without activation would otherwise open behind them).
+        Raise();
         ApplyLayered();
         if (pendingFullscreen)
             SetFullscreen(true);
@@ -530,70 +533,78 @@ sealed class PcWindow : Form
 
     string lastPushed;
 
-    // "drag", "maximize" or "resize:<edge>" from a press on the deck's empty area.
+    // Requests from the deck page: "raise", "page:N/M", "drag:<ratio>", "resize:<edge>",
+    // "move:dx,dy" and "dragend". Moves are measured by the page from the press, in physical
+    // pixels, so they work for the mouse, real touch and edgehost's injected touch alike
+    // (injected touch neither moves the cursor nor counts as a pressed mouse button).
     void PageRequest(string message)
     {
+        if (message == null)
+            return;
         if (message == "raise")
             Raise();
-        else if (message == "drag")
-            StartPointerTrack("");
-        else if (message == "maximize")
-            ToggleMaximize();
-        else if (message != null && message.StartsWith("resize:") && !maximized && !fullscreen)
+        else if (message.StartsWith("page:"))
+            bar.SetPage(message.Substring(5));
+        else if (message.StartsWith("drag:"))
+        {
+            if (fullscreen)
+                return;
+            double ratio;
+            if (!double.TryParse(message.Substring(5), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ratio))
+                ratio = 0.5;
+            if (maximized)
+            {
+                // Leave the maximised state under the pressed point, like a title bar does.
+                Rectangle r = restoreBounds;
+                int pressX = Left + (int)(Width * ratio);
+                r.X = pressX - (int)(r.Width * ratio);
+                r.Y = Top;
+                maximized = false;
+                Bounds = r;
+                LayoutChildren();
+            }
+            BeginTrack("");
+        }
+        else if (message.StartsWith("resize:"))
         {
             string edge = message.Substring(7);
-            if (Array.IndexOf(new[] { "left", "right", "top", "bottom", "topleft", "topright", "bottomleft", "bottomright" }, edge) >= 0)
-                StartPointerTrack(edge);
+            if (!maximized && !fullscreen && Array.IndexOf(new[] { "left", "right", "top", "bottom", "topleft", "topright", "bottomleft", "bottomright" }, edge) >= 0)
+                BeginTrack(edge);
         }
-    }
-
-    // The press happened inside the browser (another process), so Windows' own move/size loop
-    // cannot see the held button. Follow the real button state instead until it is released.
-    readonly System.Windows.Forms.Timer pointerTimer = new System.Windows.Forms.Timer { Interval = 10 };
-    Point trackCursor;
-    Rectangle trackBounds;
-    string trackEdge;
-
-    static bool PrimaryButtonDown()
-    {
-        int vk = SystemInformation.MouseButtonsSwapped ? 0x02 : 0x01;
-        return (GetAsyncKeyState(vk) & 0x8000) != 0;
-    }
-
-    void StartPointerTrack(string edge)
-    {
-        if (fullscreen || !PrimaryButtonDown())
-            return;
-        if (edge == "" && maximized)
-            LeaveMaximizedUnderCursor();
-        trackCursor = Cursor.Position;
-        trackBounds = Bounds;
-        trackEdge = edge;
-        if (pointerTimer.Tag == null)
+        else if (message.StartsWith("move:"))
         {
-            pointerTimer.Tag = true;
-            pointerTimer.Tick += delegate { TrackPointer(); };
+            string[] parts = message.Substring(5).Split(',');
+            int dx,
+                dy;
+            if (tracking && parts.Length == 2 && int.TryParse(parts[0], out dx) && int.TryParse(parts[1], out dy))
+                TrackTo(dx, dy);
         }
-        pointerTimer.Start();
-    }
-
-    void TrackPointer()
-    {
-        if (!PrimaryButtonDown())
+        else if (message == "dragend")
         {
-            pointerTimer.Stop();
+            if (!tracking)
+                return;
+            tracking = false;
             PositionOverlays();
             PersistState();
-            return;
         }
-        Point now = Cursor.Position;
-        int dx = now.X - trackCursor.X,
-            dy = now.Y - trackCursor.Y;
+    }
+
+    bool tracking;
+    Rectangle trackBounds;
+    string trackEdge = "";
+
+    void BeginTrack(string edge)
+    {
+        trackBounds = Bounds;
+        trackEdge = edge;
+        tracking = true;
+    }
+
+    void TrackTo(int dx, int dy)
+    {
         Rectangle r = trackBounds;
         if (trackEdge == "")
-        {
             r.Offset(dx, dy);
-        }
         else
         {
             int minW = (int)(260 * UiScale),
@@ -624,9 +635,6 @@ sealed class PcWindow : Form
         LayoutChildren();
     }
 
-    [DllImport("user32.dll")]
-    static extern short GetAsyncKeyState(int key);
-
     static IntPtr CursorLParam()
     {
         Point p = Cursor.Position;
@@ -642,6 +650,7 @@ sealed class PcWindow : Form
         if (wantFullscreen && !fullscreen)
             SetFullscreen(true);
         ApplyTopmost();
+        Raise();
         ActivateWindow();
     }
 
@@ -703,6 +712,13 @@ sealed class PcWindow : Form
                 break;
             case "close":
                 CloseWithPrompt();
+                break;
+            case "prev":
+            case "next":
+                web.ExecuteScript("window.tapoardPc&&window.tapoardPc.page(" + (id == "prev" ? "-1" : "1") + ")");
+                break;
+            case "menu":
+                web.ExecuteScript("window.tapoardPc&&window.tapoardPc.menu()");
                 break;
         }
         bar.Invalidate();
@@ -895,7 +911,7 @@ sealed class PcWindow : Form
 
     void RefitLater()
     {
-        if (refitPending || (!fullscreen && !maximized) || pointerTimer.Enabled)
+        if (refitPending || (!fullscreen && !maximized) || tracking)
             return;
         Rectangle target = MonitorArea(fullscreen);
         if (Bounds == target)
@@ -995,6 +1011,19 @@ sealed class PcWindow : Form
         PositionOverlays();
         saveTimer.Stop();
         saveTimer.Start();
+    }
+
+    internal bool CanDrag
+    {
+        get { return !fullscreen; }
+    }
+
+    // The overlay row moved the window itself; leave maximised state and save the place.
+    internal void DragFinished()
+    {
+        maximized = false;
+        PositionOverlays();
+        PersistState();
     }
 
     internal void BarDoubleClick()
@@ -1166,6 +1195,47 @@ sealed class PcWindow : Form
             case 0x0231: // WM_ENTERSIZEMOVE
                 inSizeMove = true;
                 break;
+            case WM_NCLBUTTONDOWN:
+                if (m.WParam.ToInt64() == HTCAPTION)
+                {
+                    // Pressing the title area brings the window forward and lets its shortcuts
+                    // work; then Windows' own move loop runs.
+                    Raise();
+                    ActivateWindow();
+                }
+                break;
+            case 0x0216: // WM_MOVING: dragging a maximised window out restores its size under the pointer.
+                if (maximized && inSizeMove)
+                {
+                    var moving = (RECT)Marshal.PtrToStructure(m.LParam, typeof(RECT));
+                    Point cursor = Cursor.Position;
+                    double ratio = (cursor.X - Left) / (double)Math.Max(1, Width);
+                    Rectangle r = restoreBounds;
+                    r.X = cursor.X - (int)(r.Width * ratio);
+                    r.Y = moving.top;
+                    maximized = false;
+                    Marshal.StructureToPtr(new RECT { left = r.Left, top = r.Top, right = r.Right, bottom = r.Bottom }, m.LParam, false);
+                    m.Result = new IntPtr(1);
+                    BeginInvoke(new MethodInvoker(LayoutChildren));
+                    return;
+                }
+                break;
+            case 0x00A3: // WM_NCLBUTTONDBLCLK: our own maximise (it covers the work area only).
+                if (m.WParam.ToInt64() == HTCAPTION)
+                {
+                    ToggleMaximize();
+                    return;
+                }
+                break;
+            case 0x00A5: // WM_NCRBUTTONUP on the title area: the button row's menu.
+                if (m.WParam.ToInt64() == HTCAPTION)
+                {
+                    bar.ShowMenuAtCursor();
+                    return;
+                }
+                break;
+            case 0x007B: // WM_CONTEXTMENU: no Windows system menu on the frameless window.
+                return;
             case WM_GETMINMAXINFO:
                 base.WndProc(ref m);
                 var info = (MINMAXINFO)Marshal.PtrToStructure(m.LParam, typeof(MINMAXINFO));
@@ -1179,11 +1249,12 @@ sealed class PcWindow : Form
                 var rect = Rectangle.FromLTRB(suggested.left, suggested.top, suggested.right, suggested.bottom);
                 // Follow Windows' new size only while the user drags the window to another
                 // monitor; a programmatic placement keeps the size it was given.
-                if (pointerTimer.Enabled && trackEdge == "")
+                if (tracking && trackEdge == "")
                 {
+                    // The page measures from here on (its pixel ratio changed too).
                     trackBounds = rect;
-                    trackCursor = Cursor.Position;
                     Bounds = rect;
+                    web.ExecuteScript("window.tapoardPc&&window.tapoardPc.rebase()");
                 }
                 else if (inSizeMove && !fullscreen && !maximized)
                     Bounds = rect;
@@ -1240,6 +1311,10 @@ sealed class PcWindow : Form
             if (top) return HTTOP;
             if (bottom) return HTBOTTOM;
         }
+        // The button row's empty space is the title bar: Windows moves the window, maximises it
+        // on a double click, and touch input (edgehost included) drags it like any title bar.
+        if (bar.Parent == this && p.Y >= 0 && p.Y < bar.Height && !bar.IsOnItem(p))
+            return HTCAPTION;
         return HTCLIENT;
     }
 
@@ -1388,12 +1463,21 @@ sealed class PcBar : Control
     Point lastEmptyPoint;
     internal float UiScale = 1;
     internal bool MenuOpen;
+    readonly List<Item> nav = new List<Item>();
+    string pageText = "1/1";
+    Rectangle pageTextBounds;
+    bool dragging;
+    Point dragStart;
+    Rectangle dragBounds;
 
     internal PcBar(PcWindow owner)
     {
         this.owner = owner;
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
         BackColor = Color.FromArgb(22, 23, 27);
+        AddNav("prev", "", "前のページ");
+        AddNav("next", "", "次のページ");
+        AddNav("menu", "", "画面と接続のメニュー");
         Add("info", "", null, "情報表示（Ctrl+I）");
         Add("viewonly", "", "", "見るだけモード（Ctrl+Alt+V で戻す）");
         Add("topmost", "", "", "常に最前面（Ctrl+T）");
@@ -1401,6 +1485,30 @@ sealed class PcBar : Control
         Add("settings", "", null, "PC 用ウィンドウの設定（Ctrl+,）");
         Add("minimize", "", null, "最小化");
         Add("close", "", null, "閉じる（Esc）");
+    }
+
+    // Page buttons and the deck's menu sit on the left, next to the name; they replace the
+    // in-page toolbar row so the deck gets that height.
+    void AddNav(string id, string glyph, string tip)
+    {
+        nav.Add(new Item { id = id, glyph = glyph, activeGlyph = glyph, tip = tip });
+    }
+
+    internal void SetPage(string text)
+    {
+        if (text == pageText)
+            return;
+        pageText = text;
+        Invalidate();
+    }
+
+    internal bool CanTurn(int step)
+    {
+        string[] parts = pageText.Split('/');
+        int current, total;
+        if (parts.Length != 2 || !int.TryParse(parts[0], out current) || !int.TryParse(parts[1], out total))
+            return true;
+        return step < 0 ? current > 1 : current < total;
     }
 
     void Add(string id, string glyph, string active, string tip)
@@ -1429,14 +1537,66 @@ sealed class PcBar : Control
             if (items[i].id == "minimize")
                 x -= gap;
         }
+        // Left: name, then ‹ page › and the menu. The name is dropped when space runs short.
+        int rightStart = x,
+            navW = (int)Math.Round(h * 0.95),
+            textW = (int)Math.Round(h * 1.5),
+            navTotal = navW * 3 + textW + gap;
+        int left = (int)(h * 0.4f) + (int)(h * 2.4f);
+        showTitle = left + navTotal <= rightStart - gap;
+        if (!showTitle)
+            left = (int)(h * 0.2f);
+        nav[0].bounds = new Rectangle(left, 0, navW, h);
+        pageTextBounds = new Rectangle(left + navW, 0, textW, h);
+        nav[1].bounds = new Rectangle(left + navW + textW, 0, navW, h);
+        nav[2].bounds = new Rectangle(left + navW * 2 + textW + gap, 0, navW, h);
+        bool fits = nav[2].bounds.Right <= rightStart;
+        foreach (var item in nav)
+            if (!fits)
+                item.bounds = Rectangle.Empty;
+        if (!fits)
+            pageTextBounds = Rectangle.Empty;
     }
+
+    bool showTitle = true;
 
     Item ItemAt(Point p)
     {
         foreach (var item in items)
             if (item.bounds.Contains(p))
                 return item;
+        foreach (var item in nav)
+            if (item.bounds.Contains(p))
+                return item;
         return null;
+    }
+
+    internal bool IsOnItem(Point p)
+    {
+        LayoutItems();
+        return ItemAt(p) != null;
+    }
+
+    // In the window, the empty part of the row is the window's title bar (HTCAPTION there),
+    // so it lets those clicks through to the window. In the overlay it handles them itself.
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == 0x84 && Parent is PcWindow)
+        {
+            long v = m.LParam.ToInt64();
+            var p = PointToClient(new Point((short)(v & 0xffff), (short)((v >> 16) & 0xffff)));
+            if (!IsOnItem(p))
+            {
+                m.Result = new IntPtr(-1); // HTTRANSPARENT
+                return;
+            }
+        }
+        base.WndProc(ref m);
+    }
+
+    internal void ShowMenuAtCursor()
+    {
+        BuildMenu().Show(Cursor.Position);
     }
 
     protected override void OnResize(EventArgs e)
@@ -1456,6 +1616,7 @@ sealed class PcBar : Control
         using (var titleFont = new Font("Segoe UI Semibold", h * 0.36f, GraphicsUnit.Pixel))
         using (var titleBrush = new SolidBrush(Color.FromArgb(205, 209, 218)))
         using (var dim = new SolidBrush(Color.FromArgb(120, 126, 140)))
+        if (showTitle)
         {
             float x = h * 0.4f;
             var fmt = new StringFormat { LineAlignment = StringAlignment.Center };
@@ -1486,12 +1647,35 @@ sealed class PcBar : Control
                 using (var fg = new SolidBrush(active ? Color.FromArgb(150, 182, 255) : Color.FromArgb(222, 224, 230)))
                     g.DrawString(active ? item.activeGlyph : item.glyph, glyphFont, fg, item.bounds, center);
             }
+            foreach (var item in nav)
+            {
+                if (item.bounds.IsEmpty)
+                    continue;
+                bool enabled = item.id == "menu" || CanTurn(item.id == "prev" ? -1 : 1);
+                if (enabled && (item == pressed || item == hover))
+                    using (var b = new SolidBrush(item == pressed ? Color.FromArgb(52, 55, 64) : Color.FromArgb(42, 44, 51)))
+                        g.FillRectangle(b, item.bounds);
+                using (var fg = new SolidBrush(enabled ? Color.FromArgb(222, 224, 230) : Color.FromArgb(78, 82, 92)))
+                    g.DrawString(item.glyph, glyphFont, fg, item.bounds, center);
+            }
+            if (!pageTextBounds.IsEmpty)
+                using (var pageFont = new Font("Segoe UI", h * 0.34f, GraphicsUnit.Pixel))
+                using (var fg = new SolidBrush(Color.FromArgb(170, 176, 190)))
+                    g.DrawString(pageText.Replace("/", " / "), pageFont, fg, pageTextBounds, center);
         }
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+        if (dragging)
+        {
+            Point now = PointToScreen(e.Location);
+            var r = dragBounds;
+            r.Offset(now.X - dragStart.X, now.Y - dragStart.Y);
+            owner.Bounds = r;
+            return;
+        }
         var item = ItemAt(e.Location);
         if (item != hover)
         {
@@ -1525,7 +1709,9 @@ sealed class PcBar : Control
             Invalidate();
             return;
         }
-        // Empty space: double click maximises, otherwise the window follows the mouse.
+        // Only the overlay row gets here (in the window this area is the title bar). Double
+        // click maximises; otherwise the window follows the pointer from this control's own
+        // messages, which touch input delivers too.
         var now = DateTime.UtcNow;
         var size = SystemInformation.DoubleClickSize;
         bool second = (now - lastEmptyDown).TotalMilliseconds <= SystemInformation.DoubleClickTime
@@ -1535,14 +1721,28 @@ sealed class PcBar : Control
         lastEmptyPoint = e.Location;
         owner.BarPressed();
         if (second)
+        {
             owner.BarDoubleClick();
-        else
-            owner.BeginDrag();
+            return;
+        }
+        if (!owner.CanDrag)
+            return;
+        dragging = true;
+        dragStart = PointToScreen(e.Location);
+        dragBounds = owner.Bounds;
+        Capture = true;
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (dragging)
+        {
+            dragging = false;
+            Capture = false;
+            owner.DragFinished();
+            return;
+        }
         var item = pressed;
         pressed = null;
         Invalidate();
@@ -1562,6 +1762,14 @@ sealed class PcBar : Control
     internal ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip { Font = new Font("Yu Gothic UI", 14 * UiScale, GraphicsUnit.Pixel), ShowImageMargin = false };
+        foreach (var item in nav)
+        {
+            string id = item.id;
+            var entry = new ToolStripMenuItem(item.tip) { Enabled = id == "menu" || CanTurn(id == "prev" ? -1 : 1) };
+            entry.Click += delegate { owner.Command(id); };
+            menu.Items.Add(entry);
+        }
+        menu.Items.Add(new ToolStripSeparator());
         foreach (var item in items)
         {
             string id = item.id;

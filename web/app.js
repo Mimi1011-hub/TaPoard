@@ -2928,10 +2928,17 @@
         serverPages = s.pages || serverPages;
         deckRevision = s.revision;
         if (admin) renderPreview();
-        else renderDeck();
+        else {
+          renderDeck();
+          playSlideIn();
+        }
         announceView();
       })
       .catch(function (e) {
+        if (slideIn) {
+          slideIn = 0;
+          swipeSnapBack();
+        }
         message(e.message);
       });
   }
@@ -5084,7 +5091,31 @@
         hostState.barVisible = !!s.barVisible;
         render();
       },
+      // The window's button row shows the page and the menu (the in-page toolbar is hidden).
+      page: function (step) {
+        var next = page + step;
+        if (next < 0 || next >= pageCount) return;
+        slideIn = step > 0 ? 1 : -1;
+        setPage(next);
+      },
+      menu: function () {
+        $('device-menu-button').click();
+      },
+      // The window moved to a monitor with other scaling mid-drag: measure from here on.
+      rebase: function () {
+        if (press && lastScreen) press.start = lastScreen;
+      },
     };
+    var lastScreen = null,
+      lastPageText = '';
+    function reportPage() {
+      var text = Math.min(page + 1, pageCount) + '/' + pageCount;
+      if (text === lastPageText) return;
+      lastPageText = text;
+      postHost('page:' + text);
+    }
+    new MutationObserver(reportPage).observe($('page-label'), { childList: true, characterData: true, subtree: true });
+    reportPage();
     // Pressing where there is no button moves the window, like its button row; near the
     // window's edges it resizes it. (Double-click to maximise is only on the button row.)
     var hostState = { resizable: false, barVisible: true },
@@ -5105,45 +5136,64 @@
     function emptyTarget(target) {
       return !(target && target.closest && target.closest(INTERACTIVE));
     }
-    // A press on the empty area waits for the first movement: a quick sideways flick turns the
-    // page (when swiping is on), anything else - holding first, or moving up/down - moves the
-    // window. With swiping off the window follows at once.
-    var pending = null;
+    // A press on the empty area moves the window with the pointer itself (mouse, touch or
+    // edgehost's injected touch alike - none of them is required to move the cursor). The page
+    // sends the movement since the press in physical pixels; the window applies it to where it
+    // started. A quick sideways flick instead turns the page when swiping is on; holding first
+    // or moving up/down moves the window.
+    var press = null;
+    function screenPoint(e) {
+      var ratio = window.devicePixelRatio || 1;
+      return { x: e.screenX * ratio, y: e.screenY * ratio };
+    }
+    function startHostTrack(kind) {
+      press.mode = kind;
+      postHost(kind === 'drag' ? 'drag:' + Math.max(0, Math.min(1, press.clientX / Math.max(1, window.innerWidth))).toFixed(3) : 'resize:' + press.edge);
+    }
     document.addEventListener('pointerdown', function (e) {
       postHost('raise');
-      pending = null;
+      press = null;
       if (e.button !== 0 || !emptyTarget(e.target)) return;
-      var edge = edgeAt(e.clientX, e.clientY);
       e.preventDefault();
-      if (edge) {
-        postHost('resize:' + edge);
-        return;
-      }
-      if (!swipePagesOn()) {
-        postHost('drag');
-        return;
-      }
-      pending = { id: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now(), mode: '' };
+      try {
+        document.documentElement.setPointerCapture(e.pointerId);
+      } catch (ignore) {}
+      var p = screenPoint(e);
+      lastScreen = p;
+      press = { id: e.pointerId, start: p, clientX: e.clientX, x: e.clientX, y: e.clientY, time: Date.now(), mode: '', edge: edgeAt(e.clientX, e.clientY) };
+      if (press.edge) startHostTrack('resize');
+      else if (!swipePagesOn()) startHostTrack('drag');
     }, true);
     document.addEventListener('pointermove', function (e) {
-      if (!pending || e.pointerId !== pending.id || pending.mode) return;
-      var dx = e.clientX - pending.x,
-        dy = e.clientY - pending.y;
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      if (Date.now() - pending.time < 250 && Math.abs(dx) > Math.abs(dy) * 1.5) pending.mode = 'swipe';
-      else {
-        pending.mode = 'drag';
-        postHost('drag');
+      if (!press || e.pointerId !== press.id) return;
+      e.preventDefault();
+      var dx = e.clientX - press.x,
+        dy = e.clientY - press.y;
+      if (!press.mode) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Date.now() - press.time < 250 && Math.abs(dx) > Math.abs(dy) * 1.5) press.mode = 'swipe';
+        else startHostTrack('drag');
       }
+      if (press.mode === 'swipe') {
+        swipeFollow(dx);
+        return;
+      }
+      var p = screenPoint(e);
+      lastScreen = p;
+      postHost('move:' + Math.round(p.x - press.start.x) + ',' + Math.round(p.y - press.start.y));
     }, true);
-    function endPending(e) {
-      if (!pending || e.pointerId !== pending.id) return;
-      var p = pending;
-      pending = null;
+    function endPress(e) {
+      if (!press || e.pointerId !== press.id) return;
+      var p = press;
+      press = null;
+      try {
+        document.documentElement.releasePointerCapture(e.pointerId);
+      } catch (ignore) {}
       if (p.mode === 'swipe') swipeTurn(e.clientX - p.x, e.clientY - p.y, Date.now() - p.time);
+      else if (p.mode) postHost('dragend');
     }
-    document.addEventListener('pointerup', endPending, true);
-    document.addEventListener('pointercancel', endPending, true);
+    document.addEventListener('pointerup', endPress, true);
+    document.addEventListener('pointercancel', endPress, true);
     document.addEventListener('pointermove', function (e) {
       if (e.buttons) return;
       var edge = emptyTarget(e.target) ? edgeAt(e.clientX, e.clientY) : '';
@@ -5165,8 +5215,12 @@
       wheelRest += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
       if (Math.abs(wheelRest) < 80) return;
       var next = page + (wheelRest > 0 ? 1 : -1);
+      if (next < 0 || next >= pageCount) {
+        wheelRest = 0;
+        return;
+      }
+      slideIn = wheelRest > 0 ? 1 : -1;
       wheelRest = 0;
-      if (next < 0 || next >= pageCount) return;
       setPage(next);
     }, { passive: false });
   }
@@ -5181,12 +5235,51 @@
   function swipePagesOn() {
     return swipeOn;
   }
+  // The deck follows the finger while swiping, slides out, and the next page slides in.
+  var slideIn = 0;
+  function deckMotion(transform, opacity, ms) {
+    var deck = $('deck');
+    deck.style.transition = ms ? 'transform ' + ms + 'ms ease-out, opacity ' + ms + 'ms ease-out' : 'none';
+    deck.style.transform = transform;
+    deck.style.opacity = opacity;
+  }
+  function swipeFollow(dx) {
+    var width = Math.max(1, $('deck').clientWidth),
+      next = page + (dx < 0 ? 1 : -1),
+      // Past the first or last page the deck only gives a little, like a rubber band.
+      shift = next >= 0 && next < pageCount ? dx : dx / 4;
+    deckMotion('translateX(' + shift + 'px)', String(1 - Math.min(0.6, Math.abs(shift) / width)), 0);
+  }
+  function swipeSnapBack() {
+    deckMotion('', '', 180);
+  }
+  // Runs after a page change has been drawn: the new page slides in from the swipe side.
+  function playSlideIn() {
+    if (!slideIn) return;
+    var from = slideIn;
+    slideIn = 0;
+    deckMotion('translateX(' + from * Math.min(160, $('deck').clientWidth * 0.25) + 'px)', '0.2', 0);
+    $('deck').offsetWidth;
+    deckMotion('', '', 200);
+  }
   // Turns the page for a finished swipe; returns true when it counted as one.
   function swipeTurn(dx, dy, ms) {
     var needed = Math.max(40, Math.min(120, $('deck').clientWidth * 0.08));
-    if (ms > 900 || Math.abs(dx) < needed || Math.abs(dx) < Math.abs(dy) * 1.5) return false;
+    if (ms > 900 || Math.abs(dx) < needed || Math.abs(dx) < Math.abs(dy) * 1.5) {
+      swipeSnapBack();
+      return false;
+    }
     var next = page + (dx < 0 ? 1 : -1);
-    if (next >= 0 && next < pageCount) setPage(next);
+    if (next < 0 || next >= pageCount) {
+      swipeSnapBack();
+      return true;
+    }
+    var direction = dx < 0 ? -1 : 1;
+    deckMotion('translateX(' + direction * $('deck').clientWidth * 0.5 + 'px)', '0', 140);
+    setTimeout(function () {
+      slideIn = -direction;
+      setPage(next);
+    }, 140);
     return true;
   }
   function setupSwipePages() {
@@ -5217,6 +5310,8 @@
       if (!track || e.pointerId !== track.id) return;
       track.lastX = e.clientX;
       track.lastY = e.clientY;
+      var dx = e.clientX - track.x;
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(e.clientY - track.y) * 1.5) swipeFollow(dx);
     }, true);
     function finish(e) {
       if (!track || e.pointerId !== track.id) return;
