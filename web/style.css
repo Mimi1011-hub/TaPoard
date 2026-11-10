@@ -2692,7 +2692,7 @@ body.pc-window #message:empty {
   display: none;
 }
 /* Phone-only switches in the hamburger menu do not apply to the PC window. */
-body.pc-window .device-menu .menu-switch,
+body.pc-window .device-menu .menu-switch:not(.swipe-switch),
 body.pc-window #disconnect {
   display: none;
 }
@@ -2850,4 +2850,8 @@ body.pc-window #disconnect {
 .pcw-keys th {
   white-space: nowrap;
   color: #e6e8ee;
+}
+/* Horizontal swipes reach the page (page turning); vertical panning still scrolls. */
+body.swipe-pages:not(.admin-view) .deck-frame {
+  touch-action: pan-y pinch-zoom;
 }

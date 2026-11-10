@@ -24,7 +24,10 @@ sealed class WebView2Host
         WebViewAddNavigationCompleted = 15,
         WebViewAddProcessFailed = 25,
         WebViewAddScriptOnCreated = 27,
-        WebViewExecuteScript = 29;
+        WebViewExecuteScript = 29,
+        WebViewAddWebMessageReceived = 34;
+    const int MessageGetSource = 3,
+        MessageTryGetString = 5;
     const int SettingsPutIsStatusBarEnabled = 10,
         SettingsPutAreDevToolsEnabled = 12,
         SettingsPutAreDefaultContextMenusEnabled = 14,
@@ -40,6 +43,7 @@ sealed class WebView2Host
     // (virtual key, key down) -> true when the window handled it as a shortcut.
     internal Func<int, bool, bool> AcceleratorKey;
     internal Action NavigationCompleted;
+    internal Action<string> WebMessage;
     internal Action ProcessFailed;
 
     internal bool IsReady
@@ -182,6 +186,31 @@ sealed class WebView2Host
         Slot<AddHandler>(webView, WebViewAddNavigationCompleted)(
             webView,
             Callback.Event(delegate { if (NavigationCompleted != null) NavigationCompleted(); }),
+            out token
+        );
+        Slot<AddHandler>(webView, WebViewAddWebMessageReceived)(
+            webView,
+            Callback.Event(
+                delegate(IntPtr sender, IntPtr args)
+                {
+                    if (WebMessage == null)
+                        return;
+                    // Only the TaPoard page served by this PC may move the window.
+                    IntPtr source;
+                    if (Slot<GetPointer>(args, MessageGetSource)(args, out source) < 0)
+                        return;
+                    string origin = Marshal.PtrToStringUni(source);
+                    Marshal.FreeCoTaskMem(source);
+                    if (origin == null || !origin.StartsWith("http://127.0.0.1:", StringComparison.Ordinal))
+                        return;
+                    IntPtr text;
+                    if (Slot<GetPointer>(args, MessageTryGetString)(args, out text) < 0 || text == IntPtr.Zero)
+                        return;
+                    string message = Marshal.PtrToStringUni(text);
+                    Marshal.FreeCoTaskMem(text);
+                    WebMessage(message);
+                }
+            ),
             out token
         );
         Slot<AddHandler>(webView, WebViewAddProcessFailed)(
