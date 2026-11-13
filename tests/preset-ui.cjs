@@ -59,9 +59,16 @@ function button(name, page, row, column, orientation = 'landscape') {
     const errors = [];
     admin.on('pageerror', e => errors.push(String(e)));
     await admin.goto(base + '/settings#test-admin');
+    // Presets have their own screen: six tabs, the page drawn, and what every button does.
+    await admin.locator('#preset-open').click();
     await admin.locator('.preset-card').first().waitFor();
-    assert.equal(await admin.locator('.preset-card').count(), 6);
+    assert.equal(await admin.locator('.preset-tab').count(), 6);
     assert.match(await admin.locator('#preset-orientation-note').textContent(), /横向き 1 ページ目/);
+    const streamer = presets.find(p => p.id === 'streamer').landscape;
+    assert.ok(streamer.items.every(i => i.description), 'every item is explained');
+    assert.equal(await admin.locator('.preset-help-row').count(), streamer.items.length + 2, 'buttons, widgets and both faders');
+    assert.match(await admin.locator('.preset-help-row', { hasText: 'Discordミュート' }).textContent(), /送るキー：Ctrl \+ Shift \+ M/);
+    await admin.locator('.preset-tab[data-preset="work"]').click();
     assert.ok(await admin.locator('.preset-card[data-preset="work"] .preset-map .preset-widget').count() >= 2, 'clock and weather drawn');
 
     // Overwrite landscape page 1 with "在宅ワーク・会議": grid becomes 6x3, A goes, B on page 2 stays.
@@ -86,6 +93,8 @@ function button(name, page, row, column, orientation = 'landscape') {
     await admin.locator('#preview-deck .clock-widget').first().waitFor();
 
     // A preset without a mic fader hides it on that page only.
+    await admin.locator('#preset-open').click();
+    await admin.locator('.preset-tab[data-preset="programming"]').click();
     await admin.locator('.preset-card[data-preset="programming"] button', { hasText: 'このページに使う' }).click();
     await admin.locator('#look-save-no').click();
     await admin.waitForFunction(() => /プログラミング」にしました/.test(document.querySelector('#message').textContent));
@@ -93,7 +102,7 @@ function button(name, page, row, column, orientation = 'landscape') {
     const prog = s.landscapeControlPages.find(p => p.page === 0);
     assert.equal(prog.micHidden, true);
     assert.equal(prog.speakerHidden, false);
-    assert.equal(s.apps.find(a => a.name === 'コマンド').hotkey, 'Ctrl+Shift+P');
+    assert.equal(s.apps.find(a => a.name === 'コマンドパレット').hotkey, 'Ctrl+Shift+P');
 
     // Undo restores the page before the last preset.
     await admin.locator('#preview-undo-page').click();
@@ -101,14 +110,18 @@ function button(name, page, row, column, orientation = 'landscape') {
     assert.ok((await api('settings')).data.apps.some(a => a.type === 'weather'));
 
     // Cancelling the question changes nothing.
+    await admin.locator('#preset-open').click();
+    await admin.locator('.preset-tab[data-preset="game"]').click();
     await admin.locator('.preset-card[data-preset="game"] button', { hasText: 'このページに使う' }).click();
     await admin.locator('#look-save-cancel').click();
     await new Promise(r => setTimeout(r, 300));
     assert.ok(!(await api('settings')).data.apps.some(a => a.name === 'Game Bar'));
 
-    // Portrait: switch and overwrite with the media preset (3x5, analog clock and a 3x1 fader).
-    await admin.locator('#preview-portrait').click();
+    // Portrait: switch on the preset screen and overwrite with the media preset (3x5, analog clock and a 3x1 fader).
+    await admin.locator('#preset-portrait').click();
     await admin.waitForFunction(() => /縦向き 1 ページ目/.test(document.querySelector('#preset-orientation-note').textContent));
+    assert.equal(await admin.locator('#preview-portrait').getAttribute('aria-pressed'), 'true', 'the preview follows');
+    await admin.locator('.preset-tab[data-preset="media"]').click();
     await admin.locator('.preset-card[data-preset="media"] button', { hasText: 'このページに使う' }).click();
     await admin.locator('#look-save-no').click();
     await admin.waitForFunction(() => /音楽・動画鑑賞」にしました/.test(document.querySelector('#message').textContent));
@@ -128,7 +141,7 @@ function button(name, page, row, column, orientation = 'landscape') {
     const apps = s.apps.concat([button('C', 2, 0, 0)]);
     assert.equal((await api('settings', { apps })).status, 200, 'cell 0,0 is free on a new page');
     await admin.reload();
-    await admin.locator('.preset-card').first().waitFor();
+    await admin.locator('#preset-open').waitFor();
     assert.equal(await admin.locator('.shortcut-row[data-action="control-speaker-fader"] button').textContent(), 'すべてのページに表示');
     await admin.locator('.shortcut-row[data-action="control-speaker-fader"] button').click();
     await admin.waitForFunction(() => /すべてのページに.*戻しました/.test(document.querySelector('#message').textContent));
@@ -138,6 +151,37 @@ function button(name, page, row, column, orientation = 'landscape') {
     assert.notEqual((await api('fader/remove', { orientation: 'landscape', target: 'speaker' }, 'test-phone')).status, 200);
 
     assert.equal(await admin.locator('.shortcut-row[data-action="key-custom"]').count(), 1);
+    // Button names can have line breaks: three lines at most, typed with Enter in the editor.
+    s = (await api('settings')).data;
+    const named = s.apps.concat([Object.assign(button('一行目\r\n二行目\n三行目\n四行目', 3, 2, 5), {})]);
+    const namedSave = await api('settings', { apps: named });
+    assert.equal(namedSave.status, 200, JSON.stringify(namedSave.data));
+    assert.equal((await api('settings')).data.apps.find(a => a.name.startsWith('一行目')).name, '一行目\n二行目\n三行目 四行目');
+    await admin.reload();
+    await admin.locator('#preview-deck [data-app-index]').first().waitFor();
+    for (let i = 0; i < 6 && !(await admin.locator('#preview-deck .key-label.multi-line').count()); i++) {
+      if (await admin.locator('#preview-next').isDisabled()) break;
+      await admin.locator('#preview-next').click();
+      await admin.waitForTimeout(300);
+    }
+    const multi = admin.locator('#preview-deck .key-label.multi-line');
+    await multi.waitFor();
+    assert.equal(await multi.evaluate(e => getComputedStyle(e).whiteSpace), 'pre-line');
+    const names = await admin.locator('textarea.name-input').evaluateAll(n => n.map(e => e.value));
+    assert.ok(names.includes('一行目\n二行目\n三行目 四行目'), 'the editor keeps the line breaks');
+    // Right-click → 詳細設定を開く shows the settings beside the preview instead of scrolling down.
+    const scrolled = await admin.evaluate(() => scrollY);
+    await admin.locator('#preview-deck [data-app-index]:has(.key-label.multi-line)').click({ button: 'right' });
+    await admin.locator('#deck-context-menu button', { hasText: '詳細設定を開く' }).click();
+    await admin.locator('#editor-float textarea.name-input').waitFor();
+    assert.equal(await admin.locator('#editor-float textarea.name-input').inputValue(), '一行目\n二行目\n三行目 四行目');
+    assert.equal(await admin.evaluate(() => scrollY), scrolled, 'the page does not move');
+    await admin.locator('#editor-float textarea.name-input').fill('上\n下');
+    await admin.locator('#editor-float-save').click();
+    await admin.waitForFunction(() => [...document.querySelectorAll('#preview-deck .key-label')].some(e => e.textContent === '上\n下'));
+    await admin.locator('#editor-float-close').click();
+    assert.equal(await admin.locator('#editor-float').isHidden(), true);
+    assert.equal(await admin.locator('#editors textarea.name-input').evaluateAll(n => n.some(e => e.value === '上\n下')), true, 'back in the list');
     assert.deepEqual(errors, []);
     console.log('PASS presets: six laid-out pages per orientation (grid, faders, widgets), overwrite the page shown with confirm and undo; faders removed from every page and restored');
   } finally {
