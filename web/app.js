@@ -2684,7 +2684,8 @@
     renderPresets();
     scheduleClockUpdates();
   }
-  function updatePhoneStatus(active) {
+  // The connection panel (QR codes) leads the page until a phone or the PC window is in use.
+  function updatePhoneStatus(active, pcWindowOpen) {
     if (!admin) return;
     $('phone-status').textContent = active ? '● 接続中' : '○ 未接続';
     $('phone-status').classList.toggle('online', !!active);
@@ -2692,7 +2693,7 @@
     var settingsRoot = $('settings'),
       connection = $('connection-panel'),
       studio = $('studio');
-    if (active) settingsRoot.appendChild(connection);
+    if (active || pcWindowOpen) settingsRoot.appendChild(connection);
     else settingsRoot.insertBefore(connection, studio);
   }
   function syncGridControls() {
@@ -2818,7 +2819,7 @@
       refreshPairing();
     }
     if (admin) {
-      updatePhoneStatus(s.phoneConnected);
+      updatePhoneStatus(s.phoneConnected, s.pcWindowOpen);
       if (forceRender || beforeRender !== deckRenderSignature()) renderPreview();
       else { updateMetricTiles(); updateWeatherTiles(); }
     } else if (inputInteraction && (forceRender || beforeRender !== deckRenderSignature())) inputRenderDeferred = true;

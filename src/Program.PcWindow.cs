@@ -41,6 +41,11 @@ partial class Program
         };
         PcWindowService.OpenSettingsPage = OpenPcWindowSettings;
         PcWindowService.Notify = ShowNotice;
+        PcWindowService.Changed = delegate
+        {
+            lock (Gate)
+                Signal();
+        };
     }
 
     static string StartupMode()

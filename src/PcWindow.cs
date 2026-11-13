@@ -22,6 +22,8 @@ static class PcWindowService
     internal static Func<string> DeckUrl;
     internal static Action OpenSettingsPage;
     internal static Action<string> Notify;
+    // Called when the window opens or closes (3.1: the settings page moves the phone connection panel down).
+    internal static Action Changed;
     internal static string UserDataFolder;
 
     static readonly object Sync = new object();
@@ -77,6 +79,7 @@ static class PcWindowService
                         lock (Sync)
                             window = created;
                         ready.Set();
+                        if (Changed != null) Changed();
                         Application.Run(created);
                     }
                     catch (Exception e)
@@ -90,6 +93,7 @@ static class PcWindowService
                             if (window == created)
                                 window = null;
                         ready.Set();
+                        if (Changed != null) Changed();
                         UnhookForeground();
                     }
                 }
