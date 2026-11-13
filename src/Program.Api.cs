@@ -421,6 +421,7 @@ partial class Program
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
                     phoneConnected = PhoneConnected(),
+                    pcWindowOpen = PcWindowService.IsOpen,
                     background = DeckBackgrounds.Public(config.background),
                     computer = Environment.MachineName,
                     inputSessions = inputSessions,
@@ -473,6 +474,7 @@ partial class Program
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
                     phoneConnected = PhoneConnected(),
+                    pcWindowOpen = PcWindowService.IsOpen,
                     background = DeckBackgrounds.Public(config.background),
                 }
             );
@@ -529,6 +531,7 @@ partial class Program
                     weather = WeatherService.PublicSnapshot(config),
                     weatherLocation = WeatherService.PublicLocation(config),
                     phoneConnected = PhoneConnected(),
+                    pcWindowOpen = PcWindowService.IsOpen,
                     background = DeckBackgrounds.Public(config.background),
                     lanUrl = lanUrl,
                     ipUrls = ipUrls,
