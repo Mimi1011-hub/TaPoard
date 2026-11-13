@@ -2657,6 +2657,7 @@
     $('page-label').textContent = page + 1 + ' / ' + pageCount;
     $('prev-page').disabled = page === 0;
     $('next-page').disabled = page === pageCount - 1;
+    paintBackground();
     $('empty').hidden = deckApps.some(function (a) {
       return a.orientation === orientation;
     });
@@ -2676,6 +2677,8 @@
     $('preview-prev').disabled = page === 0;
     $('preview-next').disabled = page === pageCount - 1;
     $('preview-delete-page').disabled = pageCount <= 1;
+    paintBackground();
+    renderBackgroundControls();
     scheduleClockUpdates();
   }
   function updatePhoneStatus(active) {
@@ -2795,6 +2798,7 @@
     if (s.metrics) metricsState = s.metrics;
     if (s.weather) weatherState = s.weather;
     applyLayout(s);
+    if (s.background) applyBackgroundState(s.background);
     if (typeof s.landscapePage === 'number') pageByOrientation.landscape = s.landscapePage;
     if (typeof s.portraitPage === 'number') pageByOrientation.portrait = s.portraitPage;
     if (s.landscapePages) pagesByOrientation.landscape = s.landscapePages;
@@ -4240,6 +4244,396 @@
     $('icon-pack-bulk-apply').onclick = bulkChangeIcons;
     $('icon-pack-bulk-undo').onclick = undoBulkChange;
   }
+  // ---- 3.1 deck background: color, gradient and a picture with a position per orientation ----
+  var deckBackground = { color: '', color2: '', image: '', dim: 0, blur: 0, landscape: null, portrait: null },
+    backgroundImageData = '',
+    backgroundImageVersion = '',
+    backgroundImageSize = { width: 0, height: 0 },
+    backgroundSaveTimer = null,
+    backgroundAdjust = false;
+  var backgroundColors = [
+    ['', '標準'],
+    ['#000000', '黒'],
+    ['#24262c', 'チャコール'],
+    ['#14213d', '濃紺'],
+    ['#183a2b', 'ダークグリーン'],
+    ['#2d1b46', 'ダークパープル'],
+    ['#6b7280', 'グレー'],
+    ['#f7f7f5', '白'],
+    ['#fbf3df', 'クリーム'],
+    ['#e9dcc9', 'ベージュ'],
+    ['#e8c4c4', 'くすみピンク'],
+    ['#cfe8dc', 'ミント'],
+    ['#d9d0ef', 'ラベンダー'],
+  ];
+  var backgroundGradients = [
+    ['#0f2027', '#2c5364', '夜空'],
+    ['#ff7e5f', '#feb47b', '夕焼け'],
+    ['#f9c5d1', '#fbe3e8', '桃'],
+    ['#2193b0', '#6dd5ed', '海'],
+    ['#134e5e', '#71b280', '森'],
+    ['#41295a', '#2f0743', 'ネオン紫'],
+  ];
+  function backgroundPosition(orientation) {
+    var p = deckBackground[orientation] || {};
+    return { fit: p.fit === 'contain' ? 'contain' : 'cover', x: typeof p.x === 'number' ? p.x : 50, y: typeof p.y === 'number' ? p.y : 50, zoom: p.zoom >= 1 ? p.zoom : 1 };
+  }
+  function backgroundTarget() {
+    if (admin) return document.querySelector('#phone-shell .phone-screen');
+    var deck = $('deck');
+    return deck ? deck.parentNode : null;
+  }
+  function paintBackground() {
+    var target = backgroundTarget();
+    if (!target) return;
+    var layer = target.querySelector(':scope > .deck-bg'),
+      b = deckBackground,
+      active = !!(b.color || (b.image && backgroundImageData));
+    target.classList.toggle('has-deck-bg', active);
+    if (!active) {
+      if (layer) layer.remove();
+      target.style.background = '';
+      return;
+    }
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.className = 'deck-bg';
+      layer.setAttribute('aria-hidden', 'true');
+      target.insertBefore(layer, target.firstChild);
+    }
+    var base = b.color ? (b.color2 ? 'linear-gradient(135deg, ' + b.color + ', ' + b.color2 + ')' : b.color) : '';
+    target.style.background = base;
+    var picture = layer.querySelector('.deck-bg-picture') || layer.appendChild(document.createElement('div')),
+      shade = layer.querySelector('.deck-bg-shade') || layer.appendChild(document.createElement('div'));
+    picture.className = 'deck-bg-picture';
+    shade.className = 'deck-bg-shade';
+    shade.style.background = b.dim ? 'rgba(0,0,0,' + b.dim / 100 + ')' : 'transparent';
+    if (!b.image || !backgroundImageData) {
+      picture.style.backgroundImage = '';
+      return;
+    }
+    var orientation = admin ? previewOrientation : currentOrientation(false),
+      p = backgroundPosition(orientation),
+      width = target.clientWidth || 1,
+      height = target.clientHeight || 1,
+      iw = backgroundImageSize.width || b.imageWidth || 1,
+      ih = backgroundImageSize.height || b.imageHeight || 1,
+      scale = (p.fit === 'contain' ? Math.min(width / iw, height / ih) : Math.max(width / iw, height / ih)) * p.zoom;
+    picture.style.backgroundImage = 'url("' + backgroundImageData + '")';
+    picture.style.backgroundSize = Math.round(iw * scale) + 'px ' + Math.round(ih * scale) + 'px';
+    picture.style.backgroundPosition = p.x + '% ' + p.y + '%';
+    picture.style.filter = b.blur ? 'blur(' + b.blur + 'px)' : '';
+    picture.style.transform = b.blur ? 'scale(1.04)' : '';
+  }
+  function loadBackgroundImage() {
+    var wanted = deckBackground.image || '';
+    if (wanted === backgroundImageVersion) return Promise.resolve();
+    backgroundImageVersion = wanted;
+    if (!wanted) {
+      backgroundImageData = '';
+      paintBackground();
+      return Promise.resolve();
+    }
+    return api('background/image', undefined, 20000)
+      .then(function (result) {
+        if (backgroundImageVersion !== wanted) return;
+        backgroundImageData = result.data || '';
+        backgroundImageSize = { width: deckBackground.imageWidth || 0, height: deckBackground.imageHeight || 0 };
+        paintBackground();
+      })
+      .catch(function () {
+        backgroundImageVersion = '';
+      });
+  }
+  function applyBackgroundState(background) {
+    if (!background) return;
+    // While the settings page is editing, its own copy wins over an older echo from the PC.
+    if (admin && backgroundSaveTimer) return;
+    deckBackground = background;
+    loadBackgroundImage();
+    paintBackground();
+    if (admin) renderBackgroundControls();
+  }
+  function saveBackground(text) {
+    paintBackground();
+    renderBackgroundControls();
+    clearTimeout(backgroundSaveTimer);
+    backgroundSaveTimer = setTimeout(function () {
+      var sent = {
+        color: deckBackground.color || '',
+        color2: deckBackground.color2 || '',
+        dim: deckBackground.dim || 0,
+        blur: deckBackground.blur || 0,
+        landscape: backgroundPosition('landscape'),
+        portrait: backgroundPosition('portrait'),
+      };
+      api('background', sent)
+        .then(function () {
+          backgroundSaveTimer = null;
+          if (text) message(text);
+        })
+        .catch(function (e) {
+          backgroundSaveTimer = null;
+          message('背景を保存できませんでした。 ' + e.message);
+        });
+    }, 350);
+  }
+  function setBackgroundPosition(change) {
+    var o = previewOrientation,
+      p = backgroundPosition(o);
+    Object.keys(change).forEach(function (k) {
+      p[k] = change[k];
+    });
+    p.x = Math.max(0, Math.min(100, Math.round(p.x * 10) / 10));
+    p.y = Math.max(0, Math.min(100, Math.round(p.y * 10) / 10));
+    p.zoom = Math.max(1, Math.min(5, Math.round(p.zoom * 100) / 100));
+    deckBackground[o] = p;
+    saveBackground();
+  }
+  function renderBackgroundControls() {
+    var root = $('background-colors');
+    if (!root) return;
+    var b = deckBackground;
+    root.textContent = '';
+    backgroundColors.forEach(function (c) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'icon-color background-swatch';
+      button.title = c[1];
+      button.setAttribute('aria-label', c[1]);
+      var selected = (b.color || '') === c[0] && !b.color2;
+      button.setAttribute('aria-pressed', String(selected));
+      button.style.background = c[0] || 'linear-gradient(135deg,#1b1c20 50%,#2a2d35 50%)';
+      button.textContent = selected ? '✓' : '';
+      button.style.color = /^#(f|e|d|c)/i.test(c[0]) ? '#222' : '#fff';
+      button.onclick = function () {
+        deckBackground.color = c[0];
+        deckBackground.color2 = '';
+        saveBackground('背景色を「' + c[1] + '」にしました。');
+      };
+      root.appendChild(button);
+    });
+    var gradients = $('background-gradients');
+    gradients.textContent = '';
+    backgroundGradients.forEach(function (g) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'background-gradient';
+      var selected = b.color === g[0] && b.color2 === g[1];
+      button.setAttribute('aria-pressed', String(selected));
+      button.style.background = 'linear-gradient(135deg, ' + g[0] + ', ' + g[1] + ')';
+      button.textContent = g[2];
+      button.onclick = function () {
+        deckBackground.color = g[0];
+        deckBackground.color2 = g[1];
+        saveBackground('背景を「' + g[2] + '」にしました。');
+      };
+      gradients.appendChild(button);
+    });
+    $('background-color-custom').value = b.color || '#1b1c20';
+    $('background-color2-custom').value = b.color2 || b.color || '#1b1c20';
+    $('background-use-color2').checked = !!b.color2;
+    $('background-dim').value = b.dim || 0;
+    $('background-blur').value = b.blur || 0;
+    $('background-dim-value').textContent = (b.dim || 0) + '%';
+    $('background-blur-value').textContent = (b.blur || 0) + 'px';
+    var hasImage = !!b.image,
+      p = backgroundPosition(previewOrientation);
+    $('background-image-controls').hidden = !hasImage;
+    $('background-image-remove').hidden = !hasImage;
+    $('background-fit').value = p.fit;
+    $('background-zoom').value = p.zoom;
+    $('background-zoom-value').textContent = Math.round(p.zoom * 100) + '%';
+    $('background-orientation-note').textContent = (previewOrientation === 'portrait' ? '縦' : '横') + '向きの位置を調整中（上の「横／縦」で切り替え）';
+    $('background-adjust').setAttribute('aria-pressed', String(backgroundAdjust));
+    $('background-adjust').textContent = backgroundAdjust ? '位置調整を終える' : 'プレビューで位置を調整';
+    $('phone-shell').classList.toggle('background-adjusting', backgroundAdjust && hasImage);
+  }
+  // The preview sits at the top of the settings page; bring it into view for dragging.
+  function showPreviewForAdjust() {
+    var shell = $('phone-shell');
+    if (!shell || !shell.scrollIntoView) return;
+    var r = shell.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > window.innerHeight) shell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  // Shrinks the picture to at most 2560 px and a size the PC accepts, then uploads it.
+  function useBackgroundImage(file) {
+    if (!file) return;
+    if (file.size > 30 * 1024 * 1024) {
+      message('背景画像は30MB以内を選んでください。');
+      return;
+    }
+    $('background-image-status').textContent = '画像を準備しています…';
+    createImageBitmap(file)
+      .then(function (bitmap) {
+        var longest = Math.max(bitmap.width, bitmap.height),
+          scale = Math.min(1, 2560 / longest),
+          attempt = 0;
+        function encode() {
+          var s = scale * Math.pow(0.8, Math.max(0, attempt - 3)),
+            width = Math.max(1, Math.round(bitmap.width * s)),
+            height = Math.max(1, Math.round(bitmap.height * s)),
+            canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+          var quality = [0.9, 0.82, 0.74, 0.68][Math.min(attempt, 3)],
+            value = canvas.toDataURL('image/jpeg', quality);
+          if (value.length > 1850000 && attempt < 8) {
+            attempt++;
+            return encode();
+          }
+          if (value.length > 1850000) throw new Error('画像を小さくできませんでした。');
+          return { data: value, width: width, height: height };
+        }
+        var result = encode();
+        if (bitmap.close) bitmap.close();
+        return api('background/image', result, 30000);
+      })
+      .then(function (result) {
+        $('background-image-status').textContent = '';
+        deckBackground = result.background;
+        backgroundImageVersion = '';
+        backgroundAdjust = true;
+        renderBackgroundControls();
+        showPreviewForAdjust();
+        return loadBackgroundImage().then(function () {
+          message('背景画像を設定しました。プレビューをドラッグすると位置を動かせます。');
+        });
+      })
+      .catch(function (e) {
+        $('background-image-status').textContent = '';
+        message('背景画像を設定できませんでした。 ' + e.message);
+      })
+      .finally(function () {
+        $('background-image-file').value = '';
+      });
+  }
+  if (admin) {
+    $('background-image-file').onchange = function () {
+      useBackgroundImage(this.files && this.files[0]);
+    };
+    $('background-image-remove').onclick = function () {
+      api('background/image/delete', {})
+        .then(function (result) {
+          deckBackground = result.background;
+          backgroundAdjust = false;
+          loadBackgroundImage();
+          paintBackground();
+          renderBackgroundControls();
+          message('背景画像を外しました。');
+        })
+        .catch(function (e) {
+          message(e.message);
+        });
+    };
+    $('background-reset').onclick = function () {
+      deckBackground.color = '';
+      deckBackground.color2 = '';
+      deckBackground.dim = 0;
+      deckBackground.blur = 0;
+      saveBackground('背景色を標準に戻しました。');
+    };
+    $('background-color-custom').oninput = function () {
+      deckBackground.color = this.value;
+      if (!$('background-use-color2').checked) deckBackground.color2 = '';
+      saveBackground();
+    };
+    $('background-color2-custom').oninput = function () {
+      if (!deckBackground.color) deckBackground.color = $('background-color-custom').value;
+      deckBackground.color2 = this.value;
+      $('background-use-color2').checked = true;
+      saveBackground();
+    };
+    $('background-use-color2').onchange = function () {
+      if (!deckBackground.color) deckBackground.color = $('background-color-custom').value;
+      deckBackground.color2 = this.checked ? $('background-color2-custom').value : '';
+      saveBackground();
+    };
+    $('background-dim').oninput = function () {
+      deckBackground.dim = Number(this.value);
+      saveBackground();
+    };
+    $('background-blur').oninput = function () {
+      deckBackground.blur = Number(this.value);
+      saveBackground();
+    };
+    $('background-fit').onchange = function () {
+      setBackgroundPosition({ fit: this.value, zoom: 1, x: 50, y: 50 });
+    };
+    $('background-zoom').oninput = function () {
+      setBackgroundPosition({ zoom: Number(this.value) });
+    };
+    $('background-center').onclick = function () {
+      setBackgroundPosition({ x: 50, y: 50, zoom: 1 });
+    };
+    $('background-adjust').onclick = function () {
+      backgroundAdjust = !backgroundAdjust;
+      renderBackgroundControls();
+      if (backgroundAdjust) showPreviewForAdjust();
+    };
+    // In adjust mode, dragging the preview moves the picture and the wheel zooms it.
+    var screen = document.querySelector('#phone-shell .phone-screen'),
+      drag = null;
+    screen.addEventListener(
+      'pointerdown',
+      function (e) {
+        if (!backgroundAdjust || !deckBackground.image) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var p = backgroundPosition(previewOrientation);
+        drag = { x: e.clientX, y: e.clientY, start: p, id: e.pointerId };
+        screen.setPointerCapture(e.pointerId);
+      },
+      true,
+    );
+    screen.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var width = screen.clientWidth,
+        height = screen.clientHeight,
+        iw = backgroundImageSize.width || deckBackground.imageWidth || 1,
+        ih = backgroundImageSize.height || deckBackground.imageHeight || 1,
+        p = drag.start,
+        scale = (p.fit === 'contain' ? Math.min(width / iw, height / ih) : Math.max(width / iw, height / ih)) * p.zoom,
+        overflowX = iw * scale - width,
+        overflowY = ih * scale - height;
+      // background-position percentages move the picture by its overflow; dragging right shows more of the left side.
+      var x = overflowX ? p.x - ((e.clientX - drag.x) / overflowX) * 100 : p.x,
+        y = overflowY ? p.y - ((e.clientY - drag.y) / overflowY) * 100 : p.y;
+      var o = previewOrientation;
+      deckBackground[o] = { fit: p.fit, zoom: p.zoom, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+      paintBackground();
+    });
+    function endDrag(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      drag = null;
+      setBackgroundPosition({});
+    }
+    screen.addEventListener('pointerup', endDrag);
+    screen.addEventListener('pointercancel', endDrag);
+    screen.addEventListener(
+      'click',
+      function (e) {
+        if (backgroundAdjust && deckBackground.image) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      true,
+    );
+    screen.addEventListener(
+      'wheel',
+      function (e) {
+        if (!backgroundAdjust || !deckBackground.image) return;
+        e.preventDefault();
+        var p = backgroundPosition(previewOrientation);
+        setBackgroundPosition({ zoom: p.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08) });
+      },
+      { passive: false },
+    );
+    renderBackgroundControls();
+  }
+  window.addEventListener('resize', paintBackground);
   $('icon-picker-close').onclick = closeIconPicker;
   $('icon-picker-backdrop').onclick = function (e) {
     if (e.target === this) closeIconPicker();

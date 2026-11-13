@@ -77,6 +77,7 @@ class Settings
     public double weatherLongitude { get; set; }
     public string weatherTimezone { get; set; }
     public PcWindowOptions pcWindow { get; set; }
+    public DeckBackground background { get; set; }
 }
 
 class ControlPage
