@@ -68,6 +68,11 @@ class Settings
     // Pages listed here override the fader placement above; other pages use it unchanged.
     public List<ControlPage> landscapeControlPages { get; set; }
     public List<ControlPage> portraitControlPages { get; set; }
+    // 3.1: a fader removed from every page of one orientation (a page can still show it on its own).
+    public bool landscapeSpeakerOff { get; set; }
+    public bool landscapeMicOff { get; set; }
+    public bool portraitSpeakerOff { get; set; }
+    public bool portraitMicOff { get; set; }
     public int pageCount { get; set; }
     public int landscapePageCount { get; set; }
     public int portraitPageCount { get; set; }

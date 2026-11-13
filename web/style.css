@@ -3230,20 +3230,39 @@ body.pc-window main {
 .preset-card p {
   margin: 0;
 }
-.preset-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.preset-map {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  max-height: 240px;
+  padding: 6px;
+  border-radius: 10px;
+  background: #0d0f14;
 }
-.preset-chip {
-  display: inline-flex;
+.preset-cell {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border: 1px solid #343c4e;
-  border-radius: 999px;
-  background: #1d2330;
-  font-size: 12px;
+  justify-content: center;
+  min-width: 0;
+  padding: 2px;
+  overflow: hidden;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.15;
+  text-align: center;
+  word-break: break-all;
+}
+.preset-key {
+  background: #232a38;
+  color: #dfe5f2;
+}
+.preset-widget {
+  background: #1f3a4d;
+  color: #cfe8ff;
+}
+.preset-fader {
+  background: #2e2a4f;
+  color: #d9d3ff;
 }
 .preset-setup {
   color: #9aa2b1;
@@ -3292,3 +3311,7 @@ body.pc-window main {
   gap: 8px;
   margin-right: 12px;
 }
+#look-save-reason { white-space: pre-line; }
+.backup-panel { margin-top: 14px; }
+.backup-panel summary { cursor: pointer; font-weight: 600; }
+.backup-panel p { margin: 8px 0; }

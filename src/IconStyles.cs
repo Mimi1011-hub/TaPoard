@@ -26,6 +26,8 @@ class IconStyle
     public string created { get; set; }
     public List<IconStyleButton> buttons { get; set; }
     public DeckBackground background { get; set; }
+    // Since the 3.1 release: the whole button layout (buttons, pages, grid, faders) at save time.
+    public Settings deck { get; set; }
 }
 
 static class IconStyles
@@ -109,6 +111,47 @@ static class IconStyles
         return result;
     }
 
+    // The layout part of the settings: no keys, paired phones, weather place, window or background.
+    static Settings LayoutOf(Settings s)
+    {
+        var copy = IconPacks.Serializer().Deserialize<Settings>(IconPacks.Serializer().Serialize(s));
+        copy.token = null;
+        copy.pairingKey = null;
+        copy.devices = null;
+        copy.weatherName = null;
+        copy.weatherTimezone = null;
+        copy.weatherLatitude = 0;
+        copy.weatherLongitude = 0;
+        copy.pcWindow = null;
+        copy.background = null;
+        return copy;
+    }
+
+    static void RestoreLayout(Settings s, Settings deck, Action<AppEntry> validate)
+    {
+        var apps = new List<AppEntry>();
+        foreach (var a in deck.apps ?? new List<AppEntry>())
+        {
+            try { validate(a); apps.Add(a); }
+            catch { } // e.g. an app that is no longer installed
+        }
+        s.apps = apps;
+        s.columns = deck.columns; s.rows = deck.rows;
+        s.landscapeColumns = deck.landscapeColumns; s.landscapeRows = deck.landscapeRows;
+        s.portraitColumns = deck.portraitColumns; s.portraitRows = deck.portraitRows;
+        s.speakerSlot = deck.speakerSlot; s.micSlot = deck.micSlot; s.speakerSize = deck.speakerSize; s.micSize = deck.micSize;
+        s.landscapeSpeakerSlot = deck.landscapeSpeakerSlot; s.landscapeMicSlot = deck.landscapeMicSlot;
+        s.landscapeSpeakerSize = deck.landscapeSpeakerSize; s.landscapeMicSize = deck.landscapeMicSize;
+        s.portraitSpeakerSlot = deck.portraitSpeakerSlot; s.portraitMicSlot = deck.portraitMicSlot;
+        s.portraitSpeakerSize = deck.portraitSpeakerSize; s.portraitMicSize = deck.portraitMicSize;
+        s.landscapeSpeaker = deck.landscapeSpeaker; s.landscapeMic = deck.landscapeMic;
+        s.portraitSpeaker = deck.portraitSpeaker; s.portraitMic = deck.portraitMic;
+        s.landscapeControlPages = deck.landscapeControlPages; s.portraitControlPages = deck.portraitControlPages;
+        s.landscapeSpeakerOff = deck.landscapeSpeakerOff; s.landscapeMicOff = deck.landscapeMicOff;
+        s.portraitSpeakerOff = deck.portraitSpeakerOff; s.portraitMicOff = deck.portraitMicOff;
+        s.pageCount = deck.pageCount; s.landscapePageCount = deck.landscapePageCount; s.portraitPageCount = deck.portraitPageCount;
+    }
+
     internal static string Save(string data, string name, Settings s)
     {
         lock (Gate)
@@ -127,6 +170,7 @@ static class IconStyles
                     id = a.id, orientation = a.orientation, name = a.name, iconKey = a.iconKey, iconColor = a.iconColor,
                     customIcon = a.customIcon, iconPack = a.iconPack, iconPackItem = a.iconPackItem, iconScale = a.iconScale,
                 });
+            style.deck = LayoutOf(s);
             var b = s.background ?? new DeckBackground();
             style.background = DeckBackgrounds.Clean(b, b);
             string picture = DeckBackgrounds.ImageData(data, b);
@@ -151,7 +195,7 @@ static class IconStyles
 
     // Puts a saved look back on the buttons that still exist (matched by id, then by name in the same
     // orientation) and restores the background. Returns how many buttons changed.
-    internal static int Apply(string data, string id, Settings s)
+    internal static int Apply(string data, string id, Settings s, Action<AppEntry> validate)
     {
         IconStyle style;
         byte[] picture = null;
@@ -165,6 +209,14 @@ static class IconStyles
                 if (File.Exists(file)) picture = File.ReadAllBytes(file);
             }
         }
+        int changed = 0;
+        if (style.deck != null)
+        {
+            RestoreLayout(s, style.deck, validate);
+            changed = s.apps.Count;
+        }
+        else
+        {
         var byId = new Dictionary<string, IconStyleButton>();
         foreach (var button in style.buttons) if (button.id != null) byId[button.id] = button;
         var used = new HashSet<IconStyleButton>();
@@ -180,7 +232,6 @@ static class IconStyles
             var saved = style.buttons.Find(x => !used.Contains(x) && x.orientation == a.orientation && !String.IsNullOrEmpty(x.name) && x.name == a.name);
             if (saved != null && used.Add(saved)) targets.Add(new KeyValuePair<AppEntry, IconStyleButton>(a, saved));
         }
-        int changed = 0;
         foreach (var pair in targets)
         {
             var a = pair.Key;
@@ -197,6 +248,7 @@ static class IconStyles
             a.iconPackItem = a.iconPack != null && IconPacks.ValidItemId(saved.iconPackItem) ? saved.iconPackItem : null;
             if (saved.iconScale >= 20 && saved.iconScale <= 100) a.iconScale = saved.iconScale;
             changed++;
+        }
         }
         var look = style.background ?? new DeckBackground();
         var current = s.background;

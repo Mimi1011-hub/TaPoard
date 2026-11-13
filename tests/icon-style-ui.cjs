@@ -9,6 +9,7 @@ const base = 'http://127.0.0.1:18782';
 const win = process.platform === 'win32';
 fs.cpSync('web', 'tests/bin/web', { recursive: true, force: true });
 fs.rmSync('tests/bin/data/icon-styles', { recursive: true, force: true });
+fs.rmSync('tests/bin/data/backups', { recursive: true, force: true });
 const exe = 'tests/bin/Release103Tests.exe';
 const host = win ? spawn(exe, ['serve'], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }) : spawn('mono', [exe, 'serve'], { stdio: ['ignore', 'pipe', 'pipe'] });
 const ready = new Promise((resolve, reject) => {
@@ -63,29 +64,30 @@ const picture = 'data:image/png;base64,' + fs.readFileSync('web/icon-180.png').t
     await admin.locator('.icon-style-row').first().waitFor();
 
     // Putting the look back asks first; "やめる" changes nothing.
-    await admin.locator('.icon-style-row button', { hasText: 'この見た目に戻す' }).click();
+    await admin.locator('.icon-style-row button', { hasText: 'この画面に戻す' }).click();
     await admin.locator('#look-save-backdrop').waitFor();
     await admin.locator('#look-save-cancel').click();
     assert.equal(await admin.locator('#look-save-backdrop').isHidden(), true);
     assert.equal((await api('settings')).data.apps[0].iconKey, 'paste');
 
-    // "保存せずに続ける" puts the icons, color and picture back but keeps the name and actions.
-    await admin.locator('.icon-style-row button', { hasText: 'この見た目に戻す' }).click();
+    // "保存せずに続ける" puts the whole screen back: buttons with names, actions and icons, color, picture.
+    await admin.locator('.icon-style-row button', { hasText: 'この画面に戻す' }).click();
     await admin.locator('#look-save-no').click();
-    await admin.waitForFunction(() => /ボタン 1 個/.test(document.querySelector('#message').textContent));
+    await admin.waitForFunction(() => /画面に戻しました（ボタン 2 個）/.test(document.querySelector('#message').textContent));
     let s = (await api('settings')).data;
-    assert.deepEqual(s.apps.map(a => [a.name, a.iconKey, a.iconColor || '', a.action]), [['A2', 'copy', '#ff0000', 'common-copy'], ['B', 'paste', '', 'common-paste']]);
+    assert.deepEqual(s.apps.map(a => [a.name, a.iconKey, a.iconColor || '', a.action]), [['A', 'copy', '#ff0000', 'common-copy'], ['B', 'paste', '', 'common-copy']]);
     assert.equal(s.background.color, '#14213d');
     assert.equal(s.background.dim, 10);
     assert.ok(s.background.image, 'picture restored');
     assert.match((await api('background/image')).data.data, /^data:image\/png;base64,/);
+    assert.equal(await admin.locator('#preview-undo-page').textContent(), '戻す前の画面にする');
     await admin.waitForFunction(() => /url\("data:image/.test((document.querySelector('#phone-shell .deck-bg-picture') || {}).style?.backgroundImage || ''));
 
     // A bulk change offers to save first; saving adds a second look, then the change runs.
     await admin.locator('#icon-pack-bulk-pack').selectOption('');
     await admin.locator('#icon-pack-bulk-apply').click();
     await admin.locator('#look-save-backdrop').waitFor();
-    assert.match(await admin.locator('#look-save-name').inputValue(), /の見た目$/);
+    assert.match(await admin.locator('#look-save-name').inputValue(), /の画面$/);
     await admin.locator('#look-save-name').fill('一括変更の前');
     await admin.locator('#look-save-yes').click();
     await admin.waitForFunction(() => document.querySelectorAll('.icon-style-row').length === 2);
@@ -110,8 +112,20 @@ const picture = 'data:image/png;base64,' + fs.readFileSync('web/icon-180.png').t
     await admin.reload();
     await admin.waitForFunction(() => document.querySelector('#icon-style-count').textContent === '20 / 20');
     assert.equal(await admin.locator('#icon-style-save').isDisabled(), true);
+
+    // Automatic backups: the settings before the first change are kept and can be put back.
+    const backups = (await api('backups')).data.backups;
+    assert.ok(backups.length >= 1, 'a backup was taken');
+    assert.notEqual((await api('backups', undefined, 'test-phone')).status, 200);
+    assert.notEqual((await api('backups/restore', { id: '../settings' })).status, 200);
+    await admin.locator('#backup-panel summary').click();
+    await admin.locator('.backup-row').first().waitFor();
+    await admin.locator('.backup-row').last().locator('button', { hasText: 'この時点に戻す' }).click();
+    await admin.locator('#look-save-no').click();
+    await admin.waitForFunction(() => /の設定に戻しました/.test(document.querySelector('#message').textContent));
+    assert.equal(await admin.locator('#preview-undo-page').textContent(), '戻す前の画面にする');
     assert.deepEqual(errors, []);
-    console.log('PASS saved looks: save by name, ask before replacing, restore icons/colors/background picture without actions, save before bulk change, rename, delete, limit 20');
+    console.log('PASS saved looks: save by name, ask before replacing, restore the whole screen (layout, actions, icons, background picture) with undo, automatic backups, save before bulk change, rename, delete, limit 20');
   } finally {
     if (browser) await browser.close();
     host.kill();

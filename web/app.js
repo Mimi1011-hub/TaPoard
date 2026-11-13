@@ -2743,6 +2743,10 @@
         });
       }
       if (source) layout.controls[o] = normalizeControls(source, grid);
+      if (source && layout.controls[o]) {
+        layout.controls[o].speakerHidden = !!source.speakerHidden;
+        layout.controls[o].micHidden = !!source.micHidden;
+      }
     });
     $('awake').checked = layout.keepAwake;
     syncGridControls();
@@ -3101,6 +3105,25 @@
       true,
     );
   }
+  // 3.1: removes a fader from every page of the orientation shown, or brings it back everywhere.
+  function setFaderRemoved(target, removed) {
+    var orientation = admin ? previewOrientation : currentOrientation(false),
+      name = (target === 'mic' ? 'マイク' : 'スピーカー') + 'フェーダー',
+      side = orientation === 'portrait' ? '縦' : '横';
+    api('fader/remove', { orientation: orientation, target: target, removed: removed })
+      .then(function () {
+        return settings().then(function () {
+          message(
+            removed
+              ? side + '向きのすべてのページから' + name + 'を削除しました。ショートカット一覧の「すべてのページに表示」で戻せます。'
+              : side + '向きのすべてのページに' + name + 'を戻しました。',
+          );
+        });
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
   var FADER_SHAPES = [[1, 1, '1マス'], [2, 2, '4マス'], [3, 1, '横3マス'], [4, 1, '横4マス'], [3, 2, '6マス'], [4, 2, '8マス']];
   function openAudioContextMenu(e, target, slot) {
     if (!admin) return;
@@ -3148,6 +3171,16 @@
         '',
         function () {
           hideAudioControl(target);
+        },
+        false,
+      ),
+    );
+    menu.appendChild(
+      contextButton(
+        'すべてのページから削除',
+        '',
+        function () {
+          setFaderRemoved(target, true);
         },
         false,
       ),
@@ -4251,7 +4284,7 @@
     };
     $('icon-pack-bulk-undo').onclick = undoBulkChange;
   }
-  // ---- 3.1 purpose presets: ready-made button sets added on a new page or in place of one orientation ----
+  // ---- 3.1 purpose presets: a ready-made page per orientation that overwrites the page shown ----
   var deckPresets = [];
   function loadPresets() {
     return api('presets')
@@ -4263,84 +4296,108 @@
         message(e.message);
       });
   }
+  // A small picture of the preset page: buttons, widgets and faders where they will go.
+  function presetPageMap(l) {
+    var map = document.createElement('div');
+    map.className = 'preset-map';
+    map.style.gridTemplateColumns = 'repeat(' + l.columns + ', 1fr)';
+    map.style.gridTemplateRows = 'repeat(' + l.rows + ', 1fr)';
+    map.style.aspectRatio = l.columns + ' / ' + l.rows;
+    function cell(text, kind, r, c, w, h) {
+      var node = document.createElement('span');
+      node.className = 'preset-cell preset-' + kind;
+      node.style.gridArea = r + 1 + ' / ' + (c + 1) + ' / span ' + h + ' / span ' + w;
+      node.textContent = text;
+      map.appendChild(node);
+    }
+    if (l.speaker) cell('🔊 スピーカー', 'fader', l.speaker.row, l.speaker.column, l.speaker.width, l.speaker.height);
+    if (l.mic) cell('🎙 マイク', 'fader', l.mic.row, l.mic.column, l.mic.width, l.mic.height);
+    l.items.forEach(function (i) {
+      cell(i.name, i.type === 'hotkey' ? 'key' : 'widget', i.row, i.column, i.width, i.height);
+    });
+    return map;
+  }
   function renderPresets() {
     var root = $('preset-list');
     if (!root) return;
-    var side = previewOrientation === 'portrait' ? '縦' : '横';
-    $('preset-orientation-note').textContent = 'プレビューで選んでいる' + side + '向きに追加します（上の「横／縦」で切り替え）。';
+    var o = previewOrientation === 'portrait' ? 'portrait' : 'landscape',
+      side = o === 'portrait' ? '縦' : '横';
+    $('preset-orientation-note').textContent =
+      'プレビューに表示中の' + side + '向き ' + (page + 1) + ' ページ目を上書きします（上の「横／縦」とページ送りで選べます）。';
     root.textContent = '';
     deckPresets.forEach(function (preset) {
-      var card = document.createElement('article'),
+      var l = preset[o],
+        card = document.createElement('article'),
         title = document.createElement('h3'),
         note = document.createElement('p'),
-        chips = document.createElement('div'),
         setup = document.createElement('p'),
         actions = document.createElement('div'),
-        add = document.createElement('button'),
-        replace = document.createElement('button');
+        apply = document.createElement('button');
       card.className = 'preset-card';
       card.dataset.preset = preset.id;
       title.textContent = preset.name;
-      note.textContent = preset.note + '（' + preset.buttons.length + '個）';
-      chips.className = 'preset-chips';
-      preset.buttons.forEach(function (b) {
-        var chip = document.createElement('span');
-        chip.className = 'preset-chip';
-        chip.textContent = b.name;
-        if (b.key) chip.title = b.key.replace(/\+/g, ' + ');
-        chips.appendChild(chip);
-      });
+      note.textContent = preset.note + '（' + side + ' ' + l.columns + '×' + l.rows + '）';
       setup.className = 'preset-setup';
       setup.textContent = preset.setup;
       actions.className = 'preset-actions';
-      add.type = 'button';
-      add.textContent = '新しいページに追加';
-      add.onclick = function () {
-        applyPreset(preset, 'add');
+      apply.type = 'button';
+      apply.textContent = 'このページに使う';
+      apply.onclick = function () {
+        applyPreset(preset);
       };
-      replace.type = 'button';
-      replace.className = 'subtle danger-subtle';
-      replace.textContent = side + '向きを置き換え';
-      replace.onclick = function () {
-        applyPreset(preset, 'replace');
-      };
-      actions.appendChild(add);
-      actions.appendChild(replace);
+      actions.appendChild(apply);
       card.appendChild(title);
       card.appendChild(note);
-      card.appendChild(chips);
+      card.appendChild(presetPageMap(l));
       card.appendChild(setup);
       card.appendChild(actions);
       root.appendChild(card);
     });
   }
-  function applyPreset(preset, mode) {
+  function applyPreset(preset) {
     var orientation = previewOrientation,
-      side = orientation === 'portrait' ? '縦' : '横',
+      o = orientation === 'portrait' ? 'portrait' : 'landscape',
+      side = o === 'portrait' ? '縦' : '横',
+      target = page,
+      l = preset[o],
+      grid = gridFor(orientation),
       count = deckApps.filter(function (a) {
-        return a.orientation === orientation;
-      }).length;
-    if (mode === 'replace' && !confirm(side + '向きのボタン ' + count + ' 個をすべて消して、「' + preset.name + '」のボタンに置き換えますか？\n直後なら「元に戻す」で1回だけ戻せます。')) return;
+        var p = a[o];
+        return a.orientation === o && p && p.page === target;
+      }).length,
+      text = side + '向きの ' + (target + 1) + ' ページ目を「' + preset.name + '」で上書きしますか？';
+    if (count) text += '\nこのページのボタン ' + count + ' 個は消えます。';
+    if (grid.columns !== l.columns || grid.rows !== l.rows)
+      text += '\n' + side + '向きの枠数が ' + grid.columns + '×' + grid.rows + ' から ' + l.columns + '×' + l.rows + ' に変わります。ほかのページのボタンは自動で並べ直します。';
+    text += '\n直後なら「プリセットを元に戻す」で戻せます。';
+    askSaveLook(text).then(function (go) {
+      if (go) usePreset(preset, o, side, target, l);
+    });
+  }
+  function usePreset(preset, o, side, target, l) {
     settleSaves()
       .then(function () {
-        return api('presets/apply', { id: preset.id, orientation: orientation, mode: mode });
+        return api('presets/apply', { id: preset.id, orientation: o, page: target });
       })
       .then(function (result) {
         pagesByOrientation.landscape = result.landscapePages;
         pagesByOrientation.portrait = result.portraitPages;
         pageByOrientation.landscape = result.landscapePage;
         pageByOrientation.portrait = result.portraitPage;
-        showUndo('プリセットを元に戻す', '「' + preset.name + '」を追加する前に戻しました。');
+        showUndo('プリセットを元に戻す', '「' + preset.name + '」を使う前に戻しました。');
         return settings().then(function () {
-          message('「' + preset.name + '」を' + side + '向きの ' + (result.page + 1) + ' ページ目' + (mode === 'replace' ? 'から置き換えました。' : 'に追加しました。') + (preset.buttons.some(function (b) {
-            return b.key;
-          })
-            ? ' キーを送るボタンは、使うアプリ側にも同じキーを登録してください。'
-            : ''));
+          message(
+            side + '向きの ' + (target + 1) + ' ページ目を「' + preset.name + '」にしました。' +
+              (l.items.some(function (i) {
+                return i.key;
+              })
+                ? ' キーを送るボタンは、使うアプリ側にも同じキーを登録してください。'
+                : ''),
+          );
         });
       })
       .catch(function (e) {
-        message('プリセットを追加できませんでした。 ' + e.message);
+        message('プリセットを使えませんでした。 ' + e.message);
       });
   }
   // ---- 3.1 saved looks: named copies of the icons and background kept on the PC ----
@@ -4353,7 +4410,7 @@
   }
   function defaultLookName() {
     var d = new Date();
-    return d.getMonth() + 1 + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + ' の見た目';
+    return d.getMonth() + 1 + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + ' の画面';
   }
   // Waits for button and background changes that are still being saved, so the copy matches the screen.
   function settleSaves() {
@@ -4395,7 +4452,7 @@
     if (!iconStyles.length) {
       var empty = document.createElement('p');
       empty.className = 'icon-style-empty';
-      empty.textContent = 'まだ保存した見た目はありません。';
+      empty.textContent = 'まだ保存した画面はありません。';
       root.appendChild(empty);
       return;
     }
@@ -4417,7 +4474,7 @@
       text.appendChild(note);
       actions.className = 'icon-style-actions';
       [
-        ['この見た目に戻す', '', function () {
+        ['この画面に戻す', '', function () {
           applyLook(style);
         }],
         ['名前を変える', 'subtle', function () {
@@ -4455,7 +4512,7 @@
     });
   }
   function applyLook(style) {
-    askSaveLook('「' + style.name + '」に戻すと、今のアイコンと背景が置き換わります。').then(function (go) {
+    askSaveLook('「' + style.name + '」に戻すと、今のボタンの配置・アイコン・背景がすべて置き換わります。').then(function (go) {
       if (!go) return;
       settleSaves()
         .then(function () {
@@ -4463,12 +4520,83 @@
         })
         .then(function (result) {
           backgroundImageVersion = '';
+          pagesByOrientation.landscape = result.landscapePages;
+          pagesByOrientation.portrait = result.portraitPages;
+          pageByOrientation.landscape = result.landscapePage;
+          pageByOrientation.portrait = result.portraitPage;
+          showUndo('戻す前の画面にする', '「' + style.name + '」に戻す前の画面にしました。');
           return settings().then(function () {
-            message('「' + style.name + '」の見た目に戻しました（ボタン ' + result.changed + ' 個）。');
+            message('「' + style.name + '」の画面に戻しました（ボタン ' + result.changed + ' 個）。');
           });
         })
         .catch(function (e) {
-          message('見た目を戻せませんでした。 ' + e.message);
+          message('画面を戻せませんでした。 ' + e.message);
+        });
+    });
+  }
+  function loadBackups() {
+    var root = $('backup-list');
+    if (!root) return Promise.resolve();
+    return api('backups')
+      .then(function (result) {
+        var backups = result.backups || [];
+        root.textContent = '';
+        if (!backups.length) {
+          var empty = document.createElement('p');
+          empty.className = 'icon-style-empty';
+          empty.textContent = 'まだバックアップはありません。設定を変えると自動で作られます。';
+          root.appendChild(empty);
+          return;
+        }
+        backups.forEach(function (b) {
+          var row = document.createElement('div'),
+            text = document.createElement('div'),
+            title = document.createElement('strong'),
+            note = document.createElement('small'),
+            actions = document.createElement('div'),
+            button = document.createElement('button');
+          row.className = 'icon-style-row backup-row';
+          title.textContent = b.time;
+          note.textContent = '横向き ' + b.landscape + ' 個・縦向き ' + b.portrait + ' 個のボタン';
+          text.appendChild(title);
+          text.appendChild(note);
+          actions.className = 'icon-style-actions';
+          button.type = 'button';
+          button.textContent = 'この時点に戻す';
+          button.onclick = function () {
+            restoreBackup(b);
+          };
+          actions.appendChild(button);
+          row.appendChild(text);
+          row.appendChild(actions);
+          root.appendChild(row);
+        });
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
+  function restoreBackup(b) {
+    askSaveLook(b.time + ' の設定に戻すと、今のボタンの配置・アイコン・背景がすべて置き換わります。').then(function (go) {
+      if (!go) return;
+      settleSaves()
+        .then(function () {
+          return api('backups/restore', { id: b.id }, 30000);
+        })
+        .then(function (result) {
+          backgroundImageVersion = '';
+          pagesByOrientation.landscape = result.landscapePages;
+          pagesByOrientation.portrait = result.portraitPages;
+          pageByOrientation.landscape = result.landscapePage;
+          pageByOrientation.portrait = result.portraitPage;
+          showUndo('戻す前の画面にする', b.time + ' に戻す前の画面にしました。');
+          return settings().then(function () {
+            message(b.time + ' の設定に戻しました（ボタン ' + result.buttons + ' 個）。');
+            return loadBackups();
+          });
+        })
+        .catch(function (e) {
+          message('戻せませんでした。 ' + e.message);
         });
     });
   }
@@ -4508,7 +4636,7 @@
         saveLook(name)
           .then(function () {
             $('look-save-yes').disabled = false;
-            message('「' + (name.trim() || '今の見た目') + '」を保存しました。');
+            message('「' + (name.trim() || '今の画面') + '」を保存しました。');
             close(true);
           })
           .catch(function (e) {
@@ -4525,7 +4653,7 @@
       saveLook(name)
         .then(function () {
           $('icon-style-name').value = '';
-          message('今の見た目を保存しました。');
+          message('今の画面を保存しました。');
         })
         .catch(function (e) {
           message('保存できませんでした。 ' + e.message);
@@ -5501,8 +5629,17 @@
           control = controlFromAction(item[0]),
           custom = customTypeFromAction(item[0]),
           widget = widgetFromAction(item[0]);
-        add.textContent = control ? 'このページに表示' : '追加';
+        add.textContent = control
+          ? layout.controls[admin ? previewOrientation : currentOrientation(false)][control + 'Hidden']
+            ? 'すべてのページに表示'
+            : 'このページに表示'
+          : '追加';
         add.onclick = function () {
+          if (control && layout.controls[admin ? previewOrientation : currentOrientation(false)][control + 'Hidden']) {
+            // Removed from every page: bring it back everywhere.
+            setFaderRemoved(control, false);
+            return;
+          }
           if (control) {
             // Shows a hidden fader again where it was on this page.
             var current = controlsFor(admin ? previewOrientation : currentOrientation(false));
@@ -5962,6 +6099,18 @@
     fields[previewOrientation] = pos;
     persistRows('位置を保存しました。');
   }
+  // 3.1: a name that would run past the bottom of its button gets a smaller font instead of being cut.
+  function fitLabel(tile, label, size) {
+    requestAnimationFrame(function () {
+      for (var i = 0; i < 6 && tile.isConnected; i++) {
+        var t = tile.getBoundingClientRect(),
+          l = label.getBoundingClientRect();
+        if (!t.height || (l.bottom <= t.bottom - 2 && label.scrollHeight <= label.clientHeight + 1)) break;
+        size = Math.max(5, size * 0.87);
+        label.style.fontSize = size + 'px';
+      }
+    });
+  }
   function applyAppearance(tile, a, preview) {
     var grid = displayGrid(preview),
       root = preview ? $('preview-deck') : $('deck'),
@@ -5977,6 +6126,7 @@
     label.style.background =
       'linear-gradient(transparent,rgba(5,6,8,' + Math.max(0, alpha * 0.75) + ') 45%,rgba(5,6,8,' + alpha + '))';
     label.hidden = !!a.hideLabel;
+    if (!a.hideLabel) fitLabel(tile, label, Math.max(5, font));
     var icon = tile.querySelector('.app-icon,.preset-icon,.shortcut-icon,.icon-fallback');
     if (icon) {
       icon.style.width = (a.iconScale || 82) + '%';
@@ -6895,6 +7045,10 @@
     refreshPairing();
     loadIconPacks();
     loadIconStyles();
+    if ($('backup-panel'))
+      $('backup-panel').addEventListener('toggle', function () {
+        if ($('backup-panel').open) loadBackups();
+      });
     loadPresets();
   } else if (key) refresh();
 })();

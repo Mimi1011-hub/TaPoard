@@ -100,6 +100,8 @@ partial class Program
             micColumn = c.micColumn,
             micWidth = c.micWidth,
             micHeight = c.micHeight,
+            speakerHidden = DeckLayout.Off(config, portrait, false),
+            micHidden = DeckLayout.Off(config, portrait, true),
         };
     }
 
