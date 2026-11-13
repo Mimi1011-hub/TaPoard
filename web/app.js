@@ -4574,6 +4574,43 @@
     var deck = $('deck');
     return deck ? deck.parentNode : null;
   }
+  // Buttons follow the background: a deeper (or, on a dark background, lighter) shade of its color,
+  // or see-through buttons on a picture. "standard" keeps the original black buttons.
+  function hexRgb(hex) {
+    var n = parseInt(String(hex || '').slice(1), 16);
+    return isNaN(n) ? null : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function mixRgb(a, b, t) {
+    return a.map(function (v, i) {
+      return Math.round(v + (b[i] - v) * t);
+    });
+  }
+  function rgbCss(c, alpha) {
+    return alpha === undefined ? 'rgb(' + c.join(',') + ')' : 'rgba(' + c.join(',') + ',' + alpha + ')';
+  }
+  function lightness(c) {
+    return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  }
+  function keyShade(c) {
+    var l = lightness(c);
+    return l < 0.18 ? mixRgb(c, [255, 255, 255], 0.13) : mixRgb(c, [0, 0, 0], l > 0.6 ? 0.5 : 0.3);
+  }
+  function paintKeys(target, active) {
+    var b = deckBackground,
+      mode = !active || b.keys === 'standard' ? '' : b.keys === 'glass' || !b.color ? 'glass' : 'tint';
+    target.classList.toggle('keys-tint', mode === 'tint');
+    target.classList.toggle('keys-glass', mode === 'glass');
+    ['--key-bg', '--key-border', '--key-empty', '--key-shadow'].forEach(function (name) {
+      target.style.removeProperty(name);
+    });
+    if (mode !== 'tint') return;
+    var one = keyShade(hexRgb(b.color)),
+      two = b.color2 ? keyShade(hexRgb(b.color2)) : mixRgb(one, [0, 0, 0], 0.25);
+    target.style.setProperty('--key-bg', 'linear-gradient(145deg, ' + rgbCss(one) + ', ' + rgbCss(two) + ')');
+    target.style.setProperty('--key-border', rgbCss(mixRgb(one, [255, 255, 255], 0.28)));
+    target.style.setProperty('--key-empty', rgbCss(one, 0.45));
+    target.style.setProperty('--key-shadow', rgbCss(mixRgb(two, [0, 0, 0], 0.55)));
+  }
   function paintBackground() {
     var target = backgroundTarget();
     if (!target) return;
@@ -4581,6 +4618,7 @@
       b = deckBackground,
       active = !!(b.color || (b.image && backgroundImageData));
     target.classList.toggle('has-deck-bg', active);
+    paintKeys(target, active);
     if (!active) {
       if (layer) layer.remove();
       target.style.background = '';
@@ -4654,6 +4692,7 @@
         color: deckBackground.color || '',
         color2: deckBackground.color2 || '',
         dim: deckBackground.dim || 0,
+        keys: deckBackground.keys || '',
         blur: deckBackground.blur || 0,
         landscape: backgroundPosition('landscape'),
         portrait: backgroundPosition('portrait'),
@@ -4724,6 +4763,7 @@
     $('background-color-custom').value = b.color || '#1b1c20';
     $('background-color2-custom').value = b.color2 || b.color || '#1b1c20';
     $('background-use-color2').checked = !!b.color2;
+    $('background-keys').value = b.keys || '';
     $('background-dim').value = b.dim || 0;
     $('background-blur').value = b.blur || 0;
     $('background-dim-value').textContent = (b.dim || 0) + '%';
@@ -4823,6 +4863,7 @@
       deckBackground.color2 = '';
       deckBackground.dim = 0;
       deckBackground.blur = 0;
+      deckBackground.keys = '';
       saveBackground('背景色を標準に戻しました。');
     };
     $('background-color-custom').oninput = function () {
@@ -4840,6 +4881,10 @@
       if (!deckBackground.color) deckBackground.color = $('background-color-custom').value;
       deckBackground.color2 = this.checked ? $('background-color2-custom').value : '';
       saveBackground();
+    };
+    $('background-keys').onchange = function () {
+      deckBackground.keys = this.value;
+      saveBackground('ボタンの色を変えました。');
     };
     $('background-dim').oninput = function () {
       deckBackground.dim = Number(this.value);

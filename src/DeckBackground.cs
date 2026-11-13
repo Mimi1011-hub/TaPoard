@@ -17,6 +17,9 @@ class DeckBackground
     public BackgroundPosition portrait { get; set; }
     public int dim { get; set; }
     public int blur { get; set; }
+    // How buttons follow the background: "" (auto: the background color, or see-through on a picture),
+    // "glass" (see-through) or "standard" (the original black buttons).
+    public string keys { get; set; }
 }
 
 class BackgroundPosition
@@ -69,6 +72,7 @@ static class DeckBackgrounds
             imageHeight = current != null ? current.imageHeight : 0,
             landscape = CleanPosition(next.landscape),
             portrait = CleanPosition(next.portrait),
+            keys = next.keys == "glass" || next.keys == "standard" ? next.keys : "",
             dim = next.dim,
             blur = next.blur,
         };
@@ -87,6 +91,7 @@ static class DeckBackgrounds
             imageHeight = b.imageHeight,
             landscape = CleanPosition(b.landscape),
             portrait = CleanPosition(b.portrait),
+            keys = b.keys ?? "",
             dim = b.dim,
             blur = b.blur,
         };

@@ -57,6 +57,17 @@ async function until(check, what) {
     assert.match(await screen.evaluate(e => e.style.background), /linear-gradient/);
     await admin.locator('#background-dim').fill('40');
     await until(async () => (await background()).dim === 40, 'dim saved');
+    // Buttons follow the background color by default, can be see-through or stay black.
+    assert.equal(await screen.evaluate(e => e.classList.contains('keys-tint')), true);
+    assert.match(await admin.locator('#preview-deck .deck-key').first().evaluate(e => getComputedStyle(e).backgroundImage), /linear-gradient\(145deg, rgb\((?!23, 25, 30)/);
+    await admin.locator('#background-keys').selectOption('glass');
+    await until(async () => (await background()).keys === 'glass', 'glass saved');
+    assert.equal(await screen.evaluate(e => e.classList.contains('keys-glass') && !e.classList.contains('keys-tint')), true);
+    await admin.locator('#background-keys').selectOption('standard');
+    await until(async () => (await background()).keys === 'standard', 'standard saved');
+    assert.equal(await screen.evaluate(e => e.classList.contains('keys-glass') || e.classList.contains('keys-tint')), false);
+    await admin.locator('#background-keys').selectOption('');
+    await until(async () => (await background()).keys === '', 'auto saved');
     assert.equal(await admin.locator('#background-dim-value').textContent(), '40%');
 
     // Bad input is refused or clamped by the PC.
