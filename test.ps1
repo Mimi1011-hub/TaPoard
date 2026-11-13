@@ -56,7 +56,7 @@ Assert-Status '/api/state' 200 $shortHeaders
 Write-Host 'PASS existing long key and 12-character pairing key'
 $state = Invoke-RestMethod ($base + '/api/state') -Headers $headers
 if ([string]::IsNullOrWhiteSpace($state.version)) { throw 'State version missing' }
-if ($state.appVersion -notmatch '^3\.0(?:\+(?:[0-9a-f]{7,40}\.dirty|source|unknown))?$') { throw ('Unexpected app version: ' + $state.appVersion) }
+if ($state.appVersion -notmatch '^3\.1(?:\+(?:[0-9a-f]{7,40}\.dirty|source|unknown))?$') { throw ('Unexpected app version: ' + $state.appVersion) }
 if (@($state.widgetDefinitions).Count -ne 11) { throw 'Widget definitions missing or duplicated' }
 foreach ($app in @($state.apps)) {
     if ($app.PSObject.Properties.Name -contains 'path' -or $app.PSObject.Properties.Name -contains 'args' -or $app.PSObject.Properties.Name -contains 'url' -or $app.PSObject.Properties.Name -contains 'text') {
