@@ -91,6 +91,11 @@ partial class Program
             Reply(s, 200, JsonType, IconPacks.Serializer().Serialize(IconPacks.Get(Data, QueryValue(r.target, "id"))));
             return;
         }
+        if (path == "/api/icon-styles" && method == "GET" && r.isAdmin)
+        {
+            ReplyJson(s, 200, new { styles = IconStyles.List(Data), maxStyles = IconStyles.MaxStyles });
+            return;
+        }
         if (path == "/api/firewall" && method == "GET" && r.isAdmin)
         {
             ReplyJson(s, 200, FirewallCheck.Status(Root));
@@ -178,6 +183,8 @@ partial class Program
             SaveSettings(json);
             Reply(s, 200, JsonType, "{\"ok\":true}");
         }
+        else if (path.StartsWith("/api/icon-styles/", StringComparison.Ordinal) && r.isAdmin)
+            IconStyleAction(r, path.Substring("/api/icon-styles/".Length), input);
         else if (path.StartsWith("/api/icon-packs/", StringComparison.Ordinal) && r.isAdmin)
             IconPackAction(r, path.Substring("/api/icon-packs/".Length), input, json);
         else if (path == "/api/rotate" && r.isAdmin)
@@ -291,6 +298,42 @@ partial class Program
         else if (action == "delete")
         {
             IconPacks.Delete(Data, id);
+            ReplyJson(r.stream, 200, new { ok = true });
+        }
+        else
+            Reply(r.stream, 404, JsonType, "{}");
+    }
+
+    // 3.1 saved looks: save the current icons and background, put one back, rename or delete one.
+    static void IconStyleAction(Request r, string action, Dictionary<string, object> input)
+    {
+        object raw;
+        string id = input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null;
+        string name = input.TryGetValue("name", out raw) ? Convert.ToString(raw) : null;
+        if (action == "save")
+        {
+            string saved;
+            lock (Gate)
+                saved = IconStyles.Save(Data, name, config);
+            ReplyJson(r.stream, 200, new { ok = true, id = saved });
+        }
+        else if (action == "apply")
+            lock (Gate)
+            {
+                int changed = IconStyles.Apply(Data, id, config);
+                Save();
+                version = NewId();
+                Signal();
+                ReplyJson(r.stream, 200, new { ok = true, changed = changed, background = DeckBackgrounds.Public(config.background), version = version, revision = revision });
+            }
+        else if (action == "rename")
+        {
+            IconStyles.Rename(Data, id, name);
+            ReplyJson(r.stream, 200, new { ok = true });
+        }
+        else if (action == "delete")
+        {
+            IconStyles.Delete(Data, id);
             ReplyJson(r.stream, 200, new { ok = true });
         }
         else
@@ -584,7 +627,7 @@ partial class Program
         }
     }
 
-    // Changes the grid size or the fader positions of one orientation, plus the screen-awake option.
+    // 3.1: the deck background style, picture upload and removal (settings page only).
     static void SetBackground(Request r, string path, Dictionary<string, object> input, string json)
     {
         lock (Gate)
@@ -667,6 +710,7 @@ partial class Program
         }
     }
 
+    // Changes the grid size or the fader positions of one orientation, plus the screen-awake option.
     static void SetLayout(Request r, Dictionary<string, object> input)
     {
         int columns = Convert.ToInt32(input["columns"]),
