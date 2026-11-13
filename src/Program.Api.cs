@@ -1069,6 +1069,10 @@ partial class Program
             throw new Exception("ボタンの画面方向が正しくありません。");
         if (String.IsNullOrWhiteSpace(a.name))
             throw new Exception("表示名を入力してください");
+        // 3.1: a name may have line breaks, up to 3 lines.
+        a.name = a.name.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+        string[] lines = a.name.Split('\n');
+        if (lines.Length > 3) a.name = lines[0] + "\n" + lines[1] + "\n" + String.Join(" ", lines, 2, lines.Length - 2);
         if (a.name.Length > 80)
             throw new Exception("表示名は80文字以内です");
         if (!IconPresets.ValidColor(a.iconColor))

@@ -540,9 +540,9 @@
       },
       typeof index === 'number' ? Math.min(index, rows.length) : Math.min(rows.length, (page + 1) * appsPerPage),
     );
-    fields.box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // 3.1: adding stays on the preview; the editor opens from right-click → 詳細設定を開く.
     loadAudioDevices();
-    message('機器を選び、表示名を確認して「設定を保存」を押してください。');
+    message('追加しました。ボタンを右クリックして「詳細設定を開く」から機器を選んでください。');
     return fields;
   }
   function buildDeviceSelector(fields, box) {
@@ -2397,8 +2397,6 @@
         item,
         typeof index === 'number' ? Math.min(index, rows.length) : Math.min(rows.length, (page + 1) * appsPerPage),
       );
-      if (item.type === 'weather' && !weatherLocation.configured) focusWeatherLocation();
-      else fields.box.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return fields;
     } catch (e) {
       desiredPlacement = null;
@@ -2431,11 +2429,7 @@
         },
         typeof index === 'number' ? Math.min(index, rows.length) : Math.min(rows.length, (page + 1) * appsPerPage),
       );
-    fields.box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(function () {
-      (isUrl ? fields.url : fields.text).focus();
-    }, 250);
-    message((isUrl ? 'URL' : 'コピーするテキスト') + 'を入力して「設定を保存」を押してください。');
+    message('追加しました。ボタンを右クリックして「詳細設定を開く」から' + (isUrl ? 'URL' : 'コピーするテキスト') + 'を入力してください。');
     return fields;
   }
   function addControlDropTarget(node, slotIndex) {
@@ -2554,7 +2548,7 @@
     }
     b.appendChild(iconNode(a));
     var label = document.createElement('span');
-    label.className = 'key-label';
+    label.className = 'key-label' + (/\n/.test(a.name || '') ? ' multi-line' : '');
     label.textContent = a.name;
     b.appendChild(label);
     b.setAttribute('aria-label', a.name);
@@ -3293,14 +3287,7 @@
     });
     menu.appendChild(
       contextButton('詳細設定を開く', '', function () {
-        var row = rows[index];
-        if (row) {
-          row.box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          row.box.classList.add('editor-focus');
-          setTimeout(function () {
-            row.box.classList.remove('editor-focus');
-          }, 1200);
-        }
+        if (rows[index]) openEditorFloat(rows[index]);
       }),
     );
     menu.appendChild(
@@ -4318,41 +4305,148 @@
     });
     return map;
   }
+  var presetSelected = 'streamer';
+  // 3.1: presets have their own screen: a list on the left, the chosen page and what every button does.
   function renderPresets() {
-    var root = $('preset-list');
-    if (!root) return;
+    var detail = $('preset-detail');
+    if (!detail) return;
     var o = previewOrientation === 'portrait' ? 'portrait' : 'landscape',
       side = o === 'portrait' ? '縦' : '横';
+    $('preset-summary').textContent = deckPresets.length
+      ? deckPresets.map(function (p) {
+          return p.name;
+        }).join('・')
+      : '';
     $('preset-orientation-note').textContent =
-      'プレビューに表示中の' + side + '向き ' + (page + 1) + ' ページ目を上書きします（上の「横／縦」とページ送りで選べます）。';
-    root.textContent = '';
+      '使うと、プレビューに表示中の' + side + '向き ' + (page + 1) + ' ページ目を上書きします。ほかのページはそのままです。';
+    $('preset-landscape').setAttribute('aria-pressed', o === 'landscape' ? 'true' : 'false');
+    $('preset-portrait').setAttribute('aria-pressed', o === 'portrait' ? 'true' : 'false');
+    if (!deckPresets.some(function (p) {
+      return p.id === presetSelected;
+    }) && deckPresets.length)
+      presetSelected = deckPresets[0].id;
+    var tabs = $('preset-tabs');
+    tabs.textContent = '';
     deckPresets.forEach(function (preset) {
-      var l = preset[o],
-        card = document.createElement('article'),
-        title = document.createElement('h3'),
-        note = document.createElement('p'),
-        setup = document.createElement('p'),
-        actions = document.createElement('div'),
-        apply = document.createElement('button');
-      card.className = 'preset-card';
-      card.dataset.preset = preset.id;
-      title.textContent = preset.name;
-      note.textContent = preset.note + '（' + side + ' ' + l.columns + '×' + l.rows + '）';
-      setup.className = 'preset-setup';
-      setup.textContent = preset.setup;
-      actions.className = 'preset-actions';
-      apply.type = 'button';
-      apply.textContent = 'このページに使う';
-      apply.onclick = function () {
-        applyPreset(preset);
+      var tab = document.createElement('button'),
+        name = document.createElement('strong'),
+        note = document.createElement('small');
+      tab.type = 'button';
+      tab.className = 'preset-tab';
+      tab.dataset.preset = preset.id;
+      tab.setAttribute('aria-pressed', preset.id === presetSelected ? 'true' : 'false');
+      name.textContent = preset.name;
+      note.textContent = preset.note;
+      tab.appendChild(name);
+      tab.appendChild(note);
+      tab.onclick = function () {
+        presetSelected = preset.id;
+        renderPresets();
       };
-      actions.appendChild(apply);
-      card.appendChild(title);
-      card.appendChild(note);
-      card.appendChild(presetPageMap(l));
-      card.appendChild(setup);
-      card.appendChild(actions);
-      root.appendChild(card);
+      tabs.appendChild(tab);
+    });
+    detail.textContent = '';
+    var preset = deckPresets.filter(function (p) {
+      return p.id === presetSelected;
+    })[0];
+    if (!preset) return;
+    var l = preset[o],
+      card = document.createElement('article'),
+      head = document.createElement('div'),
+      title = document.createElement('h3'),
+      note = document.createElement('p'),
+      apply = document.createElement('button'),
+      setup = document.createElement('p'),
+      helpTitle = document.createElement('h4'),
+      help = document.createElement('div');
+    card.className = 'preset-card';
+    card.dataset.preset = preset.id;
+    head.className = 'preset-card-head';
+    title.textContent = preset.name;
+    note.textContent = preset.note + '（' + side + '向き ' + l.columns + '×' + l.rows + '）';
+    apply.type = 'button';
+    apply.textContent = 'このページに使う';
+    apply.onclick = function () {
+      applyPreset(preset);
+    };
+    var text = document.createElement('div');
+    text.appendChild(title);
+    text.appendChild(note);
+    head.appendChild(text);
+    head.appendChild(apply);
+    setup.className = 'preset-setup';
+    setup.textContent = preset.setup;
+    helpTitle.textContent = 'ボタンの説明';
+    help.className = 'preset-help';
+    var faders = [];
+    if (l.speaker) faders.push(['🔊', 'スピーカーの音量', 'PC のスピーカーの音量を指で上下して変えます。アイコンを押すとミュートします。']);
+    if (l.mic) faders.push(['🎙', 'マイクの音量', 'PC のマイクの音量を変えます。アイコンを押すとミュートします。']);
+    l.items
+      .map(function (i) {
+        return [i, i.name, i.description, i.sends];
+      })
+      .concat(
+        faders.map(function (f) {
+          return [f[0], f[1], f[2], 'TaPoard が直接操作'];
+        }),
+      )
+      .forEach(function (row) {
+        var line = document.createElement('div'),
+          icon = document.createElement('span'),
+          body = document.createElement('div'),
+          name = document.createElement('strong'),
+          what = document.createElement('p'),
+          sends = document.createElement('small'),
+          item = row[0];
+        line.className = 'preset-help-row';
+        icon.className = 'preset-help-icon';
+        if (typeof item === 'string') icon.textContent = item;
+        else if (item.icon && presetMap[item.icon]) icon.appendChild(presetIconNode(item.icon));
+        else icon.textContent = item.type === 'clock' ? '🕒' : item.type === 'weather' ? '⛅' : item.type === 'metrics' ? '📈' : '';
+        name.textContent = row[1];
+        what.textContent = row[2];
+        body.appendChild(name);
+        body.appendChild(what);
+        if (row[3]) {
+          sends.textContent = row[3] === 'TaPoard が直接操作' ? 'キーは送らず、TaPoard が直接操作します' : '送るキー：' + row[3];
+          body.appendChild(sends);
+        }
+        line.appendChild(icon);
+        line.appendChild(body);
+        help.appendChild(line);
+      });
+    card.appendChild(head);
+    card.appendChild(presetPageMap(l));
+    card.appendChild(setup);
+    card.appendChild(helpTitle);
+    card.appendChild(help);
+    detail.appendChild(card);
+  }
+  function openPresetScreen(open) {
+    var screen = $('preset-screen');
+    if (!screen) return;
+    screen.hidden = !open;
+    document.body.classList.toggle('preset-screen-open', open);
+    if (open) {
+      renderPresets();
+      $('preset-close').focus();
+    }
+  }
+  if ($('preset-open')) {
+    $('preset-open').onclick = function () {
+      openPresetScreen(true);
+    };
+    $('preset-close').onclick = function () {
+      openPresetScreen(false);
+    };
+    $('preset-landscape').onclick = function () {
+      $('preview-landscape').click();
+    };
+    $('preset-portrait').onclick = function () {
+      $('preview-portrait').click();
+    };
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('preset-screen').hidden && $('look-save-backdrop').hidden) openPresetScreen(false);
     });
   }
   function applyPreset(preset) {
@@ -4372,7 +4466,9 @@
       text += '\n' + side + '向きの枠数が ' + grid.columns + '×' + grid.rows + ' から ' + l.columns + '×' + l.rows + ' に変わります。ほかのページのボタンは自動で並べ直します。';
     text += '\n直後なら「プリセットを元に戻す」で戻せます。';
     askSaveLook(text).then(function (go) {
-      if (go) usePreset(preset, o, side, target, l);
+      if (!go) return;
+      openPresetScreen(false);
+      usePreset(preset, o, side, target, l);
     });
   }
   function usePreset(preset, o, side, target, l) {
@@ -5442,6 +5538,30 @@
         input.rows = 5;
         input.maxLength = 32768;
       }
+      if (f[0] === 'name') {
+        // 3.1: Enter starts a new line on the button (up to 3 lines).
+        input = document.createElement('textarea');
+        input.rows = 2;
+        input.maxLength = 80;
+        input.className = 'name-input';
+        input.addEventListener('input', function () {
+          var lines = this.value.split('\n');
+          if (lines.length > 3) {
+            var at = this.selectionStart;
+            this.value = lines.slice(0, 2).join('\n') + '\n' + lines.slice(2).join('');
+            this.selectionStart = this.selectionEnd = Math.min(at, this.value.length);
+          }
+        });
+        var hint = document.createElement('small');
+        hint.className = 'name-hint';
+        hint.textContent = 'Enter で改行できます（3行まで）';
+        label.appendChild(input);
+        label.appendChild(hint);
+        input.value = a.name || '';
+        box.appendChild(label);
+        fields.name = input;
+        return;
+      }
       input.value = a[f[0]] || '';
       label.appendChild(input);
       box.appendChild(label);
@@ -5508,10 +5628,41 @@
     box.appendChild(del);
     return fields;
   }
+  // 3.1: right-click → 詳細設定を開く shows that button's settings in a panel beside the preview,
+  // so there is no need to scroll down to the list.
+  var floatingRow = null;
+  function openEditorFloat(row) {
+    floatingRow = row;
+    $('editor-float-body').textContent = '';
+    renderEditorOrder();
+    $('editor-float-body').appendChild(row.box);
+    $('editor-float-title').textContent = (row.name && row.name.value) || 'ボタンの設定';
+    $('editor-float').hidden = false;
+    $('editor-float-body').scrollTop = 0;
+  }
+  function closeEditorFloat() {
+    if ($('editor-float')) $('editor-float').hidden = true;
+    if (!floatingRow) return;
+    floatingRow = null;
+    renderEditorOrder();
+  }
   function renderEditorOrder() {
     $('editors').textContent = '';
+    if (floatingRow && (rows.indexOf(floatingRow) < 0 || floatingRow.orientation !== previewOrientation)) {
+      floatingRow = null;
+      $('editor-float').hidden = true;
+    }
     rows.forEach(function (r) {
-      if (r.orientation === previewOrientation) $('editors').appendChild(r.box);
+      if (r.orientation === previewOrientation && r !== floatingRow) $('editors').appendChild(r.box);
+    });
+  }
+  if ($('editor-float')) {
+    $('editor-float-close').onclick = closeEditorFloat;
+    $('editor-float-save').onclick = function () {
+      $('save').click();
+    };
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('editor-float').hidden && $('icon-picker-backdrop').hidden) closeEditorFloat();
     });
   }
   function editor(a, index) {
@@ -5741,11 +5892,18 @@
         });
         applyLayout(s);
         ensurePlacements(s.apps || []);
+        var floatId = floatingRow && floatingRow.id;
         rows = [];
+        closeEditorFloat();
         (s.apps || []).forEach(function (a) {
           rows.push(createEditor(a));
         });
         renderEditorOrder();
+        // Keep the button's settings panel open across a save.
+        var reopen = floatId && rows.filter(function (r) {
+          return r.id === floatId && r.orientation === previewOrientation;
+        })[0];
+        if (reopen) openEditorFloat(reopen);
         applyState(s, true);
         announceView();
         refreshDeviceSelectors();

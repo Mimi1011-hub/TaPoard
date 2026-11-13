@@ -3208,11 +3208,163 @@ body.pc-window main {
 }
 
 /* 3.1: purpose presets */
-.preset-list {
+.preset-open-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.preset-screen {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  padding: 20px;
+  background: #050609e6;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  overflow: auto;
+}
+body.preset-screen-open {
+  overflow: hidden;
+}
+.preset-screen-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid #343c4e;
+  border-radius: 16px;
+  background: #10141b;
+}
+.preset-screen-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.preset-screen-head > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.preset-screen-head h2 {
+  margin: 2px 0 4px;
+}
+.preset-screen-head p {
+  margin: 0;
+  color: #9aa2b1;
+}
+.preset-screen-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.preset-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 0;
+}
+.preset-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #2a3140;
+  border-radius: 10px;
+  background: #161b24;
+  color: inherit;
+  text-align: left;
+}
+.preset-tab small {
+  color: #9aa2b1;
+  font-size: 11px;
+  font-weight: 400;
+}
+.preset-tab[aria-pressed='true'] {
+  border-color: #6c8cff;
+  background: #1d2740;
+}
+.preset-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.preset-card-head p {
+  color: #9aa2b1;
+}
+.preset-detail .preset-map {
+  max-height: 340px;
+  max-width: 640px;
+}
+.preset-detail .preset-cell {
+  font-size: 12px;
+}
+.preset-card h4 {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+.preset-help {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
+  gap: 8px;
+}
+.preset-help-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #1b212c;
+}
+.preset-help-icon {
+  display: flex;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #232a38;
+  font-size: 20px;
+}
+.preset-help-icon .preset-icon {
+  width: 40px;
+  height: 40px;
+}
+.preset-help-row p {
+  margin: 2px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.preset-help-row small {
+  color: #9fb4ff;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .preset-screen {
+    padding: 0;
+  }
+  .preset-screen-inner {
+    border-radius: 0;
+  }
+  .preset-screen-body {
+    grid-template-columns: 1fr;
+  }
+  .preset-tabs {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .preset-tab {
+    flex: 0 0 auto;
+  }
+  .preset-tab small {
+    display: none;
+  }
+  .preset-card-head {
+    flex-direction: column;
+  }
 }
 .preset-card {
   display: flex;
@@ -3315,3 +3467,73 @@ body.pc-window main {
 .backup-panel { margin-top: 14px; }
 .backup-panel summary { cursor: pointer; font-weight: 600; }
 .backup-panel p { margin: 8px 0; }
+
+/* 3.1: button names can have line breaks (up to 3 lines) */
+.deck-key .key-label {
+  white-space: pre-line;
+}
+.deck-key .key-label.multi-line {
+  max-height: 3.5em;
+  -webkit-line-clamp: 3;
+}
+textarea.name-input {
+  min-height: 0;
+  resize: vertical;
+}
+.name-hint {
+  display: block;
+  margin-top: 4px;
+  color: #9aa2b1;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* 3.1: a button's settings open beside the preview */
+.editor-float {
+  position: fixed;
+  z-index: 250;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  width: min(440px, calc(100vw - 32px));
+  border: 1px solid #3a4357;
+  border-radius: 14px;
+  background: #121721;
+  box-shadow: 0 18px 50px #000a;
+}
+.editor-float[hidden] {
+  display: none;
+}
+.editor-float-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2a3140;
+}
+.editor-float-head > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.editor-float-head small {
+  color: #8d95a6;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.editor-float-head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-float-body {
+  flex: 1;
+  padding: 12px;
+  overflow: auto;
+}
+.editor-float-body > * {
+  margin: 0;
+}
