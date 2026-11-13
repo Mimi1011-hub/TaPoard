@@ -3003,3 +3003,6 @@ body.pc-window main {
 .icon-pack-bulk-row select {
   min-height: 40px;
 }
+.danger-subtle {
+  color: #ff9aa5;
+}
