@@ -73,6 +73,14 @@ partial class Program
             ReplyJson(s, 200, PcWindowView());
             return;
         }
+        if (path == "/api/background/image" && method == "GET")
+        {
+            string image;
+            lock (Gate)
+                image = DeckBackgrounds.ImageData(Data, config.background);
+            Reply(s, 200, JsonType, "{\"data\":" + (image == null ? "null" : "\"" + image + "\"") + "}");
+            return;
+        }
         if (path == "/api/icon-packs" && method == "GET" && r.isAdmin)
         {
             ReplyJson(s, 200, new { packs = IconPacks.List(Data), maxPacks = IconPacks.MaxPacks, maxIcons = IconPacks.MaxIcons });
@@ -102,6 +110,8 @@ partial class Program
             StartImport(r);
         else if (path == "/api/page")
             SetPage(r, input);
+        else if (path.StartsWith("/api/background", StringComparison.Ordinal) && r.isAdmin)
+            SetBackground(r, path, input, json);
         else if (path == "/api/page/delete" && r.isAdmin)
             DeletePage(r, input);
         else if (path == "/api/page/undo" && r.isAdmin)
@@ -337,6 +347,7 @@ partial class Program
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
                     phoneConnected = PhoneConnected(),
+                    background = DeckBackgrounds.Public(config.background),
                     computer = Environment.MachineName,
                     inputSessions = inputSessions,
                 }
@@ -388,6 +399,7 @@ partial class Program
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(config),
                     phoneConnected = PhoneConnected(),
+                    background = DeckBackgrounds.Public(config.background),
                 }
             );
         }
@@ -443,6 +455,7 @@ partial class Program
                     weather = WeatherService.PublicSnapshot(config),
                     weatherLocation = WeatherService.PublicLocation(config),
                     phoneConnected = PhoneConnected(),
+                    background = DeckBackgrounds.Public(config.background),
                     lanUrl = lanUrl,
                     ipUrls = ipUrls,
                     networkStatus = lan.Status,
@@ -572,6 +585,24 @@ partial class Program
     }
 
     // Changes the grid size or the fader positions of one orientation, plus the screen-awake option.
+    static void SetBackground(Request r, string path, Dictionary<string, object> input, string json)
+    {
+        lock (Gate)
+        {
+            if (path == "/api/background")
+                config.background = DeckBackgrounds.Clean(IconPacks.Serializer().Deserialize<DeckBackground>(json), config.background);
+            else if (path == "/api/background/image")
+                config.background = DeckBackgrounds.SetImage(Data, config.background, Convert.ToString(input["data"]), Convert.ToInt32(input["width"]), Convert.ToInt32(input["height"]));
+            else if (path == "/api/background/image/delete")
+                config.background = DeckBackgrounds.ClearImage(Data, config.background);
+            else
+                throw new Exception("不明な操作です。");
+            Save();
+            Signal();
+            ReplyJson(r.stream, 200, new { ok = true, background = DeckBackgrounds.Public(config.background), revision = revision });
+        }
+    }
+
     // The settings before the last page delete, kept until anything else changes the settings.
     static string pageUndoSettings, pageUndoAfter;
     static string pageUndoOrientation;
@@ -999,6 +1030,7 @@ partial class Program
         next.weatherLongitude = config.weatherLongitude;
         next.weatherTimezone = config.weatherTimezone;
         next.pcWindow = config.pcWindow;
+        next.background = config.background;
     }
 
     // Issues new phone keys and forgets every paired device.

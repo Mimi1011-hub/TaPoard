@@ -53,6 +53,23 @@
     <div id="shortcut-groups"></div>
    </aside>
   </div>
+  <section id="background-panel" class="settings-body settings-section background-panel">
+   <div class="section-heading"><div><small>BACKGROUND</small><h2>背景</h2></div><button id="background-reset" type="button" class="subtle">背景を標準に戻す</button></div>
+   <p>ボタンの後ろの色や画像を変えます。スマートフォンとPCウィンドウにも同じ背景が出ます。</p>
+   <div class="background-block"><strong>色</strong><div id="background-colors" class="icon-colors background-colors"></div></div>
+   <div class="background-block"><strong>グラデーション</strong><div id="background-gradients" class="background-gradients"></div></div>
+   <div class="background-block background-custom"><strong>好きな色</strong><label>色1<input id="background-color-custom" type="color" value="#1b1c20"></label><label class="background-check"><input id="background-use-color2" type="checkbox">2色のグラデーションにする</label><label>色2<input id="background-color2-custom" type="color" value="#1b1c20"></label></div>
+   <div class="background-block"><strong>画像</strong><div class="background-image-row"><label class="custom-icon-button">画像を選ぶ<input id="background-image-file" type="file" accept="image/png,image/jpeg,image/webp"></label><button id="background-image-remove" type="button" class="subtle danger-subtle" hidden>画像を外す</button><span id="background-image-status" role="status"></span></div>
+    <div id="background-image-controls" class="background-image-controls" hidden>
+     <label>表示のしかた<select id="background-fit"><option value="cover">画面いっぱい</option><option value="contain">全体を表示</option></select></label>
+     <label>拡大<input id="background-zoom" type="range" min="1" max="5" step="0.01" value="1"><span id="background-zoom-value">100%</span></label>
+     <div class="background-image-actions"><button id="background-adjust" type="button" aria-pressed="false">プレビューで位置を調整</button><button id="background-center" type="button" class="subtle">中央に戻す</button></div>
+     <p id="background-orientation-note" class="background-note"></p>
+     <p class="background-note">位置調整中は、プレビューのスマートフォン画面をドラッグすると画像が動き、マウスホイールで拡大・縮小します。縦向きと横向きで別々に保存します。</p>
+    </div>
+   </div>
+   <div class="background-block background-sliders"><label>暗くする<input id="background-dim" type="range" min="0" max="80" step="1" value="0"><span id="background-dim-value">0%</span></label><label>ぼかす<input id="background-blur" type="range" min="0" max="20" step="1" value="0"><span id="background-blur-value">0px</span></label></div>
+  </section>
   <section id="icon-pack-panel" class="settings-body settings-section icon-pack-panel">
    <div class="section-heading"><div><small>ICON PACKS</small><h2>アイコンパック</h2></div></div>
    <p>アイコン一式をまとめたファイル（.tpicons・.zip）や画像を読み込むと、アイコン選択画面にパックごとのタブが出ます。読み込んだ画像は縮小してこのPCに保存します。</p>

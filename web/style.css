@@ -3006,3 +3006,131 @@ body.pc-window main {
 .danger-subtle {
   color: #ff9aa5;
 }
+
+/* 3.1: deck background (color, gradient, picture) */
+.has-deck-bg {
+  position: relative;
+  isolation: isolate;
+}
+.deck-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.deck-bg-picture,
+.deck-bg-shade {
+  position: absolute;
+  inset: 0;
+}
+.deck-bg-picture {
+  background-repeat: no-repeat;
+}
+.has-deck-bg > .deck-grid,
+.has-deck-bg > .preview-toolbar {
+  position: relative;
+  z-index: 1;
+}
+.has-deck-bg > .preview-offline {
+  z-index: 2;
+}
+.background-block {
+  margin: 14px 0;
+}
+.background-block > strong {
+  display: block;
+  margin-bottom: 8px;
+}
+.background-swatch {
+  font-weight: 700;
+}
+.background-gradients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.background-gradient {
+  min-width: 84px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 2px solid #777;
+  border-radius: 10px;
+  color: #fff;
+  text-shadow: 0 1px 2px #000a;
+}
+.background-gradient[aria-pressed="true"] {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #8aa5ff;
+}
+.background-custom,
+.background-image-row,
+.background-sliders,
+.background-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.background-custom > strong {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+.background-custom label,
+.background-sliders label,
+.background-image-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.background-custom input[type="color"] {
+  width: 44px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.background-check input {
+  width: auto;
+}
+.background-image-controls {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #343c4e;
+  border-radius: 12px;
+  background: #161b24;
+}
+.background-image-controls[hidden] {
+  display: none;
+}
+.background-note {
+  margin: 0;
+  color: #9aa2b1;
+  font-size: 13px;
+}
+#background-adjust[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #8aa5ff;
+}
+.background-adjusting .phone-screen {
+  cursor: grab;
+  outline: 2px dashed #8aa5ff;
+  outline-offset: 3px;
+}
+.background-adjusting .phone-screen:active {
+  cursor: grabbing;
+}
+.background-image-controls label,
+.background-sliders label {
+  white-space: nowrap;
+}
+.background-image-controls input[type="range"],
+.background-sliders input[type="range"] {
+  flex: 1;
+  min-width: 140px;
+}
+.background-image-controls label:has(input[type="range"]) {
+  display: flex;
+}
