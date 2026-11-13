@@ -4049,6 +4049,7 @@
         });
         renderIconPackList();
         renderPackChoices();
+        renderBulkPackOptions();
       })
       .catch(function (e) {
         message(e.message);
@@ -4129,6 +4130,114 @@
       if (this.files && this.files.length) importIconPack(this.files);
     };
     $('icon-pack-export-buttons').onclick = exportCurrentIcons;
+  }
+  // ---- 3.1 bulk change: every preset icon in scope switches to the matching pack picture ----
+  var bulkUndo = null;
+  function effectiveIconKey(r) {
+    if (r.iconKey) return r.iconKey;
+    if (r.type === 'url') return 'globe';
+    if (r.type === 'text') return 'copy';
+    return defaultIconForAction(r.action || '', r.category || '');
+  }
+  function renderBulkPackOptions() {
+    var select = $('icon-pack-bulk-pack');
+    if (!select) return;
+    var before = select.value;
+    select.textContent = '';
+    [{ id: '', name: '標準アイコンに戻す' }].concat(iconPacks).forEach(function (pack) {
+      var option = document.createElement('option');
+      option.value = pack.id;
+      option.textContent = pack.id ? pack.name + (pack.mapped ? '' : '（対応づけなし）') : pack.name;
+      select.appendChild(option);
+    });
+    select.value = iconPacks.some(function (p) { return p.id === before; }) ? before : iconPacks.length ? iconPacks[iconPacks.length - 1].id : '';
+  }
+  function inBulkScope(r, scope) {
+    if (scope !== 'page') return true;
+    var position = r[previewOrientation];
+    return r.orientation === previewOrientation && position && position.page === page;
+  }
+  function bulkChangeIcons() {
+    var packId = $('icon-pack-bulk-pack').value,
+      scope = $('icon-pack-bulk-scope').value;
+    (packId ? fetchIconPack(packId) : Promise.resolve(null))
+      .then(function (pack) {
+        var byKey = {},
+          byName = {},
+          changed = 0,
+          missing = 0,
+          snapshot = rows.map(function (r) {
+            return { id: r.id, customIcon: r.customIcon, iconPack: r.iconPack, iconPackItem: r.iconPackItem, iconKey: r.iconKey };
+          });
+        if (pack)
+          pack.icons.forEach(function (icon) {
+            if (icon.key && !byKey[icon.key]) byKey[icon.key] = icon;
+            if (icon.name && !byName[icon.name]) byName[icon.name] = icon;
+          });
+        rows.forEach(function (r) {
+          if (!inBulkScope(r, scope)) return;
+          var usesPack = !!(r.customIcon && r.iconPack);
+          if (!pack) {
+            if (!usesPack) return;
+            r.customIcon = '';
+            r.iconPack = '';
+            r.iconPackItem = '';
+            changed++;
+            refreshEditorIcon(r);
+            return;
+          }
+          // Original images and icons taken from an app stay as they are.
+          if ((r.customIcon && !usesPack) || (!r.iconKey && r.icon)) return;
+          var name = r.name && r.name.value ? r.name.value.trim() : r.initialName,
+            icon = byKey[effectiveIconKey(r)] || byName[name];
+          if (!icon) {
+            missing++;
+            return;
+          }
+          if (r.customIcon === icon.data && r.iconPack === pack.id) return;
+          r.customIcon = icon.data;
+          r.iconPack = pack.id;
+          r.iconPackItem = icon.id;
+          changed++;
+          refreshEditorIcon(r);
+        });
+        if (!changed) {
+          message(pack ? '「' + pack.name + '」に合うアイコンが見つかるボタンはありませんでした。' + (missing ? '（合う絵がないボタン ' + missing + '個）' : '') : 'パックのアイコンを使っているボタンはありません。');
+          return;
+        }
+        bulkUndo = snapshot;
+        $('icon-pack-bulk-undo').disabled = false;
+        persistRows(
+          (pack ? '「' + pack.name + '」のアイコンに' : '標準アイコンに') + changed + '個変更して自動保存しました。' + (missing ? '合う絵がなかったボタン ' + missing + '個はそのままです。' : ''),
+        );
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
+  function undoBulkChange() {
+    if (!bulkUndo) return;
+    // Saving reloads the editor rows, so the snapshot is matched by button id.
+    var byId = {};
+    bulkUndo.forEach(function (saved) {
+      byId[saved.id] = saved;
+    });
+    rows.forEach(function (r) {
+      var saved = byId[r.id];
+      if (!saved) return;
+      r.customIcon = saved.customIcon;
+      r.iconPack = saved.iconPack;
+      r.iconPackItem = saved.iconPackItem;
+      r.iconKey = saved.iconKey;
+      refreshEditorIcon(r);
+    });
+    bulkUndo = null;
+    $('icon-pack-bulk-undo').disabled = true;
+    persistRows('一括変更の前に戻しました。');
+  }
+  if (admin) {
+    $('icon-pack-bulk-apply').onclick = bulkChangeIcons;
+    $('icon-pack-bulk-undo').onclick = undoBulkChange;
   }
   $('icon-picker-close').onclick = closeIconPicker;
   $('icon-picker-backdrop').onclick = function (e) {

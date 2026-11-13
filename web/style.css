@@ -2907,7 +2907,7 @@ body.pc-window main {
   display: flex;
   flex: none;
   gap: 4px;
-  width: 168px;
+  min-width: 56px;
 }
 .icon-pack-preview img {
   width: 24px;
@@ -2981,4 +2981,25 @@ body.pc-window main {
   .icon-pack-preview {
     width: 100%;
   }
+}
+.icon-pack-bulk {
+  margin-top: 16px;
+  padding: 14px;
+  background: #111318;
+  border: 1px solid #303641;
+  border-radius: 12px;
+}
+.icon-pack-bulk p {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: #8d95a3;
+}
+.icon-pack-bulk-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.icon-pack-bulk-row select {
+  min-height: 40px;
 }

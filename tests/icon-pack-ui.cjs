@@ -55,7 +55,7 @@ function zip(files) {
     await ready;
     const manifest = { format: 'tapoard-icons', version: 1, name: 'テスト用パック', author: 'TaPoard', icons: [
       { file: 'icons/mic.png', name: 'マイク', key: 'microphone' },
-      { file: 'icons/big.png', name: '大きい画像', key: 'star' },
+      { file: 'icons/big.png', name: '大きい画像', key: 'paste' },
       { file: 'icons/broken.png', name: '壊れた画像' },
     ] };
     const packFile = path.join(temp, 'test-pack.tpicons');
@@ -84,7 +84,7 @@ function zip(files) {
     assert.equal(list[0].count, 2);
     assert.equal(list[0].mapped, 2);
     const pack = (await api('icon-packs/get?id=' + list[0].id)).data;
-    assert.deepEqual(pack.icons.map(i => [i.name, i.key]), [['マイク', 'microphone'], ['大きい画像', 'star']]);
+    assert.deepEqual(pack.icons.map(i => [i.name, i.key]), [['マイク', 'microphone'], ['大きい画像', 'paste']]);
     for (const icon of pack.icons) assert(icon.data.length <= 60000 && /^data:image\/(png|webp);base64,/.test(icon.data), 'icons are shrunk to the custom icon limit');
     assert(fs.existsSync(path.join('tests/bin/data/icon-packs', list[0].id + '.json')));
 
@@ -113,6 +113,35 @@ function zip(files) {
     settings = (await api('settings')).data;
     app = settings.apps.find(a => a.iconKey === 'heart');
     assert(app && !app.iconPack && !app.customIcon, 'standard icon clears the pack picture');
+
+    // Bulk change: the portrait "paste" button takes the pack picture; the "heart" one has no match.
+    await admin.locator('#icon-pack-bulk-pack').selectOption(pack.id);
+    let bulk = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
+    await admin.locator('#icon-pack-bulk-apply').click();
+    await bulk;
+    assert.match(await admin.locator('#message').innerText(), /1個変更.*合う絵がなかったボタン 1個/);
+    settings = (await api('settings')).data;
+    let portrait = settings.apps.find(a => a.orientation === 'portrait');
+    assert.equal(portrait.customIcon, pack.icons[1].data);
+    assert.equal(portrait.iconKey, 'paste', 'the preset key stays so the change can be undone');
+    assert.equal(settings.apps.find(a => a.orientation === 'landscape').customIcon || '', '');
+    // Undo restores the standard icon.
+    bulk = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
+    await admin.locator('#icon-pack-bulk-undo').click();
+    await bulk;
+    settings = (await api('settings')).data;
+    assert.equal(settings.apps.find(a => a.orientation === 'portrait').customIcon || '', '');
+    // Apply again, then switch everything back to the standard icons.
+    bulk = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
+    await admin.locator('#icon-pack-bulk-apply').click();
+    await bulk;
+    assert.equal((await api('settings')).data.apps.find(a => a.orientation === 'portrait').iconPack, pack.id);
+    await admin.locator('#icon-pack-bulk-pack').selectOption('');
+    bulk = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
+    await admin.locator('#icon-pack-bulk-apply').click();
+    await bulk;
+    portrait = (await api('settings')).data.apps.find(a => a.orientation === 'portrait');
+    assert(!portrait.customIcon && !portrait.iconPack && portrait.iconKey === 'paste', 'standard icons come back');
 
     // Export the pack and import the exported file again: same names, keys and pictures.
     const download = admin.waitForEvent('download');
@@ -146,7 +175,7 @@ function zip(files) {
     await admin.waitForFunction(() => document.querySelectorAll('.icon-pack-item').length === 2);
     assert.equal((await api('icon-packs')).data.packs.length, 2);
     assert.deepEqual(errors, []);
-    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, export round trip, loose images, server checks, delete');
+    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, bulk change with undo, export round trip, loose images, server checks, delete');
   } finally {
     if (browser) await browser.close();
     host.kill();
