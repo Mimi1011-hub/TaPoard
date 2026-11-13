@@ -102,6 +102,10 @@ partial class Program
             StartImport(r);
         else if (path == "/api/page")
             SetPage(r, input);
+        else if (path == "/api/page/delete" && r.isAdmin)
+            DeletePage(r, input);
+        else if (path == "/api/page/undo" && r.isAdmin)
+            UndoDeletePage(r);
         else if (path == "/api/layout")
             SetLayout(r, input);
         else if (path == "/api/audio")
@@ -568,6 +572,70 @@ partial class Program
     }
 
     // Changes the grid size or the fader positions of one orientation, plus the screen-awake option.
+    // The settings before the last page delete, kept until anything else changes the settings.
+    static string pageUndoSettings, pageUndoAfter;
+    static string pageUndoOrientation;
+    static int pageUndoPage;
+
+    // Settings as the undo check sees them: paired phones may change without blocking an undo.
+    static string UndoSignature(Settings s)
+    {
+        var devices = s.devices;
+        s.devices = null;
+        try { return IconPacks.Serializer().Serialize(s); }
+        finally { s.devices = devices; }
+    }
+
+    static void DeletePage(Request r, Dictionary<string, object> input)
+    {
+        string orientation = ReadOrientation(input);
+        RequireOrientation(orientation);
+        int target = Convert.ToInt32(input["page"]);
+        lock (Gate)
+        {
+            string before = IconPacks.Serializer().Serialize(config);
+            var candidate = IconPacks.Serializer().Deserialize<Settings>(before);
+            int removed = DeckLayout.DeletePage(candidate, orientation, target);
+            DeckLayout.Validate(candidate);
+            config = candidate;
+            DisplaySubscriptions.RemoveUnknown(config.apps);
+            InputSessions.ClearAll();
+            bool portrait = orientation == "portrait";
+            int current = portrait ? portraitPage : landscapePage;
+            if (current > target) current--;
+            if (portrait) portraitPage = current; else landscapePage = current;
+            ShrinkCurrentPages(DeckLayout.Pages(config, "landscape"), DeckLayout.Pages(config, "portrait"));
+            Save();
+            version = NewId();
+            Signal();
+            pageUndoSettings = before;
+            pageUndoAfter = UndoSignature(config);
+            pageUndoOrientation = orientation;
+            pageUndoPage = target;
+            ReplyJson(r.stream, 200, new { ok = true, removed = removed, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+        }
+    }
+
+    static void UndoDeletePage(Request r)
+    {
+        lock (Gate)
+        {
+            if (pageUndoSettings == null || UndoSignature(config) != pageUndoAfter)
+                throw new Exception("削除の後に設定が変わったため、元に戻せません。");
+            var restored = IconPacks.Serializer().Deserialize<Settings>(pageUndoSettings);
+            restored.token = config.token;
+            restored.pairingKey = config.pairingKey;
+            restored.devices = config.devices;
+            config = restored;
+            if (pageUndoOrientation == "portrait") portraitPage = pageUndoPage; else landscapePage = pageUndoPage;
+            pageUndoSettings = pageUndoAfter = null;
+            Save();
+            version = NewId();
+            Signal();
+            ReplyJson(r.stream, 200, new { ok = true, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+        }
+    }
+
     static void SetLayout(Request r, Dictionary<string, object> input)
     {
         int columns = Convert.ToInt32(input["columns"]),

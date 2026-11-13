@@ -297,6 +297,33 @@ static class DeckLayout
         if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, RequiredPages(s, orientation)); else s.landscapePageCount = Math.Max(s.landscapePageCount, RequiredPages(s, orientation));
     }
 
+    // 3.1: removes one page of one orientation. Its buttons and fader overrides go; later pages move up.
+    // Returns how many buttons were removed.
+    internal static int DeletePage(Settings s, string orientation, int page)
+    {
+        bool portrait = orientation == "portrait";
+        int pages = Pages(s, orientation);
+        if (pages <= 1) throw new Exception("最後の1ページは削除できません。");
+        if (page < 0 || page >= pages) throw new Exception("ページ番号が正しくありません。");
+        int removed = s.apps.RemoveAll(app => app.orientation == orientation && Position(app, portrait) != null && Position(app, portrait).page == page);
+        foreach (var app in s.apps)
+        {
+            if (app.orientation != orientation) continue;
+            var position = Position(app, portrait);
+            if (position != null && position.page > page) position.page--;
+        }
+        var controlPages = ControlPages(s, portrait);
+        controlPages.RemoveAll(entry => entry == null || entry.page == page);
+        foreach (var entry in controlPages) if (entry.page > page) entry.page--;
+        if (portrait) s.portraitPageCount = pages - 1;
+        else
+        {
+            s.landscapePageCount = pages - 1;
+            s.pageCount = pages - 1;
+        }
+        return removed;
+    }
+
     internal static int RequiredPages(Settings s, string orientation)
     {
         int count = 1; bool portrait = orientation == "portrait"; foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null) count = Math.Max(count, Position(app, portrait).page + 1); return count;

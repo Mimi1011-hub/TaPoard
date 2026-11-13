@@ -2675,6 +2675,7 @@
     $('preview-page-label').textContent = page + 1 + ' / ' + pageCount;
     $('preview-prev').disabled = page === 0;
     $('preview-next').disabled = page === pageCount - 1;
+    $('preview-delete-page').disabled = pageCount <= 1;
     scheduleClockUpdates();
   }
   function updatePhoneStatus(active) {
@@ -4718,6 +4719,7 @@
         return settings();
       })
       .then(function () {
+        $('preview-undo-page').hidden = true;
         message(success || '自動保存しました。');
         return true;
       })
@@ -5715,6 +5717,50 @@
   $('pair-refresh').onclick = refreshPairing;
   $('preview-new-page').onclick = function () {
     setPage(layoutPages());
+  };
+  // 3.1: delete the shown page of the shown orientation; later pages move up. One step can be undone.
+  $('preview-delete-page').onclick = function () {
+    var orientation = previewOrientation,
+      target = page,
+      total = layoutPages(),
+      count = deckApps.filter(function (a) {
+        var position = a[orientation];
+        return a.orientation === orientation && position && position.page === target;
+      }).length;
+    if (total <= 1) {
+      message('最後の1ページは削除できません。');
+      return;
+    }
+    var side = orientation === 'portrait' ? '縦' : '横';
+    if (count && !confirm(side + '向きの ' + (target + 1) + ' ページ目を削除しますか？\nこのページのボタン ' + count + ' 個も消えます。後ろのページは1つずつ前に詰めます。')) return;
+    api('page/delete', { orientation: orientation, page: target })
+      .then(function (result) {
+        pagesByOrientation.landscape = result.landscapePages;
+        pagesByOrientation.portrait = result.portraitPages;
+        pageByOrientation.landscape = result.landscapePage;
+        pageByOrientation.portrait = result.portraitPage;
+        $('preview-undo-page').hidden = false;
+        return settings().then(function () {
+          message(side + '向きの ' + (target + 1) + ' ページ目を削除しました' + (result.removed ? '（ボタン ' + result.removed + ' 個）' : '') + '。');
+        });
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  };
+  $('preview-undo-page').onclick = function () {
+    $('preview-undo-page').hidden = true;
+    api('page/undo', {})
+      .then(function (result) {
+        pageByOrientation.landscape = result.landscapePage;
+        pageByOrientation.portrait = result.portraitPage;
+        return settings().then(function () {
+          message('削除したページを元に戻しました。');
+        });
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
   };
   // 3.0 PC window: full-window deck, mouse wheel pages, and the info overlay the window toggles.
   function setupPcWindow() {
