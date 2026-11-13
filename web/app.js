@@ -169,6 +169,7 @@
         ['common-find', '検索', 'Ctrl + F'],
         ['common-open', 'ファイルを開く', 'Ctrl + O'],
         ['common-new', '新規作成', 'Ctrl + N'],
+        ['key-custom', '好きなキー', 'キーを指定（はじめは F13）'],
       ],
     },
     {
@@ -645,6 +646,7 @@
     return s;
   }
   function defaultIconForAction(action, category) {
+    if (action === 'key-custom') return 'keyboard';
     if (action.indexOf('media-play') === 0) return 'play';
     if (action.indexOf('media-previous') === 0) return 'previous';
     if (action.indexOf('media-next') === 0) return 'next';
@@ -2679,6 +2681,7 @@
     $('preview-delete-page').disabled = pageCount <= 1;
     paintBackground();
     renderBackgroundControls();
+    renderPresets();
     scheduleClockUpdates();
   }
   function updatePhoneStatus(active) {
@@ -4247,6 +4250,98 @@
       });
     };
     $('icon-pack-bulk-undo').onclick = undoBulkChange;
+  }
+  // ---- 3.1 purpose presets: ready-made button sets added on a new page or in place of one orientation ----
+  var deckPresets = [];
+  function loadPresets() {
+    return api('presets')
+      .then(function (result) {
+        deckPresets = result.presets || [];
+        renderPresets();
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
+  function renderPresets() {
+    var root = $('preset-list');
+    if (!root) return;
+    var side = previewOrientation === 'portrait' ? '縦' : '横';
+    $('preset-orientation-note').textContent = 'プレビューで選んでいる' + side + '向きに追加します（上の「横／縦」で切り替え）。';
+    root.textContent = '';
+    deckPresets.forEach(function (preset) {
+      var card = document.createElement('article'),
+        title = document.createElement('h3'),
+        note = document.createElement('p'),
+        chips = document.createElement('div'),
+        setup = document.createElement('p'),
+        actions = document.createElement('div'),
+        add = document.createElement('button'),
+        replace = document.createElement('button');
+      card.className = 'preset-card';
+      card.dataset.preset = preset.id;
+      title.textContent = preset.name;
+      note.textContent = preset.note + '（' + preset.buttons.length + '個）';
+      chips.className = 'preset-chips';
+      preset.buttons.forEach(function (b) {
+        var chip = document.createElement('span');
+        chip.className = 'preset-chip';
+        chip.textContent = b.name;
+        if (b.key) chip.title = b.key.replace(/\+/g, ' + ');
+        chips.appendChild(chip);
+      });
+      setup.className = 'preset-setup';
+      setup.textContent = preset.setup;
+      actions.className = 'preset-actions';
+      add.type = 'button';
+      add.textContent = '新しいページに追加';
+      add.onclick = function () {
+        applyPreset(preset, 'add');
+      };
+      replace.type = 'button';
+      replace.className = 'subtle danger-subtle';
+      replace.textContent = side + '向きを置き換え';
+      replace.onclick = function () {
+        applyPreset(preset, 'replace');
+      };
+      actions.appendChild(add);
+      actions.appendChild(replace);
+      card.appendChild(title);
+      card.appendChild(note);
+      card.appendChild(chips);
+      card.appendChild(setup);
+      card.appendChild(actions);
+      root.appendChild(card);
+    });
+  }
+  function applyPreset(preset, mode) {
+    var orientation = previewOrientation,
+      side = orientation === 'portrait' ? '縦' : '横',
+      count = deckApps.filter(function (a) {
+        return a.orientation === orientation;
+      }).length;
+    if (mode === 'replace' && !confirm(side + '向きのボタン ' + count + ' 個をすべて消して、「' + preset.name + '」のボタンに置き換えますか？\n直後なら「元に戻す」で1回だけ戻せます。')) return;
+    settleSaves()
+      .then(function () {
+        return api('presets/apply', { id: preset.id, orientation: orientation, mode: mode });
+      })
+      .then(function (result) {
+        pagesByOrientation.landscape = result.landscapePages;
+        pagesByOrientation.portrait = result.portraitPages;
+        pageByOrientation.landscape = result.landscapePage;
+        pageByOrientation.portrait = result.portraitPage;
+        showUndo('プリセットを元に戻す', '「' + preset.name + '」を追加する前に戻しました。');
+        return settings().then(function () {
+          message('「' + preset.name + '」を' + side + '向きの ' + (result.page + 1) + ' ページ目' + (mode === 'replace' ? 'から置き換えました。' : 'に追加しました。') + (preset.buttons.some(function (b) {
+            return b.key;
+          })
+            ? ' キーを送るボタンは、使うアプリ側にも同じキーを登録してください。'
+            : ''));
+        });
+      })
+      .catch(function (e) {
+        message('プリセットを追加できませんでした。 ' + e.message);
+      });
   }
   // ---- 3.1 saved looks: named copies of the icons and background kept on the PC ----
   var iconStyles = [],
@@ -6329,7 +6424,7 @@
         pagesByOrientation.portrait = result.portraitPages;
         pageByOrientation.landscape = result.landscapePage;
         pageByOrientation.portrait = result.portraitPage;
-        $('preview-undo-page').hidden = false;
+        showUndo('削除を元に戻す', '削除したページを元に戻しました。');
         return settings().then(function () {
           message(side + '向きの ' + (target + 1) + ' ページ目を削除しました' + (result.removed ? '（ボタン ' + result.removed + ' 個）' : '') + '。');
         });
@@ -6338,6 +6433,12 @@
         message(e.message);
       });
   };
+  var undoDoneText = '削除したページを元に戻しました。';
+  function showUndo(label, done) {
+    $('preview-undo-page').textContent = label;
+    $('preview-undo-page').hidden = false;
+    undoDoneText = done;
+  }
   $('preview-undo-page').onclick = function () {
     $('preview-undo-page').hidden = true;
     api('page/undo', {})
@@ -6345,7 +6446,7 @@
         pageByOrientation.landscape = result.landscapePage;
         pageByOrientation.portrait = result.portraitPage;
         return settings().then(function () {
-          message('削除したページを元に戻しました。');
+          message(undoDoneText);
         });
       })
       .catch(function (e) {
@@ -6749,5 +6850,6 @@
     refreshPairing();
     loadIconPacks();
     loadIconStyles();
+    loadPresets();
   } else if (key) refresh();
 })();

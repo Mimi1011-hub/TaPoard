@@ -4,7 +4,7 @@ class ShortcutTests {
  static void Check(bool condition,string message){if(!condition)throw new Exception(message);Console.WriteLine("PASS "+message);}
  static void Main(){
   string[] actions=ShortcutKeys.Actions();
-  Check(actions.Length==109,"shortcut catalog contains 109 allowlisted actions");
+  Check(actions.Length==110,"shortcut catalog contains 110 allowlisted actions");
   var unique=new HashSet<string>(actions,StringComparer.OrdinalIgnoreCase);
   Check(unique.Count==actions.Length,"shortcut action ids are unique");
   Check(ShortcutKeys.Exists("discord-mute"),"Discord mute is allowlisted");

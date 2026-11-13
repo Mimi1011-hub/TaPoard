@@ -324,6 +324,27 @@ static class DeckLayout
         return removed;
     }
 
+    // 3.1 presets: places new buttons of one orientation in reading order from firstPage on, around the
+    // buttons and faders already there. A page that fills up continues on the next one.
+    internal static void PlaceFrom(Settings s, string orientation, List<AppEntry> added, int firstPage)
+    {
+        bool portrait = orientation == "portrait"; int columns = Columns(s, portrait), rows = Rows(s, portrait); var occupied = new HashSet<string>();
+        foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null && !added.Contains(app)) MarkArea(occupied, Position(app, portrait).page, Position(app, portrait).row, Position(app, portrait).column, Width(app), Height(app));
+        foreach (var app in added)
+        {
+            TilePosition found = null;
+            for (int page = firstPage; page < MaxPages && found == null; page++) for (int row = 0; row + Height(app) <= rows && found == null; row++) for (int column = 0; column + Width(app) <= columns && found == null; column++)
+            {
+                var candidate = new TilePosition { page = page, row = row, column = column };
+                if (Fits(occupied, candidate, Width(app), Height(app), columns, rows, s, portrait)) found = candidate;
+            }
+            if (found == null) throw new Exception("配置する空き枠がありません。");
+            SetPosition(app, portrait, found); MarkArea(occupied, found.page, found.row, found.column, Width(app), Height(app));
+        }
+        int pages = RequiredPages(s, orientation);
+        if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, pages); else { s.landscapePageCount = Math.Max(s.landscapePageCount, pages); s.pageCount = s.landscapePageCount; }
+    }
+
     internal static int RequiredPages(Settings s, string orientation)
     {
         int count = 1; bool portrait = orientation == "portrait"; foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null) count = Math.Max(count, Position(app, portrait).page + 1); return count;

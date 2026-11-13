@@ -91,6 +91,11 @@ partial class Program
             Reply(s, 200, JsonType, IconPacks.Serializer().Serialize(IconPacks.Get(Data, QueryValue(r.target, "id"))));
             return;
         }
+        if (path == "/api/presets" && method == "GET" && r.isAdmin)
+        {
+            ReplyJson(s, 200, new { presets = DeckPresets.Public() });
+            return;
+        }
         if (path == "/api/icon-styles" && method == "GET" && r.isAdmin)
         {
             ReplyJson(s, 200, new { styles = IconStyles.List(Data), maxStyles = IconStyles.MaxStyles });
@@ -119,6 +124,8 @@ partial class Program
             SetBackground(r, path, input, json);
         else if (path == "/api/page/delete" && r.isAdmin)
             DeletePage(r, input);
+        else if (path == "/api/presets/apply" && r.isAdmin)
+            ApplyPreset(r, input);
         else if (path == "/api/page/undo" && r.isAdmin)
             UndoDeletePage(r);
         else if (path == "/api/layout")
@@ -690,12 +697,46 @@ partial class Program
         }
     }
 
+    // 3.1: adds a purpose preset on a new page, or in place of every button of one orientation.
+    // Uses the same one-step undo as a page delete.
+    static void ApplyPreset(Request r, Dictionary<string, object> input)
+    {
+        string orientation = ReadOrientation(input);
+        RequireOrientation(orientation);
+        object raw;
+        string id = input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null;
+        bool replace = input.TryGetValue("mode", out raw) && Convert.ToString(raw) == "replace";
+        lock (Gate)
+        {
+            string before = IconPacks.Serializer().Serialize(config);
+            var candidate = IconPacks.Serializer().Deserialize<Settings>(before);
+            int first = DeckPresets.Apply(candidate, id, orientation, replace, NewId);
+            foreach (var a in candidate.apps)
+                if (a.orientation == orientation)
+                    ValidateEntry(a);
+            DeckLayout.Validate(candidate);
+            config = candidate;
+            DisplaySubscriptions.RemoveUnknown(config.apps);
+            InputSessions.ClearAll();
+            if (orientation == "portrait") portraitPage = first; else landscapePage = first;
+            ShrinkCurrentPages(DeckLayout.Pages(config, "landscape"), DeckLayout.Pages(config, "portrait"));
+            Save();
+            version = NewId();
+            Signal();
+            pageUndoSettings = before;
+            pageUndoAfter = UndoSignature(config);
+            pageUndoOrientation = orientation;
+            pageUndoPage = first;
+            ReplyJson(r.stream, 200, new { ok = true, page = first, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+        }
+    }
+
     static void UndoDeletePage(Request r)
     {
         lock (Gate)
         {
             if (pageUndoSettings == null || UndoSignature(config) != pageUndoAfter)
-                throw new Exception("削除の後に設定が変わったため、元に戻せません。");
+                throw new Exception("その後に設定が変わったため、元に戻せません。");
             var restored = IconPacks.Serializer().Deserialize<Settings>(pageUndoSettings);
             restored.token = config.token;
             restored.pairingKey = config.pairingKey;
