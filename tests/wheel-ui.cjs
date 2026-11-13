@@ -1,4 +1,4 @@
-const { chromium } = require('C:/Users/shimi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const { chromium } = require('./playwright.cjs');
 const fs = require('fs');
 const http = require('http');
 const assert = require('assert');

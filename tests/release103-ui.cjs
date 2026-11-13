@@ -1,4 +1,4 @@
-const {chromium}=require('C:/Users/shimi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {chromium}=require('./playwright.cjs');
 const {spawn}=require('child_process'),assert=require('assert'),fs=require('fs');
 const base='http://127.0.0.1:18782';
 fs.cpSync('web','tests/bin/web',{recursive:true,force:true});

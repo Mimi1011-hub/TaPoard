@@ -1,4 +1,4 @@
-const {chromium}=require('C:/Users/shimi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {chromium}=require('./playwright.cjs');
 const fs=require('fs'),http=require('http'),assert=require('assert');
 const devices=[{id:'output-one',name:'テスト スピーカー',target:'speaker',available:true,selected:true},{id:'output-two',name:'テスト ヘッドセット',target:'speaker',available:true,selected:false},{id:'mic-one',name:'テスト マイク',target:'mic',available:true,selected:true},{id:'gone',name:'未接続機器',target:'speaker',available:false,selected:false}];
 let apps=[],version='1',revision=1,actions=[],audioCalls=[],audio={speakerVolume:50,micVolume:50,speakerMuted:false,micMuted:false,speakerAvailable:true,micAvailable:true,devices},landscapeControls={speakerSlot:0,micSlot:1,speakerSize:1,micSize:1,speakerRow:0,speakerColumn:0,speakerWidth:1,speakerHeight:1,micRow:0,micColumn:1,micWidth:1,micHeight:1};

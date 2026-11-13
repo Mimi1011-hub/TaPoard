@@ -1,4 +1,4 @@
-const { chromium } = require('C:/Users/shimi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const { chromium } = require('./playwright.cjs');
 const { spawn } = require('child_process');
 const assert = require('assert');
 const fs = require('fs');
