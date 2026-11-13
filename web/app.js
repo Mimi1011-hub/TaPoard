@@ -3438,6 +3438,8 @@
     iconPickerTarget.iconKey = key;
     iconPickerTarget.iconColor = iconPickerColor;
     iconPickerTarget.customIcon = '';
+    iconPickerTarget.iconPack = '';
+    iconPickerTarget.iconPackItem = '';
     refreshEditorIcon(iconPickerTarget);
     closeIconPicker();
     persistRows(key ? 'アイコンを変更して自動保存しました。' : '自動アイコンへ戻しました。');
@@ -3448,6 +3450,8 @@
     $('icon-picker-current').textContent = (fields.name && fields.name.value) || 'ボタン';
     $('custom-icon-file').value = '';
     $('icon-picker-backdrop').hidden = false;
+    iconPickerPack = fields.iconPack && iconPacks.some(function (p) { return p.id === fields.iconPack; }) ? fields.iconPack : '';
+    renderPackChoices();
     renderIconColors();
     Array.prototype.forEach.call($('icon-preset-groups').querySelectorAll('button[data-icon-key]'), function (button) {
       button.classList.toggle('selected', !fields.customIcon && button.dataset.iconKey === fields.iconKey);
@@ -3499,6 +3503,8 @@
         }
         iconPickerTarget.customIcon = value;
         iconPickerTarget.iconKey = '';
+        iconPickerTarget.iconPack = '';
+        iconPickerTarget.iconPackItem = '';
         refreshEditorIcon(iconPickerTarget);
         closeIconPicker();
         persistRows('オリジナルアイコンを保存しました。');
@@ -3548,6 +3554,581 @@
       section.appendChild(grid);
       root.appendChild(section);
     });
+  }
+  // ---- 3.1 icon packs: .tpicons (zip) import/export -------------------------------------
+  // A pack file is a zip holding icons.json and the pictures. icons.json:
+  // { "format": "tapoard-icons", "version": 1, "name": "...", "author": "...",
+  //   "icons": [ { "file": "mic.png", "name": "マイク", "key": "microphone" } ] }
+  // "key" is optional and names the preset icon the picture replaces when the whole deck switches.
+  // Zips without icons.json (plain image folders, or packs that list { path, name }) also load.
+  var iconPacks = [],
+    iconPackCache = {},
+    iconPickerPack = '';
+  var crcTable = null;
+  function crc32(bytes) {
+    if (!crcTable) {
+      crcTable = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        crcTable[n] = c >>> 0;
+      }
+    }
+    var crc = 0xffffffff;
+    for (var i = 0; i < bytes.length; i++) crc = crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+  function zipText(bytes, utf8) {
+    if (utf8) return new TextDecoder('utf-8').decode(bytes);
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch (e) {
+      try {
+        return new TextDecoder('shift_jis').decode(bytes);
+      } catch (e2) {
+        return new TextDecoder('utf-8').decode(bytes);
+      }
+    }
+  }
+  // Lists the files of a zip (central directory) without unpacking them.
+  function readZipEntries(buffer) {
+    var view = new DataView(buffer),
+      bytes = new Uint8Array(buffer),
+      end = -1;
+    for (var i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--)
+      if (view.getUint32(i, true) === 0x06054b50) {
+        end = i;
+        break;
+      }
+    if (end < 0) throw new Error('zip形式のファイルではありません。');
+    var count = view.getUint16(end + 10, true),
+      offset = view.getUint32(end + 16, true),
+      entries = [];
+    if (count > 5000) throw new Error('ファイルの数が多すぎます。');
+    for (var e = 0; e < count; e++) {
+      if (offset + 46 > bytes.length || view.getUint32(offset, true) !== 0x02014b50) throw new Error('zipファイルが壊れています。');
+      var flags = view.getUint16(offset + 8, true),
+        method = view.getUint16(offset + 10, true),
+        compressed = view.getUint32(offset + 20, true),
+        size = view.getUint32(offset + 24, true),
+        nameLength = view.getUint16(offset + 28, true),
+        extraLength = view.getUint16(offset + 30, true),
+        commentLength = view.getUint16(offset + 32, true),
+        local = view.getUint32(offset + 42, true),
+        name = zipText(bytes.subarray(offset + 46, offset + 46 + nameLength), (flags & 0x800) !== 0);
+      entries.push({ name: name.replace(/\\/g, '/'), method: method, compressed: compressed, size: size, local: local, encrypted: (flags & 1) !== 0 });
+      offset += 46 + nameLength + extraLength + commentLength;
+    }
+    return entries;
+  }
+  function readZipEntry(buffer, entry) {
+    var view = new DataView(buffer);
+    if (entry.encrypted) return Promise.reject(new Error('パスワード付きのzipは読み込めません。'));
+    if (entry.size > 8 * 1024 * 1024) return Promise.reject(new Error(entry.name + ' が大きすぎます。'));
+    if (view.getUint32(entry.local, true) !== 0x04034b50) return Promise.reject(new Error('zipファイルが壊れています。'));
+    var start = entry.local + 30 + view.getUint16(entry.local + 26, true) + view.getUint16(entry.local + 28, true),
+      data = new Uint8Array(buffer, start, entry.compressed);
+    if (entry.method === 0) return Promise.resolve(data);
+    if (entry.method !== 8 || typeof DecompressionStream === 'undefined')
+      return Promise.reject(new Error('このzipの圧縮形式には対応していません。'));
+    var stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(stream).arrayBuffer().then(function (out) {
+      if (out.byteLength > 8 * 1024 * 1024) throw new Error(entry.name + ' が大きすぎます。');
+      return new Uint8Array(out);
+    });
+  }
+  // Builds an uncompressed zip from [{ name, bytes }].
+  function buildZip(files) {
+    var encoder = new TextEncoder(),
+      parts = [],
+      central = [],
+      offset = 0;
+    files.forEach(function (file) {
+      var name = encoder.encode(file.name),
+        crc = crc32(file.bytes),
+        local = new DataView(new ArrayBuffer(30));
+      local.setUint32(0, 0x04034b50, true);
+      local.setUint16(4, 20, true);
+      local.setUint16(6, 0x800, true);
+      local.setUint32(14, crc, true);
+      local.setUint32(18, file.bytes.length, true);
+      local.setUint32(22, file.bytes.length, true);
+      local.setUint16(26, name.length, true);
+      parts.push(local.buffer, name, file.bytes);
+      var head = new DataView(new ArrayBuffer(46));
+      head.setUint32(0, 0x02014b50, true);
+      head.setUint16(4, 20, true);
+      head.setUint16(6, 20, true);
+      head.setUint16(8, 0x800, true);
+      head.setUint32(16, crc, true);
+      head.setUint32(20, file.bytes.length, true);
+      head.setUint32(24, file.bytes.length, true);
+      head.setUint16(28, name.length, true);
+      head.setUint32(42, offset, true);
+      central.push(head.buffer, name);
+      offset += 30 + name.length + file.bytes.length;
+    });
+    var centralSize = 0;
+    central.forEach(function (part) {
+      centralSize += part.byteLength;
+    });
+    var end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, files.length, true);
+    end.setUint16(10, files.length, true);
+    end.setUint32(12, centralSize, true);
+    end.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end.buffer]), { type: 'application/zip' });
+  }
+  function imageType(name) {
+    var m = /\.(png|jpe?g|webp|gif)$/i.exec(name || '');
+    if (!m) return '';
+    var ext = m[1].toLowerCase();
+    return ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/' + ext;
+  }
+  function baseName(name) {
+    return (name || '').split('/').pop().replace(/\.[^.]+$/, '');
+  }
+  // Matches a file or icon name to a preset icon key ("microphone", "マイク", "mic.png").
+  var presetAliases = {
+    mic: 'microphone', volume: 'speaker', sound: 'speaker', audio: 'speaker', browser: 'globe', web: 'globe',
+    'play-pause': 'play', playpause: 'play', screenshot: 'screenshot', capture: 'screenshot', clock: 'timer',
+    chat: 'chat', discord: 'chat', game: 'gamepad', controller: 'gamepad', 'chat-game': 'gamepad', record: 'record',
+    rec: 'record', obs: 'recording', live: 'recording', stream: 'recording', cam: 'camera', webcam: 'camera',
+    music: 'music', song: 'music', skip: 'next', prev: 'previous', back: 'back', setting: 'settings', gear: 'settings',
+  };
+  function guessPresetKey(text) {
+    var value = (text || '').toLowerCase().trim().replace(/[\s_]+/g, '-');
+    if (!value) return '';
+    if (presetMap[value]) return value;
+    if (presetAliases[value]) return presetAliases[value];
+    var found = '';
+    Object.keys(presetMap).some(function (key) {
+      if (presetMap[key].name === text) {
+        found = key;
+        return true;
+      }
+      return false;
+    });
+    return found;
+  }
+  // Shrinks one picture to a square icon the server accepts (the same limit as an original icon).
+  function packIconData(blob) {
+    return createImageBitmap(blob).then(function (bitmap) {
+      var attempts = [
+          [144, 'image/png'],
+          [144, 'image/webp'],
+          [112, 'image/png'],
+          [112, 'image/webp'],
+          [96, 'image/webp'],
+        ],
+        canvas = document.createElement('canvas');
+      for (var i = 0; i < attempts.length; i++) {
+        var size = attempts[i][0];
+        canvas.width = size;
+        canvas.height = size;
+        var context = canvas.getContext('2d'),
+          scale = Math.min(size / bitmap.width, size / bitmap.height),
+          width = Math.max(1, Math.round(bitmap.width * scale)),
+          height = Math.max(1, Math.round(bitmap.height * scale));
+        context.clearRect(0, 0, size, size);
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(bitmap, Math.round((size - width) / 2), Math.round((size - height) / 2), width, height);
+        var value = canvas.toDataURL(attempts[i][1], 0.92);
+        if (value.indexOf('data:' + attempts[i][1]) === 0 && value.length <= 60000) {
+          if (bitmap.close) bitmap.close();
+          return value;
+        }
+      }
+      if (bitmap.close) bitmap.close();
+      throw new Error('画像が細かすぎて小さくできません。');
+    });
+  }
+  function dataUrlBytes(value) {
+    var comma = value.indexOf(','),
+      binary = atob(value.slice(comma + 1)),
+      bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return { bytes: bytes, ext: /image\/(png|jpeg|webp)/.exec(value)[1].replace('jpeg', 'jpg') };
+  }
+  // Reads a picked .tpicons/.zip or loose images into { name, author, icons: [{ name, key, blob }] }.
+  function readPackSource(files) {
+    files = Array.prototype.slice.call(files || []);
+    if (!files.length) return Promise.reject(new Error('ファイルを選んでください。'));
+    var archive = files.filter(function (f) {
+      return /\.(tpicons|zip|streamdeckiconpack)$/i.test(f.name);
+    })[0];
+    if (!archive) {
+      var images = files.filter(function (f) {
+        return imageType(f.name);
+      });
+      if (!images.length) return Promise.reject(new Error('.tpicons・.zip、または PNG・JPEG・WebP 画像を選んでください。'));
+      var folder = (images[0].webkitRelativePath || '').split('/')[0];
+      return Promise.resolve({
+        name: folder || baseName(images[0].name) + ' ほか',
+        author: '',
+        icons: images.map(function (f) {
+          return { name: baseName(f.name), key: guessPresetKey(baseName(f.name)), blob: f };
+        }),
+      });
+    }
+    if (archive.size > 50 * 1024 * 1024) return Promise.reject(new Error('パックのファイルは50MBまでです。'));
+    return archive.arrayBuffer().then(function (buffer) {
+      var entries = readZipEntries(buffer).filter(function (e) {
+          return !/\/$/.test(e.name) && !/(^|\/)(__MACOSX|\.)/.test(e.name);
+        }),
+        byName = {};
+      entries.forEach(function (e) {
+        byName[e.name.toLowerCase()] = e;
+      });
+      var manifestEntry = entries
+        .filter(function (e) {
+          return /(^|\/)icons\.json$/i.test(e.name);
+        })
+        .sort(function (a, b) {
+          return a.name.length - b.name.length;
+        })[0];
+      var infoEntry = entries.filter(function (e) {
+        return /(^|\/)manifest\.json$/i.test(e.name);
+      })[0];
+      function json(entry) {
+        if (!entry) return Promise.resolve(null);
+        return readZipEntry(buffer, entry).then(function (bytes) {
+          try {
+            return JSON.parse(new TextDecoder('utf-8').decode(bytes).replace(/^﻿/, ''));
+          } catch (e) {
+            throw new Error(entry.name + ' を読み取れません。');
+          }
+        });
+      }
+      return Promise.all([json(manifestEntry), json(infoEntry)]).then(function (loaded) {
+        var manifest = loaded[0],
+          info = loaded[1] || {},
+          root = manifestEntry ? manifestEntry.name.replace(/[^\/]*$/, '') : '',
+          list = manifest && (Array.isArray(manifest) ? manifest : manifest.icons),
+          icons = [];
+        function find(path) {
+          if (!path) return null;
+          path = String(path).replace(/\\/g, '/').replace(/^\.?\//, '');
+          return byName[(root + path).toLowerCase()] || byName[(root + 'icons/' + path).toLowerCase()] || byName[path.toLowerCase()] || null;
+        }
+        if (Array.isArray(list) && list.length) {
+          list.forEach(function (item) {
+            if (!item || typeof item !== 'object') return;
+            var entry = find(item.file || item.path || item.image);
+            if (!entry || !imageType(entry.name)) return;
+            var name = String(item.name || baseName(entry.name)).slice(0, 80);
+            icons.push({ name: name, key: presetMap[item.key] ? item.key : guessPresetKey(name) || guessPresetKey(baseName(entry.name)), entry: entry });
+          });
+        } else
+          entries.forEach(function (entry) {
+            if (!imageType(entry.name)) return;
+            icons.push({ name: baseName(entry.name), key: guessPresetKey(baseName(entry.name)), entry: entry });
+          });
+        if (!icons.length) throw new Error('パックの中にアイコン画像が見つかりません。');
+        return {
+          name: String((manifest && manifest.name) || info.Name || info.name || baseName(archive.name)).slice(0, 80),
+          author: String((manifest && manifest.author) || info.Author || info.author || '').slice(0, 80),
+          icons: icons.map(function (icon) {
+            return {
+              name: icon.name,
+              key: icon.key,
+              read: function () {
+                return readZipEntry(buffer, icon.entry).then(function (bytes) {
+                  return new Blob([bytes], { type: imageType(icon.entry.name) });
+                });
+              },
+            };
+          }),
+        };
+      });
+    });
+  }
+  function importIconPack(files) {
+    var progress = $('icon-pack-progress'),
+      packId = '',
+      skipped = 0;
+    $('icon-pack-file').disabled = true;
+    progress.textContent = 'パックを読み込んでいます…';
+    return readPackSource(files)
+      .then(function (source) {
+        if (source.icons.length > 600) throw new Error('1つのパックに入れられるアイコンは600個までです。');
+        return api('icon-packs/create', { name: source.name, author: source.author }).then(function (created) {
+          packId = created.id;
+          var batch = [],
+            batchSize = 0,
+            done = 0,
+            chain = Promise.resolve();
+          function flush() {
+            if (!batch.length) return Promise.resolve();
+            var icons = batch;
+            batch = [];
+            batchSize = 0;
+            return api('icon-packs/add', { id: packId, icons: icons }, 30000);
+          }
+          source.icons.forEach(function (icon, index) {
+            chain = chain
+              .then(function () {
+                return icon.blob ? icon.blob : icon.read();
+              })
+              .then(packIconData)
+              .then(
+                function (data) {
+                  batch.push({ id: 'i' + (index + 1), name: icon.name, key: icon.key || '', data: data });
+                  batchSize += data.length + 200;
+                },
+                function () {
+                  skipped++;
+                },
+              )
+              .then(function () {
+                done++;
+                progress.textContent = 'アイコンを変換しています… ' + done + ' / ' + source.icons.length;
+                if (batchSize > 900000) return flush();
+              });
+          });
+          return chain.then(flush).then(function () {
+            if (skipped === source.icons.length) throw new Error('読み込めるアイコン画像がありませんでした。');
+            return source;
+          });
+        });
+      })
+      .then(function (source) {
+        progress.textContent = '';
+        message('「' + source.name + '」を読み込みました（' + (source.icons.length - skipped) + '個' + (skipped ? '、読めなかった画像 ' + skipped + '個' : '') + '）。');
+        return loadIconPacks();
+      })
+      .catch(function (e) {
+        progress.textContent = '';
+        message('アイコンパックを読み込めませんでした。 ' + e.message);
+        if (packId) return api('icon-packs/delete', { id: packId }).then(loadIconPacks, function () {});
+      })
+      .finally(function () {
+        $('icon-pack-file').disabled = false;
+        $('icon-pack-file').value = '';
+      });
+  }
+  function fetchIconPack(id) {
+    if (iconPackCache[id]) return Promise.resolve(iconPackCache[id]);
+    return api('icon-packs/get?id=' + encodeURIComponent(id), undefined, 20000).then(function (pack) {
+      iconPackCache[id] = pack;
+      return pack;
+    });
+  }
+  function downloadBlob(blob, name) {
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(link.href);
+      link.remove();
+    }, 1000);
+  }
+  function safeFileName(name) {
+    return (name || 'icons').replace(/[\\\/:*?"<>|\u0000-\u001f]+/g, '_').trim().slice(0, 60) || 'icons';
+  }
+  function packZip(name, author, icons) {
+    var files = [],
+      manifest = { format: 'tapoard-icons', version: 1, name: name, author: author || '', icons: [] },
+      used = {};
+    icons.forEach(function (icon, index) {
+      var image = dataUrlBytes(icon.data),
+        file = safeFileName(icon.name || 'icon') + '.' + image.ext;
+      if (used[file.toLowerCase()]) file = safeFileName(icon.name || 'icon') + '-' + (index + 1) + '.' + image.ext;
+      used[file.toLowerCase()] = true;
+      files.push({ name: 'icons/' + file, bytes: image.bytes });
+      manifest.icons.push({ file: 'icons/' + file, name: icon.name || '', key: icon.key || '' });
+    });
+    files.unshift({ name: 'icons.json', bytes: new TextEncoder().encode(JSON.stringify(manifest, null, 2)) });
+    return buildZip(files);
+  }
+  function exportIconPack(id) {
+    fetchIconPack(id)
+      .then(function (pack) {
+        downloadBlob(packZip(pack.name, pack.author, pack.icons), safeFileName(pack.name) + '.tpicons');
+        message('「' + pack.name + '」を書き出しました。');
+      })
+      .catch(function (e) {
+        message('書き出せませんでした。 ' + e.message);
+      });
+  }
+  // Exports the pictures the buttons use now (original images and pack icons) as a new pack.
+  function exportCurrentIcons() {
+    var icons = [],
+      seen = {};
+    rows.map(rowData).forEach(function (app) {
+      var data = app.customIcon;
+      if (!data || seen[data]) return;
+      seen[data] = true;
+      icons.push({ name: app.name, key: app.iconKey || '', data: data });
+    });
+    if (!icons.length) {
+      message('画像アイコンを使っているボタンがありません。オリジナル画像かパックのアイコンを設定したボタンが書き出されます。');
+      return;
+    }
+    downloadBlob(packZip('TaPoard のボタン', '', icons), 'TaPoard-buttons.tpicons');
+    message(icons.length + '個のアイコンを書き出しました。');
+  }
+  function deleteIconPack(pack) {
+    if (!confirm('アイコンパック「' + pack.name + '」を削除しますか？\nボタンに設定済みのアイコンはそのまま残ります。')) return;
+    api('icon-packs/delete', { id: pack.id })
+      .then(function () {
+        delete iconPackCache[pack.id];
+        if (iconPickerPack === pack.id) iconPickerPack = '';
+        message('「' + pack.name + '」を削除しました。');
+        return loadIconPacks();
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
+  function renderIconPackList() {
+    var root = $('icon-pack-list');
+    if (!root) return;
+    root.textContent = '';
+    if (!iconPacks.length) {
+      var empty = document.createElement('p');
+      empty.className = 'icon-pack-empty';
+      empty.textContent = 'まだアイコンパックはありません。';
+      root.appendChild(empty);
+    }
+    iconPacks.forEach(function (pack) {
+      var item = document.createElement('div'),
+        preview = document.createElement('div'),
+        text = document.createElement('div'),
+        actions = document.createElement('div');
+      item.className = 'icon-pack-item';
+      preview.className = 'icon-pack-preview';
+      text.className = 'icon-pack-text';
+      actions.className = 'icon-pack-actions';
+      var title = document.createElement('strong');
+      title.textContent = pack.name;
+      var detail = document.createElement('small');
+      detail.textContent = pack.count + '個' + (pack.mapped ? '（標準アイコンと対応 ' + pack.mapped + '個）' : '') + (pack.author ? '・' + pack.author : '');
+      text.appendChild(title);
+      text.appendChild(detail);
+      [
+        ['書き出し', function () {
+          exportIconPack(pack.id);
+        }],
+        ['削除', function () {
+          deleteIconPack(pack);
+        }],
+      ].forEach(function (spec) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'subtle';
+        b.textContent = spec[0];
+        b.onclick = spec[1];
+        actions.appendChild(b);
+      });
+      item.appendChild(preview);
+      item.appendChild(text);
+      item.appendChild(actions);
+      root.appendChild(item);
+      fetchIconPack(pack.id)
+        .then(function (full) {
+          full.icons.slice(0, 6).forEach(function (icon) {
+            var img = document.createElement('img');
+            img.src = icon.data;
+            img.alt = '';
+            preview.appendChild(img);
+          });
+        })
+        .catch(function () {});
+    });
+  }
+  function loadIconPacks() {
+    return api('icon-packs')
+      .then(function (result) {
+        iconPacks = result.packs || [];
+        iconPacks.forEach(function (pack) {
+          if (iconPackCache[pack.id] && iconPackCache[pack.id].icons.length !== pack.count) delete iconPackCache[pack.id];
+        });
+        renderIconPackList();
+        renderPackChoices();
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
+  function choosePackIcon(pack, icon) {
+    if (!iconPickerTarget) return;
+    iconPickerTarget.customIcon = icon.data;
+    iconPickerTarget.iconPack = pack.id;
+    iconPickerTarget.iconPackItem = icon.id;
+    if (icon.key) iconPickerTarget.iconKey = icon.key;
+    refreshEditorIcon(iconPickerTarget);
+    closeIconPicker();
+    persistRows('パックのアイコンに変更して自動保存しました。');
+  }
+  // Pack tabs inside the icon picker.
+  function renderPackChoices() {
+    var root = $('icon-pack-choices');
+    if (!root) return;
+    root.textContent = '';
+    root.hidden = !iconPacks.length;
+    if (!iconPacks.length) return;
+    var tabs = document.createElement('div');
+    tabs.className = 'icon-pack-tabs';
+    tabs.setAttribute('role', 'tablist');
+    var grid = document.createElement('div');
+    grid.className = 'icon-preset-grid icon-pack-grid';
+    if (iconPickerPack && !iconPacks.some(function (p) { return p.id === iconPickerPack; })) iconPickerPack = '';
+    [{ id: '', name: '標準アイコン' }].concat(iconPacks).forEach(function (pack) {
+      var tab = document.createElement('button');
+      tab.type = 'button';
+      tab.textContent = pack.name;
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(iconPickerPack === pack.id));
+      tab.onclick = function () {
+        iconPickerPack = pack.id;
+        renderPackChoices();
+      };
+      tabs.appendChild(tab);
+    });
+    root.appendChild(tabs);
+    $('icon-preset-groups').hidden = !!iconPickerPack;
+    if (!iconPickerPack) return;
+    root.appendChild(grid);
+    grid.textContent = '読み込んでいます…';
+    fetchIconPack(iconPickerPack)
+      .then(function (pack) {
+        grid.textContent = '';
+        pack.icons.forEach(function (icon) {
+          var button = document.createElement('button'),
+            img = document.createElement('img'),
+            name = document.createElement('span');
+          button.type = 'button';
+          button.className = 'icon-choice';
+          button.title = icon.name;
+          button.classList.toggle('selected', !!iconPickerTarget && iconPickerTarget.iconPack === pack.id && iconPickerTarget.iconPackItem === icon.id);
+          img.src = icon.data;
+          img.alt = '';
+          img.className = 'preset-icon pack-icon';
+          name.textContent = icon.name;
+          button.appendChild(img);
+          button.appendChild(name);
+          button.onclick = function () {
+            choosePackIcon(pack, icon);
+          };
+          grid.appendChild(button);
+        });
+      })
+      .catch(function (e) {
+        grid.textContent = e.message;
+      });
+  }
+  if (admin) {
+    $('icon-pack-file').onchange = function () {
+      if (this.files && this.files.length) importIconPack(this.files);
+    };
+    $('icon-pack-folder').onchange = function () {
+      if (this.files && this.files.length) importIconPack(this.files);
+    };
+    $('icon-pack-export-buttons').onclick = exportCurrentIcons;
   }
   $('icon-picker-close').onclick = closeIconPicker;
   $('icon-picker-backdrop').onclick = function (e) {
@@ -3831,6 +4412,8 @@
       icon: a.icon || null,
       iconKey: a.iconKey || '',
       customIcon: a.customIcon || '',
+      iconPack: a.iconPack || '',
+      iconPackItem: a.iconPackItem || '',
       iconColor: a.iconColor || '',
       deviceTarget: a.deviceTarget || 'speaker',
       deviceId: { value: a.deviceId || '' },
@@ -4002,6 +4585,8 @@
       deviceTarget: r.deviceTarget,
       deviceName: r.deviceName,
       customIcon: r.customIcon || '',
+      iconPack: r.customIcon ? r.iconPack || '' : '',
+      iconPackItem: r.customIcon ? r.iconPackItem || '' : '',
       options: r.options,
     };
   }
@@ -5417,5 +6002,6 @@
     renderIconPicker();
     settings();
     refreshPairing();
+    loadIconPacks();
   } else if (key) refresh();
 })();

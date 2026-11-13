@@ -13,6 +13,9 @@ class AppEntry
     public string iconKey { get; set; }
     public string iconColor { get; set; }
     public string customIcon { get; set; }
+    // 3.1: the icon pack (and picture in it) that customIcon was copied from.
+    public string iconPack { get; set; }
+    public string iconPackItem { get; set; }
     public string type { get; set; }
     public string action { get; set; }
     public string category { get; set; }
