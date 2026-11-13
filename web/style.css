@@ -3134,3 +3134,75 @@ body.pc-window main {
 .background-image-controls label:has(input[type="range"]) {
   display: flex;
 }
+
+/* 3.1: saved looks */
+.icon-style-count {
+  color: #9aa2b1;
+  font-size: 13px;
+}
+.icon-style-save {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+.icon-style-save input {
+  flex: 1;
+  min-width: 200px;
+}
+.icon-style-list {
+  display: grid;
+  gap: 8px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.icon-style-empty {
+  color: #9aa2b1;
+}
+.icon-style-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 12px;
+  border: 1px solid #343c4e;
+  border-radius: 12px;
+  background: #161b24;
+}
+.icon-style-swatch {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #ffffff30;
+  border-radius: 10px;
+  font-size: 18px;
+}
+.icon-style-row > div:not(.icon-style-actions) {
+  display: grid;
+  flex: 1;
+  min-width: 160px;
+  gap: 2px;
+}
+.icon-style-row small {
+  color: #9aa2b1;
+}
+.icon-style-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.look-save-dialog {
+  max-width: 520px;
+}
+.look-save-dialog label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.look-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

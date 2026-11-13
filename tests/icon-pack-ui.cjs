@@ -118,6 +118,7 @@ function zip(files) {
     await admin.locator('#icon-pack-bulk-pack').selectOption(pack.id);
     let bulk = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
     await admin.locator('#icon-pack-bulk-apply').click();
+    await admin.locator('#look-save-no').click();
     await bulk;
     assert.match(await admin.locator('#message').innerText(), /1個変更.*合う絵がなかったボタン 1個/);
     settings = (await api('settings')).data;
@@ -134,11 +135,13 @@ function zip(files) {
     // Apply again, then switch everything back to the standard icons.
     bulk = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
     await admin.locator('#icon-pack-bulk-apply').click();
+    await admin.locator('#look-save-no').click();
     await bulk;
     assert.equal((await api('settings')).data.apps.find(a => a.orientation === 'portrait').iconPack, pack.id);
     await admin.locator('#icon-pack-bulk-pack').selectOption('');
     bulk = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
     await admin.locator('#icon-pack-bulk-apply').click();
+    await admin.locator('#look-save-no').click();
     await bulk;
     portrait = (await api('settings')).data.apps.find(a => a.orientation === 'portrait');
     assert(!portrait.customIcon && !portrait.iconPack && portrait.iconKey === 'paste', 'standard icons come back');

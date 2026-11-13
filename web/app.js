@@ -4241,8 +4241,204 @@
     persistRows('一括変更の前に戻しました。');
   }
   if (admin) {
-    $('icon-pack-bulk-apply').onclick = bulkChangeIcons;
+    $('icon-pack-bulk-apply').onclick = function () {
+      askSaveLook('一括変更すると、今のアイコンが置き換わります。').then(function (go) {
+        if (go) bulkChangeIcons();
+      });
+    };
     $('icon-pack-bulk-undo').onclick = undoBulkChange;
+  }
+  // ---- 3.1 saved looks: named copies of the icons and background kept on the PC ----
+  var iconStyles = [],
+    iconStyleMax = 20;
+  function lookDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function defaultLookName() {
+    var d = new Date();
+    return d.getMonth() + 1 + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + ' の見た目';
+  }
+  // Waits for button and background changes that are still being saved, so the copy matches the screen.
+  function settleSaves() {
+    var wait = backgroundSaveTimer
+      ? new Promise(function (resolve) {
+          setTimeout(resolve, 500);
+        })
+      : Promise.resolve();
+    return wait.then(function () {
+      return saveQueue.catch(function () {});
+    });
+  }
+  function saveLook(name) {
+    return settleSaves()
+      .then(function () {
+        return api('icon-styles/save', { name: name || '' });
+      })
+      .then(function () {
+        return loadIconStyles();
+      });
+  }
+  function loadIconStyles() {
+    return api('icon-styles')
+      .then(function (result) {
+        iconStyles = result.styles || [];
+        iconStyleMax = result.maxStyles || 20;
+        renderIconStyles();
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
+  function renderIconStyles() {
+    var root = $('icon-style-list');
+    if (!root) return;
+    root.textContent = '';
+    $('icon-style-count').textContent = iconStyles.length + ' / ' + iconStyleMax;
+    $('icon-style-save').disabled = iconStyles.length >= iconStyleMax;
+    if (!iconStyles.length) {
+      var empty = document.createElement('p');
+      empty.className = 'icon-style-empty';
+      empty.textContent = 'まだ保存した見た目はありません。';
+      root.appendChild(empty);
+      return;
+    }
+    iconStyles.forEach(function (style) {
+      var row = document.createElement('div'),
+        swatch = document.createElement('span'),
+        text = document.createElement('div'),
+        title = document.createElement('strong'),
+        note = document.createElement('small'),
+        actions = document.createElement('div');
+      row.className = 'icon-style-row';
+      row.dataset.styleId = style.id;
+      swatch.className = 'icon-style-swatch';
+      swatch.style.background = style.color ? (style.color2 ? 'linear-gradient(135deg, ' + style.color + ', ' + style.color2 + ')' : style.color) : '#111216';
+      if (style.hasImage) swatch.textContent = '🖼';
+      title.textContent = style.name;
+      note.textContent = lookDate(style.created) + '・ボタン ' + style.count + ' 個' + (style.hasImage ? '・背景画像あり' : '');
+      text.appendChild(title);
+      text.appendChild(note);
+      actions.className = 'icon-style-actions';
+      [
+        ['この見た目に戻す', '', function () {
+          applyLook(style);
+        }],
+        ['名前を変える', 'subtle', function () {
+          var name = prompt('新しい名前', style.name);
+          if (name === null) return;
+          api('icon-styles/rename', { id: style.id, name: name })
+            .then(loadIconStyles)
+            .catch(function (e) {
+              message(e.message);
+            });
+        }],
+        ['削除', 'subtle danger-subtle', function () {
+          if (!confirm('「' + style.name + '」を削除しますか？')) return;
+          api('icon-styles/delete', { id: style.id })
+            .then(function () {
+              message('「' + style.name + '」を削除しました。');
+              return loadIconStyles();
+            })
+            .catch(function (e) {
+              message(e.message);
+            });
+        }],
+      ].forEach(function (a) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = a[0];
+        b.className = a[1];
+        b.onclick = a[2];
+        actions.appendChild(b);
+      });
+      row.appendChild(swatch);
+      row.appendChild(text);
+      row.appendChild(actions);
+      root.appendChild(row);
+    });
+  }
+  function applyLook(style) {
+    askSaveLook('「' + style.name + '」に戻すと、今のアイコンと背景が置き換わります。').then(function (go) {
+      if (!go) return;
+      settleSaves()
+        .then(function () {
+          return api('icon-styles/apply', { id: style.id }, 30000);
+        })
+        .then(function (result) {
+          backgroundImageVersion = '';
+          return settings().then(function () {
+            message('「' + style.name + '」の見た目に戻しました（ボタン ' + result.changed + ' 個）。');
+          });
+        })
+        .catch(function (e) {
+          message('見た目を戻せませんでした。 ' + e.message);
+        });
+    });
+  }
+  // Asks whether to keep the current look before something replaces it. Resolves true to go on.
+  function askSaveLook(reason) {
+    var backdrop = $('look-save-backdrop');
+    if (!backdrop) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var full = iconStyles.length >= iconStyleMax;
+      $('look-save-reason').textContent = reason + (full ? ' 保存できる数（' + iconStyleMax + '個）に達しているため、保存するには先に古いものを削除してください。' : '');
+      $('look-save-name').value = defaultLookName();
+      $('look-save-name').disabled = full;
+      $('look-save-yes').disabled = full;
+      backdrop.hidden = false;
+      (full ? $('look-save-no') : $('look-save-name')).focus();
+      function close(value) {
+        backdrop.hidden = true;
+        document.removeEventListener('keydown', onKey, true);
+        resolve(value);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          close(false);
+        }
+      }
+      document.addEventListener('keydown', onKey, true);
+      $('look-save-no').onclick = function () {
+        close(true);
+      };
+      $('look-save-cancel').onclick = function () {
+        close(false);
+      };
+      $('look-save-yes').onclick = function () {
+        var name = $('look-save-name').value;
+        $('look-save-yes').disabled = true;
+        saveLook(name)
+          .then(function () {
+            $('look-save-yes').disabled = false;
+            message('「' + (name.trim() || '今の見た目') + '」を保存しました。');
+            close(true);
+          })
+          .catch(function (e) {
+            $('look-save-yes').disabled = false;
+            message('保存できませんでした。 ' + e.message);
+          });
+      };
+    });
+  }
+  if (admin) {
+    $('icon-style-save').onclick = function () {
+      var name = $('icon-style-name').value;
+      $('icon-style-save').disabled = true;
+      saveLook(name)
+        .then(function () {
+          $('icon-style-name').value = '';
+          message('今の見た目を保存しました。');
+        })
+        .catch(function (e) {
+          message('保存できませんでした。 ' + e.message);
+        })
+        .finally(function () {
+          $('icon-style-save').disabled = iconStyles.length >= iconStyleMax;
+        });
+    };
   }
   // ---- 3.1 deck background: color, gradient and a picture with a position per orientation ----
   var deckBackground = { color: '', color2: '', image: '', dim: 0, blur: 0, landscape: null, portrait: null },
@@ -6552,5 +6748,6 @@
     settings();
     refreshPairing();
     loadIconPacks();
+    loadIconStyles();
   } else if (key) refresh();
 })();
