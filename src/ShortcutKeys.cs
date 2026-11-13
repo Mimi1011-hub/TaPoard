@@ -8,6 +8,8 @@ static class ShortcutKeys
 {
     static readonly Dictionary<string, byte[]> keys = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase)
     {
+        // 3.1: a key the user chooses; F13 until one is set (no app uses it by default).
+        { "key-custom", new byte[] { 0x7C } },
         { "common-copy", new byte[] { 0x11, 0x43 } },
         { "common-paste", new byte[] { 0x11, 0x56 } },
         { "common-cut", new byte[] { 0x11, 0x58 } },

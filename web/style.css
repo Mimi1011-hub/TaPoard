@@ -3206,3 +3206,52 @@ body.pc-window main {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* 3.1: purpose presets */
+.preset-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #343c4e;
+  border-radius: 12px;
+  background: #161b24;
+}
+.preset-card h3 {
+  margin: 0;
+  font-size: 17px;
+}
+.preset-card p {
+  margin: 0;
+}
+.preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid #343c4e;
+  border-radius: 999px;
+  background: #1d2330;
+  font-size: 12px;
+}
+.preset-setup {
+  color: #9aa2b1;
+  font-size: 12px;
+}
+.preset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
