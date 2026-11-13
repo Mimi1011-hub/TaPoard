@@ -73,6 +73,16 @@ partial class Program
             ReplyJson(s, 200, PcWindowView());
             return;
         }
+        if (path == "/api/icon-packs" && method == "GET" && r.isAdmin)
+        {
+            ReplyJson(s, 200, new { packs = IconPacks.List(Data), maxPacks = IconPacks.MaxPacks, maxIcons = IconPacks.MaxIcons });
+            return;
+        }
+        if (path == "/api/icon-packs/get" && method == "GET" && r.isAdmin)
+        {
+            Reply(s, 200, JsonType, IconPacks.Serializer().Serialize(IconPacks.Get(Data, QueryValue(r.target, "id"))));
+            return;
+        }
         if (path == "/api/firewall" && method == "GET" && r.isAdmin)
         {
             ReplyJson(s, 200, FirewallCheck.Status(Root));
@@ -154,6 +164,8 @@ partial class Program
             SaveSettings(json);
             Reply(s, 200, JsonType, "{\"ok\":true}");
         }
+        else if (path.StartsWith("/api/icon-packs/", StringComparison.Ordinal) && r.isAdmin)
+            IconPackAction(r, path.Substring("/api/icon-packs/".Length), input, json);
         else if (path == "/api/rotate" && r.isAdmin)
         {
             RotateKeys();
@@ -235,6 +247,40 @@ partial class Program
             if (!was)
                 Signal();
         }
+    }
+
+    class IconPackAddRequest
+    {
+        public string id { get; set; }
+        public List<IconPackItem> icons { get; set; }
+    }
+
+    // 3.1 icon pack create/add/rename/delete. Packs live beside the settings in data\icon-packs.
+    static void IconPackAction(Request r, string action, Dictionary<string, object> input, string json)
+    {
+        object raw;
+        string id = input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null;
+        string name = input.TryGetValue("name", out raw) ? Convert.ToString(raw) : null;
+        string author = input.TryGetValue("author", out raw) ? Convert.ToString(raw) : null;
+        if (action == "create")
+            ReplyJson(r.stream, 200, new { ok = true, id = IconPacks.Create(Data, name, author) });
+        else if (action == "add")
+        {
+            var request = IconPacks.Serializer().Deserialize<IconPackAddRequest>(json);
+            ReplyJson(r.stream, 200, new { ok = true, count = IconPacks.Add(Data, request.id, request.icons) });
+        }
+        else if (action == "rename")
+        {
+            IconPacks.Rename(Data, id, name, author);
+            ReplyJson(r.stream, 200, new { ok = true });
+        }
+        else if (action == "delete")
+        {
+            IconPacks.Delete(Data, id);
+            ReplyJson(r.stream, 200, new { ok = true });
+        }
+        else
+            Reply(r.stream, 404, JsonType, "{}");
     }
 
     static void GetState(Request r)
@@ -750,6 +796,11 @@ partial class Program
             throw new Exception("登録されていないアイコンです");
         if (!IconPresets.ValidCustomIcon(a.customIcon))
             throw new Exception("オリジナルアイコンの形式またはサイズが正しくありません");
+        if (String.IsNullOrEmpty(a.customIcon) || !IconPacks.ValidId(a.iconPack) || !IconPacks.ValidItemId(a.iconPackItem))
+        {
+            a.iconPack = null;
+            a.iconPackItem = null;
+        }
         if (IsType(a, "audioDevice"))
         {
             var device = ResolveAudioDevice(a);

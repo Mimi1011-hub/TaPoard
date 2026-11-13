@@ -2866,4 +2866,119 @@ body.pc-window main {
 }
 #controls {
   overflow-x: clip;
+}/* 3.1 icon packs */
+.icon-pack-panel {
+  max-width: 860px;
+  margin: 22px auto 0;
+}
+.icon-pack-import {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+.custom-icon-button.subtle-label {
+  background: #20242c;
+  border-color: #414652;
+}
+#icon-pack-progress {
+  font-size: 12px;
+  color: #b7becb;
+}
+.icon-pack-list {
+  display: grid;
+  gap: 10px;
+}
+.icon-pack-empty {
+  color: #778092;
+  font-size: 12px;
+}
+.icon-pack-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  background: #111318;
+  border: 1px solid #303641;
+  border-radius: 12px;
+}
+.icon-pack-preview {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  width: 168px;
+}
+.icon-pack-preview img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.icon-pack-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.icon-pack-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icon-pack-text small {
+  color: #8d95a3;
+}
+.icon-pack-actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+.icon-pack-format {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #b7becb;
+}
+.icon-pack-format pre {
+  overflow-x: auto;
+  padding: 10px;
+  background: #0d0f13;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.icon-pack-choices {
+  margin-top: 14px;
+}
+.icon-pack-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.icon-pack-tabs button {
+  min-height: 34px;
+  padding: 6px 12px;
+  background: #111318;
+  border-color: #303641;
+  color: #b7becb;
+  font-size: 12px;
+}
+.icon-pack-tabs button[aria-selected='true'] {
+  border-color: #7d9cff;
+  background: #1c294d;
+  color: #fff;
+}
+.icon-choice img.pack-icon {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  background: none;
+}
+@media (max-width: 600px) {
+  .icon-pack-item {
+    flex-wrap: wrap;
+  }
+  .icon-pack-preview {
+    width: 100%;
+  }
 }
