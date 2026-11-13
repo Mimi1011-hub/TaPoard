@@ -67,6 +67,7 @@ static class SettingsFile
         Directory.CreateDirectory(dataDirectory);
         string path = Path.Combine(dataDirectory, FileName);
         string temporary = path + ".tmp";
+        SettingsBackups.Take(dataDirectory, path);
         try
         {
             File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(settings), new UTF8Encoding(false));

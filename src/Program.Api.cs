@@ -91,6 +91,11 @@ partial class Program
             Reply(s, 200, JsonType, IconPacks.Serializer().Serialize(IconPacks.Get(Data, QueryValue(r.target, "id"))));
             return;
         }
+        if (path == "/api/backups" && method == "GET" && r.isAdmin)
+        {
+            ReplyJson(s, 200, new { backups = SettingsBackups.List(Data) });
+            return;
+        }
         if (path == "/api/presets" && method == "GET" && r.isAdmin)
         {
             ReplyJson(s, 200, new { presets = DeckPresets.Public() });
@@ -124,6 +129,10 @@ partial class Program
             SetBackground(r, path, input, json);
         else if (path == "/api/page/delete" && r.isAdmin)
             DeletePage(r, input);
+        else if (path == "/api/backups/restore" && r.isAdmin)
+            RestoreBackup(r, input);
+        else if (path == "/api/fader/remove" && r.isAdmin)
+            RemoveFader(r, input);
         else if (path == "/api/presets/apply" && r.isAdmin)
             ApplyPreset(r, input);
         else if (path == "/api/page/undo" && r.isAdmin)
@@ -327,11 +336,26 @@ partial class Program
         else if (action == "apply")
             lock (Gate)
             {
-                int changed = IconStyles.Apply(Data, id, config);
+                string before = IconPacks.Serializer().Serialize(config);
+                var candidate = IconPacks.Serializer().Deserialize<Settings>(before);
+                int changed = IconStyles.Apply(Data, id, candidate, ValidateEntry);
+                DeckLayout.Migrate(candidate);
+                DeckLayout.Validate(candidate);
+                config = candidate;
+                NormalizeControlSlots();
+                DisplaySubscriptions.RemoveUnknown(config.apps);
+                InputSessions.ClearAll();
+                landscapePage = 0;
+                portraitPage = 0;
                 Save();
                 version = NewId();
                 Signal();
-                ReplyJson(r.stream, 200, new { ok = true, changed = changed, background = DeckBackgrounds.Public(config.background), version = version, revision = revision });
+                // Restoring a look can be undone once, like a page delete or a preset.
+                pageUndoSettings = before;
+                pageUndoAfter = UndoSignature(config);
+                pageUndoOrientation = "landscape";
+                pageUndoPage = 0;
+                ReplyJson(r.stream, 200, new { ok = true, changed = changed, background = DeckBackgrounds.Public(config.background), landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
             }
         else if (action == "rename")
         {
@@ -697,7 +721,74 @@ partial class Program
         }
     }
 
-    // 3.1: adds a purpose preset on a new page, or in place of every button of one orientation.
+    // 3.1: puts an automatic backup back. Phone keys, paired phones and the PC window stay as they are.
+    static void RestoreBackup(Request r, Dictionary<string, object> input)
+    {
+        var restored = SettingsBackups.Read(Data, Convert.ToString(input["id"]));
+        lock (Gate)
+        {
+            string before = IconPacks.Serializer().Serialize(config);
+            restored.schemaVersion = config.schemaVersion;
+            restored.token = config.token;
+            restored.pairingKey = config.pairingKey;
+            restored.devices = config.devices;
+            restored.pcWindow = config.pcWindow;
+            if (restored.apps == null) restored.apps = new List<AppEntry>();
+            if (restored.background != null && DeckBackgrounds.ImageData(Data, restored.background) == null)
+                restored.background = DeckBackgrounds.Clean(restored.background, null);
+            var kept = new List<AppEntry>();
+            var current = config;
+            config = restored; // ValidateEntry keeps ids that exist in the settings being checked
+            try
+            {
+                foreach (var a in restored.apps)
+                {
+                    try { ValidateEntry(a); kept.Add(a); }
+                    catch { }
+                }
+            }
+            finally { config = current; }
+            restored.apps = kept;
+            DeckLayout.Migrate(restored);
+            DeckLayout.Validate(restored);
+            config = restored;
+            NormalizeControlSlots();
+            DisplaySubscriptions.RemoveUnknown(config.apps);
+            InputSessions.ClearAll();
+            landscapePage = 0;
+            portraitPage = 0;
+            Save();
+            version = NewId();
+            Signal();
+            pageUndoSettings = before;
+            pageUndoAfter = UndoSignature(config);
+            pageUndoOrientation = "landscape";
+            pageUndoPage = 0;
+            ReplyJson(r.stream, 200, new { ok = true, buttons = kept.Count, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = 0, portraitPage = 0, version = version, revision = revision });
+        }
+    }
+
+    // 3.1: removes the speaker or microphone fader from every page of one orientation, or restores it.
+    static void RemoveFader(Request r, Dictionary<string, object> input)
+    {
+        string orientation = ReadOrientation(input);
+        RequireOrientation(orientation);
+        string target = Convert.ToString(input["target"]);
+        if (target != "speaker" && target != "mic") throw new Exception("フェーダーの指定が正しくありません。");
+        bool removed = !input.ContainsKey("removed") || Convert.ToBoolean(input["removed"]);
+        lock (Gate)
+        {
+            var candidate = IconPacks.Serializer().Deserialize<Settings>(IconPacks.Serializer().Serialize(config));
+            DeckLayout.SetOff(candidate, orientation == "portrait", target == "mic", removed);
+            DeckLayout.Validate(candidate);
+            config = candidate;
+            Save();
+            Signal();
+            ReplyJson(r.stream, 200, new { ok = true, revision = revision });
+        }
+    }
+
+    // 3.1: overwrites the page being shown with a purpose preset (grid size, faders, buttons, widgets).
     // Uses the same one-step undo as a page delete.
     static void ApplyPreset(Request r, Dictionary<string, object> input)
     {
@@ -705,20 +796,23 @@ partial class Program
         RequireOrientation(orientation);
         object raw;
         string id = input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null;
-        bool replace = input.TryGetValue("mode", out raw) && Convert.ToString(raw) == "replace";
+        int target = input.TryGetValue("page", out raw) ? Convert.ToInt32(raw) : 0;
         lock (Gate)
         {
             string before = IconPacks.Serializer().Serialize(config);
             var candidate = IconPacks.Serializer().Deserialize<Settings>(before);
-            int first = DeckPresets.Apply(candidate, id, orientation, replace, NewId);
+            DeckLayout.MigrateGrid(candidate);
+            int placed = DeckPresets.Apply(candidate, id, orientation, target, NewId);
             foreach (var a in candidate.apps)
                 if (a.orientation == orientation)
                     ValidateEntry(a);
+            DeckLayout.MigrateControls(candidate);
             DeckLayout.Validate(candidate);
             config = candidate;
+            NormalizeControlSlots();
             DisplaySubscriptions.RemoveUnknown(config.apps);
             InputSessions.ClearAll();
-            if (orientation == "portrait") portraitPage = first; else landscapePage = first;
+            if (orientation == "portrait") portraitPage = target; else landscapePage = target;
             ShrinkCurrentPages(DeckLayout.Pages(config, "landscape"), DeckLayout.Pages(config, "portrait"));
             Save();
             version = NewId();
@@ -726,8 +820,8 @@ partial class Program
             pageUndoSettings = before;
             pageUndoAfter = UndoSignature(config);
             pageUndoOrientation = orientation;
-            pageUndoPage = first;
-            ReplyJson(r.stream, 200, new { ok = true, page = first, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+            pageUndoPage = target;
+            ReplyJson(r.stream, 200, new { ok = true, page = target, placed = placed, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
         }
     }
 
@@ -1106,6 +1200,10 @@ partial class Program
         DeckLayout.SetControls(next, true, DeckLayout.GetControls(config, true));
         next.landscapeControlPages = config.landscapeControlPages;
         next.portraitControlPages = config.portraitControlPages;
+        next.landscapeSpeakerOff = config.landscapeSpeakerOff;
+        next.landscapeMicOff = config.landscapeMicOff;
+        next.portraitSpeakerOff = config.portraitSpeakerOff;
+        next.portraitMicOff = config.portraitMicOff;
         next.devices = config.devices;
         next.pageCount = config.pageCount;
         next.landscapePageCount = config.landscapePageCount;

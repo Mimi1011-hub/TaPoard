@@ -65,19 +65,63 @@ static class DeckLayout
         return null;
     }
 
+    internal static bool Off(Settings s, bool portrait, bool mic)
+    {
+        return portrait ? (mic ? s.portraitMicOff : s.portraitSpeakerOff) : (mic ? s.landscapeMicOff : s.landscapeSpeakerOff);
+    }
+
+    // 3.1: removes a fader from every page of one orientation, or brings it back on every page.
+    internal static void SetOff(Settings s, bool portrait, bool mic, bool off)
+    {
+        if (portrait) { if (mic) s.portraitMicOff = off; else s.portraitSpeakerOff = off; }
+        else { if (mic) s.landscapeMicOff = off; else s.landscapeSpeakerOff = off; }
+        foreach (var entry in ControlPages(s, portrait))
+        {
+            if (entry == null) continue;
+            if (mic) entry.micHidden = off; else entry.speakerHidden = off;
+        }
+        if (!off)
+        {
+            // Pages whose buttons now sit where the fader was keep it hidden.
+            string orientation = OrientationName(portrait);
+            for (int page = 0; page < Pages(s, orientation); page++)
+            {
+                var place = PagePlacement(s, portrait, mic, page);
+                if (place == null) continue;
+                bool blocked = s.apps.Exists(a => a.orientation == orientation && Position(a, portrait) != null && Position(a, portrait).page == page
+                    && Overlap(Position(a, portrait).row, Position(a, portrait).column, Width(a), Height(a), place.row, place.column, place.width, place.height));
+                var other = PagePlacement(s, portrait, !mic, page);
+                if (other != null && Overlap(other.row, other.column, other.width, other.height, place.row, place.column, place.width, place.height)) blocked = true;
+                if (!blocked) continue;
+                var entry = FindPage(s, portrait, page);
+                if (entry == null)
+                {
+                    entry = new ControlPage { page = page, speaker = Placement(s, portrait, false), mic = Placement(s, portrait, true), speakerHidden = Off(s, portrait, false), micHidden = Off(s, portrait, true) };
+                    ControlPages(s, portrait).Add(entry);
+                }
+                if (mic) entry.micHidden = true; else entry.speakerHidden = true;
+            }
+            ControlPages(s, portrait).Sort((a, b) => a.page.CompareTo(b.page));
+        }
+        ControlPages(s, portrait).RemoveAll(entry => entry != null && !entry.speakerHidden && !entry.micHidden && Same(entry.speaker, Placement(s, portrait, false)) && Same(entry.mic, Placement(s, portrait, true)) && !Off(s, portrait, false) && !Off(s, portrait, true));
+    }
+
     // The fader as shown on one page, or null when that page hides it.
     internal static ControlPlacement PagePlacement(Settings s, bool portrait, bool mic, int page)
     {
         var entry = FindPage(s, portrait, page);
-        if (entry == null) return Placement(s, portrait, mic);
+        if (entry == null) return Off(s, portrait, mic) ? null : Placement(s, portrait, mic);
         if (mic ? entry.micHidden : entry.speakerHidden) return null;
-        return (mic ? entry.mic : entry.speaker) ?? Placement(s, portrait, mic);
+        var own = mic ? entry.mic : entry.speaker;
+        if (own == null && Off(s, portrait, mic)) return null;
+        return own ?? Placement(s, portrait, mic);
     }
 
     internal static ControlLayout GetPageControls(Settings s, bool portrait, int page, out bool speakerHidden, out bool micHidden)
     {
         var entry = FindPage(s, portrait, page);
-        speakerHidden = entry != null && entry.speakerHidden; micHidden = entry != null && entry.micHidden;
+        speakerHidden = entry != null ? entry.speakerHidden || (entry.speaker == null && Off(s, portrait, false)) : Off(s, portrait, false);
+        micHidden = entry != null ? entry.micHidden || (entry.mic == null && Off(s, portrait, true)) : Off(s, portrait, true);
         int columns = Columns(s, portrait);
         var speaker = (entry != null ? entry.speaker : null) ?? Placement(s, portrait, false);
         var mic = (entry != null ? entry.mic : null) ?? Placement(s, portrait, true);
@@ -93,7 +137,8 @@ static class DeckLayout
         var mic = FromLayout(c.micRow, c.micColumn, c.micSlot, c.micWidth, c.micHeight, c.micSize, columns);
         var pages = ControlPages(s, portrait);
         pages.RemoveAll(entry => entry == null || entry.page == page);
-        if (!speakerHidden && !micHidden && Same(speaker, Placement(s, portrait, false)) && Same(mic, Placement(s, portrait, true))) return;
+        if (!speakerHidden && !micHidden && !Off(s, portrait, false) && !Off(s, portrait, true) && Same(speaker, Placement(s, portrait, false)) && Same(mic, Placement(s, portrait, true))) return;
+        if (speakerHidden == Off(s, portrait, false) && micHidden == Off(s, portrait, true) && Same(speaker, Placement(s, portrait, false)) && Same(mic, Placement(s, portrait, true))) return;
         pages.Add(new ControlPage { page = page, speaker = speaker, mic = mic, speakerHidden = speakerHidden, micHidden = micHidden });
         pages.Sort((a, b) => a.page.CompareTo(b.page));
     }
