@@ -83,6 +83,14 @@ input {
   font-size: 16px;
   margin: 8px 0 14px;
 }
+/* Sliders: the text-box padding above would leave a gap after the knob at 100%. */
+input[type="range"] {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  accent-color: #5f82eb;
+}
 input[type="checkbox"] {
   display: inline-block;
   width: auto;
