@@ -133,6 +133,6 @@ class WidgetRegistryTests
         WidgetRegistry.ValidateAndNormalize(legacyMetric);
         Check((string)legacyMetric.options["gpuName"] == "", "2.0 metrics without a GPU name still load");
         var definitions = WidgetRegistry.PublicDefinitions() as List<object>;
-        Check(definitions != null && definitions.Count == 11, "all current widget definitions are public");
+        Check(definitions != null && definitions.Count == 12, "all current widget definitions are public");
     }
 }
