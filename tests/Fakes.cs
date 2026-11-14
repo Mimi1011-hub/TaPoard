@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 sealed class FakeKeySender : IKeySender
@@ -56,4 +57,37 @@ sealed class FakeShellActions : IShellActions
     }
     public void StartApp(string path) { Calls.Add("StartApp:" + path); }
     public void StartProcess(string path, string args) { Calls.Add("StartProcess:" + path + ":" + args); }
+}
+
+sealed class FakeSettingsStore : ISettingsStore
+{
+    internal Settings Current;
+    internal Settings Saved;
+    internal object Backups = new object();
+    internal Settings Backup;
+    internal readonly List<string> Calls = new List<string>();
+
+    public Settings Load(Func<Settings> createDefaults)
+    {
+        Calls.Add("Load");
+        return Current ?? createDefaults();
+    }
+
+    public void Save(Settings settings)
+    {
+        Calls.Add("Save");
+        Saved = settings;
+    }
+
+    public object ListBackups()
+    {
+        Calls.Add("ListBackups");
+        return Backups;
+    }
+
+    public Settings ReadBackup(string id)
+    {
+        Calls.Add("ReadBackup:" + id);
+        return Backup;
+    }
 }
