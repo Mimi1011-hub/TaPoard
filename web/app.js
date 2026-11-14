@@ -3627,6 +3627,7 @@
     $('icon-picker-current').textContent = (fields.name && fields.name.value) || 'ボタン';
     $('custom-icon-file').value = '';
     $('icon-picker-backdrop').hidden = false;
+    $('icon-picker-top').hidden = $('icon-picker-backdrop').scrollTop < 300;
     $('icon-search').value = '';
     iconPickerPack = fields.iconPack && iconPacks.some(function (p) { return p.id === fields.iconPack; }) ? fields.iconPack : '';
     renderPackChoices();
@@ -5657,6 +5658,17 @@
   }
   window.addEventListener('resize', paintBackground);
   $('icon-picker-close').onclick = closeIconPicker;
+  // Long icon lists: a button that follows the scroll brings the list back to the top.
+  if ($('icon-picker-top')) {
+    var pickerScroll = $('icon-picker-backdrop');
+    pickerScroll.addEventListener('scroll', function () {
+      $('icon-picker-top').hidden = pickerScroll.scrollTop < 300;
+    });
+    $('icon-picker-top').onclick = function (e) {
+      e.stopPropagation();
+      pickerScroll.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+  }
   $('icon-picker-backdrop').onclick = function (e) {
     if (e.target === this) closeIconPicker();
   };
