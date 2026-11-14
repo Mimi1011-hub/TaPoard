@@ -31,7 +31,9 @@ class IconPack
 static class IconPacks
 {
     internal const int MaxPacks = 50;
-    internal const int MaxIcons = 600;
+    internal const int MaxIcons = 5000;
+    // All pictures of one pack together (each one is at most 60 KB); keeps the file quick to open.
+    internal const long MaxPackChars = 64L * 1024 * 1024;
     internal const int MaxNameLength = 80;
     static readonly object Gate = new object();
     static readonly Regex IdPattern = new Regex("\\A[0-9a-f]{32}\\z");
@@ -140,6 +142,10 @@ static class IconPacks
         {
             var pack = Read(data, id);
             if (pack.icons.Count + icons.Count > MaxIcons) throw new Exception("1つのパックに入れられるアイコンは" + MaxIcons + "個までです。");
+            long chars = 0;
+            foreach (var icon in pack.icons) chars += (icon.data ?? "").Length;
+            foreach (var icon in icons) if (icon != null) chars += (icon.data ?? "").Length;
+            if (chars > MaxPackChars) throw new Exception("アイコンパックが大きすぎます（画像の合計が64MBまで）。パックを分けて読み込んでください。");
             var used = new HashSet<string>();
             foreach (var icon in pack.icons) used.Add(icon.id);
             foreach (var icon in icons)

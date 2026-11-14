@@ -213,6 +213,38 @@ function zip(files) {
     assert.equal(await admin.locator('.icon-pack-grid .icon-choice:visible').count(), 2, 'tags are searchable (and the heading)');
     await admin.locator('#icon-picker-close').click();
 
+    // A large pack (more than the old 600 limit): every icon is kept, pictures fill in while scrolling.
+    const many = 1500, bigIcons = [], bigFiles = [];
+    for (let i = 0; i < many; i++) {
+      const name = 'logo' + i;
+      bigIcons.push({ path: name + '.svg', name: name, tags: [i < 750 ? 'A' : 'B'] });
+      bigFiles.push({ name: 'com.big.sdIconPack/icons/' + name + '.svg', data: Buffer.from(svg.replace('#e2455b', '#' + (0x100000 + i * 97).toString(16).slice(-6))) });
+    }
+    const bigFile = path.join(temp, 'big.streamDeckIconPack');
+    fs.writeFileSync(bigFile, zip([
+      { name: 'com.big.sdIconPack/manifest.json', data: Buffer.from(JSON.stringify({ Name: '大きいパック', Author: 'Tester' })) },
+      { name: 'com.big.sdIconPack/icons.json', data: Buffer.from(JSON.stringify(bigIcons)) },
+      ...bigFiles,
+    ]));
+    await admin.locator('#icon-pack-file').setInputFiles(bigFile);
+    await admin.waitForFunction(() => /大きいパック|読み込めません/.test(document.querySelector('#message').textContent), null, { timeout: 180000 });
+    assert.match(await admin.locator('#message').innerText(), /大きいパック.*1500個/);
+    const bigInfo = (await api('icon-packs')).data.packs[4];
+    assert.equal(bigInfo.count, many);
+    await admin.locator('.icon-select-button').first().click();
+    await admin.locator('.icon-pack-tabs').getByRole('tab', { name: '大きいパック' }).click();
+    await admin.waitForFunction(n => document.querySelectorAll('.icon-pack-grid .icon-choice').length === n, many);
+    await admin.waitForFunction(() => document.querySelector('.icon-pack-grid .pack-icon[src]'));
+    const loaded = await admin.evaluate(() => Array.from(document.querySelectorAll('.icon-pack-grid .pack-icon')).filter(i => i.getAttribute('src')).length);
+    assert(loaded > 0 && loaded < many, 'only icons near the view get their picture (' + loaded + ')');
+    await admin.locator('#icon-search').fill('logo1499');
+    await admin.waitForFunction(() => { const img = document.querySelector('.icon-pack-grid .icon-choice:not([hidden]) .pack-icon'); return img && img.getAttribute('src'); });
+    await admin.locator('#icon-search').fill('');
+    await admin.locator('#icon-picker-close').click();
+    admin.once('dialog', d => d.accept());
+    await admin.locator('.icon-pack-item').filter({ hasText: '大きいパック' }).getByRole('button', { name: '削除' }).click();
+    await admin.waitForFunction(() => document.querySelectorAll('.icon-pack-item').length === 4);
+
     // Server rejects bad input directly as well.
     assert.equal((await api('icon-packs/add', { id: pack.id, icons: [{ name: 'x', data: 'data:text/html;base64,PGgxPg==' }] })).status, 400);
     assert.equal((await api('icon-packs/get?id=../settings-v2')).status, 400);
@@ -225,7 +257,7 @@ function zip(files) {
     await admin.waitForFunction(() => document.querySelectorAll('.icon-pack-item').length === 3);
     assert.equal((await api('icon-packs')).data.packs.length, 3);
     assert.deepEqual(errors, []);
-    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, bulk change with undo, export round trip, loose images, Stream Deck pack with tags and SVG, pack headings, search, server checks, delete');
+    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, bulk change with undo, export round trip, loose images, Stream Deck pack with tags and SVG, 1500-icon pack with lazy pictures, pack headings, search, server checks, delete');
   } finally {
     if (browser) await browser.close();
     host.kill();
