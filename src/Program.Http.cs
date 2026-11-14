@@ -124,12 +124,12 @@ partial class Program
     {
         r.headers.TryGetValue("Authorization", out r.auth);
         r.isAdmin = r.local && r.auth == "Bearer " + admin;
-        lock (Gate)
+        lock (State.Gate)
             r.allowed =
                 r.isAdmin
-                || r.auth == "Bearer " + config.token
-                || r.auth == "Bearer " + config.pairingKey
-                || Pairing.Authorized(config, r.auth);
+                || r.auth == "Bearer " + State.Config.token
+                || r.auth == "Bearer " + State.Config.pairingKey
+                || Pairing.Authorized(State.Config, r.auth);
     }
 
     static void ServeFile(Stream s, string path)
