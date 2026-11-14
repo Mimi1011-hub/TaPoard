@@ -4113,7 +4113,7 @@
     progress.textContent = 'パックを読み込んでいます…';
     return readPackSource(files)
       .then(function (source) {
-        if (source.icons.length > 600) throw new Error('1つのパックに入れられるアイコンは600個までです。');
+        if (source.icons.length > 5000) throw new Error('1つのパックに入れられるアイコンは5000個までです。');
         return api('icon-packs/create', { name: source.name, author: source.author }).then(function (created) {
           packId = created.id;
           var batch = [],
@@ -4327,9 +4327,27 @@
     persistRows('パックのアイコンに変更して自動保存しました。');
   }
   // Pack tabs inside the icon picker.
+  var packImageObserver =
+    'IntersectionObserver' in window
+      ? new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              var img = entry.target;
+              packImageObserver.unobserve(img);
+              if (img.dataset.src) {
+                img.src = img.dataset.src;
+                delete img.dataset.src;
+              }
+            });
+          },
+          { rootMargin: '400px 0px' },
+        )
+      : null;
   function renderPackChoices() {
     var root = $('icon-pack-choices');
     if (!root) return;
+    if (packImageObserver) packImageObserver.disconnect();
     root.textContent = '';
     root.hidden = !iconPacks.length;
     if (!iconPacks.length) return;
@@ -4426,7 +4444,11 @@
           button.className = 'icon-choice';
           button.title = icon.name;
           button.classList.toggle('selected', !!iconPickerTarget && iconPickerTarget.iconPack === pack.id && iconPickerTarget.iconPackItem === icon.id);
-          img.src = icon.data;
+          // A pack can hold thousands of icons: pictures are filled in as they scroll into view.
+          if (packImageObserver) {
+            img.dataset.src = icon.data;
+            packImageObserver.observe(img);
+          } else img.src = icon.data;
           img.alt = '';
           img.className = 'preset-icon pack-icon';
           name.textContent = icon.name;
