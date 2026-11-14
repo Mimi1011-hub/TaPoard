@@ -9,7 +9,7 @@ $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $tests = @(
     'SettingsV2Tests', 'WidgetRegistryTests', 'BuildInfoTests', 'LayoutV2Tests', 'DisplaySubscriptionTests',
     'InputSessionTests', 'MetricsSamplerTests', 'GpuMetricsTests', 'WeatherServiceTests', 'UrlImportTests', 'Release103Tests',
-    'HostTests', 'PageUndoTests', 'SyncHubTests'
+    'HostTests', 'PageUndoTests', 'SyncHubTests', 'ApiRouterTests', 'ApiRouteTableTests', 'ApiStatusTests'
 )
 $failed = @()
 foreach ($test in $tests) {
