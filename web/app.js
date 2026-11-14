@@ -2892,9 +2892,10 @@
   // The connection panel (QR codes) leads the page until a phone or the PC window is in use.
   function updatePhoneStatus(active, pcWindowOpen) {
     if (!admin) return;
-    $('phone-status').textContent = active ? '● 接続中' : '○ 未接続';
-    $('phone-status').classList.toggle('online', !!active);
-    $('preview-offline').hidden = !!active;
+    $('phone-status').textContent = active ? '● 接続中' : pcWindowOpen ? '● PC 用ウィンドウで表示中' : '○ 未接続';
+    $('phone-status').classList.toggle('online', !!(active || pcWindowOpen));
+    // The PC window shows the deck too, so "no phone connected" is not shown over the preview then.
+    $('preview-offline').hidden = !!(active || pcWindowOpen);
     var settingsRoot = $('settings'),
       connection = $('connection-panel'),
       studio = $('studio');
