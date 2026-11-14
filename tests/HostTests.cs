@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 public static class HostTests
@@ -9,6 +10,8 @@ public static class HostTests
     static FakeAudioDevices devices;
     static FakeShellActions shell;
     static MethodInfo launch;
+    static MethodInfo volumeKey;
+    static MethodInfo applyAudio;
 
     static void Assert(bool condition, string message)
     {
@@ -72,17 +75,92 @@ public static class HostTests
         Assert(shell.Calls[3] == @"StartProcess:C:\Apps\program.exe:--quiet", "executable arguments");
     }
 
+    static void StartMenuApp()
+    {
+        Reset();
+        Launch(new AppEntry { type = "app", path = "shell:AppsFolder\\package!app", args = "ignored" });
+        Assert(shell.Calls.Count == 2, "start app call count");
+        Assert(shell.Calls[0] == "IsStartApp:shell:AppsFolder\\package!app", "start app detection");
+        Assert(shell.Calls[1] == "StartApp:shell:AppsFolder\\package!app", "start app launch");
+    }
+
+    static void VolumeKeys()
+    {
+        Assert((byte)volumeKey.Invoke(null, new object[] { "up" }) == 0xAF, "volume up key");
+        Assert((byte)volumeKey.Invoke(null, new object[] { "down" }) == 0xAE, "volume down key");
+        Assert((byte)volumeKey.Invoke(null, new object[] { "mute" }) == 0xAD, "volume mute key");
+    }
+
+    static bool Apply(Dictionary<string, object> input, out string target)
+    {
+        object[] arguments = new object[] { input, null, false };
+        applyAudio.Invoke(null, arguments);
+        target = (string)arguments[1];
+        return (bool)arguments[2];
+    }
+
+    static void AudioActions()
+    {
+        string target;
+        Reset();
+        bool notify = Apply(new Dictionary<string, object> { { "target", "speaker" }, { "volume", 42 } }, out target);
+        Assert(audio.Calls[0] == "SetVolume:speaker:42" && target == "speaker" && !notify, "volume drag does not notify");
+
+        Reset();
+        notify = Apply(new Dictionary<string, object> { { "target", "speaker" }, { "volume", 43 }, { "final", true } }, out target);
+        Assert(audio.Calls[0] == "SetVolume:speaker:43" && notify, "final volume notifies");
+
+        Reset();
+        notify = Apply(new Dictionary<string, object> { { "target", "mic" }, { "delta", -2 } }, out target);
+        Assert(audio.Calls[0] == "AdjustVolume:mic:-2" && target == "mic" && notify, "volume adjustment notifies");
+
+        Reset();
+        notify = Apply(new Dictionary<string, object> { { "target", "mic" }, { "toggleMute", true } }, out target);
+        Assert(audio.Calls[0] == "ToggleMute:mic" && target == "mic" && notify, "mute toggle notifies");
+    }
+
+    static void SettingsStore()
+    {
+        FieldInfo storeField = typeof(Program).GetField("store", BindingFlags.Static | BindingFlags.NonPublic);
+        FieldInfo configField = typeof(Program).GetField("config", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo save = typeof(Program).GetMethod("Save", BindingFlags.Static | BindingFlags.NonPublic);
+        ISettingsStore originalStore = (ISettingsStore)storeField.GetValue(null);
+        Settings originalConfig = (Settings)configField.GetValue(null);
+        var fake = new FakeSettingsStore();
+        var settings = new Settings { schemaVersion = 2, apps = new List<AppEntry>() };
+        try
+        {
+            Program.UseStore(fake);
+            configField.SetValue(null, settings);
+            save.Invoke(null, null);
+            Assert(fake.Calls.Count == 1 && fake.Calls[0] == "Save" && Object.ReferenceEquals(fake.Saved, settings), "Program.Save uses the injected store");
+        }
+        finally
+        {
+            configField.SetValue(null, originalConfig);
+            Program.UseStore(originalStore);
+        }
+    }
+
     public static int Main()
     {
         try
         {
             launch = typeof(Program).GetMethod("Launch", BindingFlags.Static | BindingFlags.NonPublic);
+            volumeKey = typeof(Program).GetMethod("VolumeKey", BindingFlags.Static | BindingFlags.NonPublic);
+            applyAudio = typeof(Program).GetMethod("ApplyAudio", BindingFlags.Static | BindingFlags.NonPublic);
             Assert(launch != null, "Program.Launch not found");
+            Assert(volumeKey != null, "Program.VolumeKey not found");
+            Assert(applyAudio != null, "Program.ApplyAudio not found");
             Hotkey();
             Url();
             Clipboard();
             AudioDevice();
             Processes();
+            StartMenuApp();
+            VolumeKeys();
+            AudioActions();
+            SettingsStore();
             Console.WriteLine("PASS HostTests");
             return 0;
         }
