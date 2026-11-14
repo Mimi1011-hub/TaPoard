@@ -181,6 +181,27 @@ static class PcWindowService
         Thread.Sleep(40);
     }
 
+    // Puts a TaPoard window in front and makes it active although TaPoard is a background app
+    // (the click came from the tray, a browser or a phone). Windows refuses SetForegroundWindow
+    // to background apps unless their thread shares input with the app in front for a moment.
+    internal static void ForceForeground(IntPtr handle)
+    {
+        IntPtr foreground = GetForegroundWindow();
+        uint current = GetCurrentThreadId(),
+            foregroundThread = foreground == IntPtr.Zero ? 0 : GetWindowThreadProcessId(foreground, IntPtr.Zero);
+        bool attached = foregroundThread != 0 && foregroundThread != current && AttachThreadInput(current, foregroundThread, true);
+        try
+        {
+            BringWindowToTop(handle);
+            SetForegroundWindow(handle);
+        }
+        finally
+        {
+            if (attached)
+                AttachThreadInput(current, foregroundThread, false);
+        }
+    }
+
     static WinEventProc foregroundProc;
     static IntPtr foregroundHook;
 
@@ -244,6 +265,9 @@ static class PcWindowService
 
     [DllImport("user32.dll")]
     static extern bool AttachThreadInput(uint attach, uint attachTo, bool value);
+
+    [DllImport("user32.dll")]
+    static extern bool BringWindowToTop(IntPtr window);
 }
 
 static class DpiAwareness
@@ -454,7 +478,7 @@ sealed class PcWindow : Form
         ApplyTopmost();
         // Opening the window always shows it in front of other apps, even when "always on
         // top" is off (a window shown without activation would otherwise open behind them).
-        Raise();
+        BringToFront();
         ApplyLayered();
         if (pendingFullscreen)
             SetFullscreen(true);
@@ -651,11 +675,51 @@ sealed class PcWindow : Form
             ShowWindow(Handle, 9);
         if (!Visible)
             Show();
+        if (!fullscreen && !maximized && !OnSomeScreen())
+            Bounds = InitialBounds();
         if (wantFullscreen && !fullscreen)
             SetFullscreen(true);
         ApplyTopmost();
-        Raise();
-        ActivateWindow();
+        BringToFront();
+    }
+
+    // A display that was switched off, unplugged or rearranged can leave the window where no
+    // screen shows it; opening it again then brings it back onto a screen.
+    bool OnSomeScreen()
+    {
+        foreach (Rectangle area in AllWorkAreas())
+        {
+            var overlap = Rectangle.Intersect(area, Bounds);
+            if (overlap.Width >= 80 && overlap.Height >= 60)
+                return true;
+        }
+        return false;
+    }
+
+    System.Windows.Forms.Timer frontTimer;
+
+    // "Open" must always end with the window in front, whichever screen it is on. Raise() alone
+    // can lose to the app in front (it is active and may lift itself again, or is full screen
+    // on that display), so the window stays in the topmost band for a moment and asks for the
+    // foreground the way Windows allows a background app to.
+    void BringToFront()
+    {
+        SetWindowPos(Handle, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010 | 0x0040);
+        PcWindowService.ForceForeground(Handle);
+        if (options.topmost)
+            return;
+        if (frontTimer == null)
+        {
+            frontTimer = new System.Windows.Forms.Timer { Interval = 1200 };
+            frontTimer.Tick += delegate
+            {
+                frontTimer.Stop();
+                if (!IsDisposed && !options.topmost)
+                    SetWindowPos(Handle, new IntPtr(-2), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+            };
+        }
+        frontTimer.Stop();
+        frontTimer.Start();
     }
 
     internal void ApplyOptions(PcWindowOptions next)
