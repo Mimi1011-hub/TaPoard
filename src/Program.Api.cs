@@ -1152,7 +1152,7 @@ partial class Program
             a.text = "";
             if (!AppImporter.ValidPath(a.path))
                 throw new Exception("実在するexe・ショートカットの絶対パスを指定してください");
-            a.icon = AppIcons.Read(a.path);
+            a.icon = StartApps.IsStartApp(a.path) ? StartApps.Icon(a.path) : AppIcons.Read(a.path);
         }
         else
             throw new Exception("登録されていない部品種類です。");
@@ -1300,6 +1300,12 @@ partial class Program
         {
             CustomActions.CopyText(app.text);
             return "テキストをWindowsへコピーしました。";
+        }
+        // Start menu apps (Store apps included) open through Explorer.
+        if (StartApps.IsStartApp(app.path))
+        {
+            StartApps.Start(app.path);
+            return "アプリを起動しました。";
         }
         // Shortcuts (.lnk) go through the shell so their own target, arguments and folder apply.
         Process.Start(

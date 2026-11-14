@@ -268,7 +268,7 @@ partial class Program
         NormalizeControlSlots();
         foreach (var app in config.apps)
             if (IsType(app, "app") && String.IsNullOrEmpty(app.icon))
-                app.icon = AppIcons.Read(app.path);
+                app.icon = StartApps.IsStartApp(app.path) ? StartApps.Icon(app.path) : AppIcons.Read(app.path);
         if (config.devices == null)
             config.devices = new List<PairedDevice>();
         SplitOrientationApps();

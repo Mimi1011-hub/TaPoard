@@ -182,6 +182,14 @@ function button(name, page, row, column, orientation = 'landscape') {
     await admin.locator('#editor-float-close').click();
     assert.equal(await admin.locator('#editor-float').isHidden(), true);
     assert.equal(await admin.locator('#editors textarea.name-input').evaluateAll(n => n.some(e => e.value === '上\n下')), true, 'back in the list');
+    // Start menu apps (Store apps too) are kept as shell:AppsFolder\<id>; other shell paths are refused.
+    s = (await api('settings')).data;
+    const startApp = { name: '電卓', orientation: 'landscape', type: 'app', category: 'app', path: 'shell:AppsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App', args: '', size: 1, width: 1, height: 1, fontSize: 11, iconScale: 82, labelOpacity: 45, landscape: { page: 3, row: 1, column: 5 } };
+    const startSave = await api('settings', { apps: s.apps.concat([startApp]) });
+    assert.equal(startSave.status, 200, JSON.stringify(startSave.data));
+    assert.ok((await api('settings')).data.apps.some(a => a.path === startApp.path));
+    for (const bad of ['shell:AppsFolder\\..\\x', 'shell:Startup', 'shell:AppsFolder\\'])
+      assert.notEqual((await api('settings', { apps: s.apps.concat([Object.assign({}, startApp, { path: bad })]) })).status, 200, bad);
     assert.deepEqual(errors, []);
     console.log('PASS presets: six laid-out pages per orientation (grid, faders, widgets), overwrite the page shown with confirm and undo; faders removed from every page and restored');
   } finally {

@@ -137,7 +137,7 @@ function zip(files) {
     await admin.locator('#icon-pack-bulk-apply').click();
     await admin.locator('#look-save-no').click();
     await bulk;
-    assert.match(await admin.locator('#message').innerText(), /1個変更.*合う絵がなかったボタン 1個/);
+    await admin.waitForFunction(() => /1個変更.*合う絵がなかったボタン 1個/.test(document.querySelector('#message').innerText));
     settings = (await api('settings')).data;
     let portrait = settings.apps.find(a => a.orientation === 'portrait');
     assert.equal(portrait.customIcon, pack.icons[1].data);
@@ -183,6 +183,36 @@ function zip(files) {
     const loose = (await api('icon-packs')).data.packs[2];
     assert.equal(loose.mapped, 1, 'speaker.png maps to the speaker preset');
 
+    // A Stream Deck icon pack (.streamDeckIconPack): manifest.json + icons.json with tags, SVG pictures.
+    // The first tag becomes the heading the pictures are sorted under.
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144"><rect width="144" height="144" rx="24" fill="#e2455b"/><circle cx="72" cy="72" r="30" fill="#fff"/></svg>';
+    const sdFile = path.join(temp, 'test.streamDeckIconPack');
+    fs.writeFileSync(sdFile, zip([
+      { name: 'com.test.pack.sdIconPack/manifest.json', data: Buffer.from(JSON.stringify({ Name: 'SDパック', Author: 'Tester', Version: '1.0' })) },
+      { name: 'com.test.pack.sdIconPack/icons.json', data: Buffer.from(JSON.stringify([
+        { path: 'live.svg', name: 'Live', tags: ['配信', 'obs'] },
+        { path: 'chat.png', name: 'Chat', tags: ['SNS'] },
+        { path: 'rec.svg', name: 'Rec', tags: ['配信'] },
+      ])) },
+      { name: 'com.test.pack.sdIconPack/icons/live.svg', data: Buffer.from(svg) },
+      { name: 'com.test.pack.sdIconPack/icons/chat.png', data: fs.readFileSync('web/icon-192.png') },
+      { name: 'com.test.pack.sdIconPack/icons/rec.svg', data: Buffer.from(svg) },
+    ]));
+    await admin.locator('#icon-pack-file').setInputFiles(sdFile);
+    await admin.waitForFunction(() => document.querySelectorAll('.icon-pack-item').length === 4);
+    const sdInfo = (await api('icon-packs')).data.packs[3];
+    assert.equal(sdInfo.name, 'SDパック');
+    const sd = (await api('icon-packs/get?id=' + sdInfo.id)).data;
+    assert.deepEqual(sd.icons.map(i => [i.name, i.group]), [['Live', '配信'], ['Chat', 'SNS'], ['Rec', '配信']], JSON.stringify(sd.icons.map(i => [i.name, i.group])) + ' ' + await admin.locator('#message').innerText());
+    assert.match(sd.icons[0].data, /^data:image\/(png|webp);base64,/, 'SVG drawn into a picture');
+    await admin.locator('.icon-select-button').first().click();
+    await admin.locator('.icon-pack-tabs').getByRole('tab', { name: 'SDパック' }).click();
+    await admin.locator('.icon-pack-grid .icon-choice').first().waitFor();
+    assert.deepEqual(await admin.locator('.icon-pack-grid .icon-preset-group h3').allTextContents(), ['配信', 'SNS']);
+    await admin.locator('#icon-search').fill('obs');
+    assert.equal(await admin.locator('.icon-pack-grid .icon-choice:visible').count(), 2, 'tags are searchable (and the heading)');
+    await admin.locator('#icon-picker-close').click();
+
     // Server rejects bad input directly as well.
     assert.equal((await api('icon-packs/add', { id: pack.id, icons: [{ name: 'x', data: 'data:text/html;base64,PGgxPg==' }] })).status, 400);
     assert.equal((await api('icon-packs/get?id=../settings-v2')).status, 400);
@@ -192,10 +222,10 @@ function zip(files) {
     // Delete.
     admin.once('dialog', d => d.accept());
     await admin.locator('.icon-pack-item').filter({ hasText: 'speaker' }).getByRole('button', { name: '削除' }).click();
-    await admin.waitForFunction(() => document.querySelectorAll('.icon-pack-item').length === 2);
-    assert.equal((await api('icon-packs')).data.packs.length, 2);
+    await admin.waitForFunction(() => document.querySelectorAll('.icon-pack-item').length === 3);
+    assert.equal((await api('icon-packs')).data.packs.length, 3);
     assert.deepEqual(errors, []);
-    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, bulk change with undo, export round trip, loose images, server checks, delete');
+    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, bulk change with undo, export round trip, loose images, Stream Deck pack with tags and SVG, pack headings, search, server checks, delete');
   } finally {
     if (browser) await browser.close();
     host.kill();
