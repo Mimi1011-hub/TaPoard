@@ -106,6 +106,22 @@ partial class Program
             ReplyJson(s, 200, new { styles = IconStyles.List(Data), maxStyles = IconStyles.MaxStyles });
             return;
         }
+        if (path == "/api/slideshow" && method == "GET")
+        {
+            // Any paired device may read pictures, but only from a folder set on a slideshow widget.
+            string id = QueryValue(r.target, "id"), folder = null;
+            int index;
+            Int32.TryParse(QueryValue(r.target, "index"), out index);
+            lock (Gate)
+            {
+                var app = config.apps.Find(a => a.id == id && IsType(a, "slideshow"));
+                object raw;
+                if (app != null && app.options != null && app.options.TryGetValue("folder", out raw)) folder = raw as string;
+                if (app == null) { Reply(s, 404, JsonType, "{\"error\":\"スライドショーが見つかりません。\"}"); return; }
+            }
+            ReplyJson(s, 200, Slideshow.Picture(folder, index));
+            return;
+        }
         if (path == "/api/firewall" && method == "GET" && r.isAdmin)
         {
             ReplyJson(s, 200, FirewallCheck.Status(Root));
@@ -133,6 +149,12 @@ partial class Program
             RestoreBackup(r, input);
         else if (path == "/api/fader/remove" && r.isAdmin)
             RemoveFader(r, input);
+        else if (path == "/api/slideshow/pick-folder" && r.isAdmin)
+        {
+            object start;
+            string chosen = Slideshow.PickFolder(input.TryGetValue("folder", out start) ? Convert.ToString(start) : "");
+            ReplyJson(r.stream, 200, new { folder = chosen ?? "", picked = chosen != null, count = chosen == null ? 0 : Slideshow.Files(chosen).Length });
+        }
         else if (path == "/api/presets/apply" && r.isAdmin)
             ApplyPreset(r, input);
         else if (path == "/api/page/undo" && r.isAdmin)
