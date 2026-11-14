@@ -10,20 +10,21 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 // Application startup, tray icon and the shared state that the HTTP API reads.
-// Program.Http.cs holds the HTTP plumbing and Program.Api.cs the API endpoints.
+// Program.Http.cs holds the HTTP plumbing; the controllers own the API endpoints.
 partial class Program
 {
-    const int Port = 18781;
     static readonly string AppVersion = BuildInfo.DisplayVersion;
     static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     static readonly string Data = Path.Combine(Root, "data");
     internal static readonly AppState State = new AppState(Root, Data, AppVersion, AppHost.CreateWindows(), new FileSettingsStore(Data));
-    static Settings
-        config { get { return State.Config; } set { State.Config = value; } }
-    static object Gate { get { return State.Gate; } }
-    static SyncHub sync { get { return State.Sync; } }
-    static ISettingsStore store { get { return State.Store; } }
-    static AppHost host { get { return State.Host; } }
+    static readonly ProgramDesktop desktop = new ProgramDesktop();
+    internal static readonly PairingController PairingApi = new PairingController(State, desktop);
+    internal static readonly DeckController DeckApi = new DeckController(State, desktop);
+    internal static readonly PageController PageApi = new PageController(State, desktop, DeckApi);
+    internal static readonly LookController LookApi = new LookController(State, desktop, DeckApi);
+    internal static readonly InputController InputApi = new InputController(State, desktop, DeckApi);
+    internal static readonly SystemController SystemApi = new SystemController(State, desktop);
+    static readonly ApiRouter<ApiRequest> api = BuildApi();
     static TcpListener server;
     static NotifyIcon tray;
     static Icon appIcon;
@@ -31,8 +32,6 @@ partial class Program
     static LanNetwork lan;
     static Control ui;
     static ImportWindow importWindow;
-    static string importId { get { return State.ImportId; } set { State.ImportId = value; } }
-    static object importResult { get { return State.ImportResult; } set { State.ImportResult = value; } }
 
     internal static void UseHost(AppHost value)
     {
@@ -43,11 +42,6 @@ partial class Program
     {
         State.Store = value;
     }
-
-    // Changes whenever the app list changes, so phones can skip re-downloading icons.
-    static string version { get { return State.Version; } set { State.Version = value; } }
-    static int landscapePage { get { return State.LandscapePage; } set { State.LandscapePage = value; } }
-    static int portraitPage { get { return State.PortraitPage; } set { State.PortraitPage = value; } }
 
     static string RandomKey()
     {
@@ -76,25 +70,25 @@ partial class Program
 
     static bool PhoneConnected()
     {
-        return sync.PhoneConnected;
+        return State.Sync.PhoneConnected;
     }
 
     static void NormalizeControlSlots()
     {
-        DeckLayout.MigrateGrid(config);
-        DeckLayout.MigrateControls(config);
+        DeckLayout.MigrateGrid(State.Config);
+        DeckLayout.MigrateControls(State.Config);
         // The legacy shared fields mirror the landscape layout for older clients.
-        config.columns = config.landscapeColumns;
-        config.rows = config.landscapeRows;
-        config.speakerSlot = config.landscapeSpeakerSlot;
-        config.micSlot = config.landscapeMicSlot;
-        config.speakerSize = config.landscapeSpeakerSize;
-        config.micSize = config.landscapeMicSize;
+        State.Config.columns = State.Config.landscapeColumns;
+        State.Config.rows = State.Config.landscapeRows;
+        State.Config.speakerSlot = State.Config.landscapeSpeakerSlot;
+        State.Config.micSlot = State.Config.landscapeMicSlot;
+        State.Config.speakerSize = State.Config.landscapeSpeakerSize;
+        State.Config.micSize = State.Config.landscapeMicSize;
     }
 
     static object Controls(bool portrait)
     {
-        var c = DeckLayout.GetControls(config, portrait);
+        var c = DeckLayout.GetControls(State.Config, portrait);
         return new
         {
             speakerSlot = c.speakerSlot,
@@ -109,8 +103,8 @@ partial class Program
             micColumn = c.micColumn,
             micWidth = c.micWidth,
             micHeight = c.micHeight,
-            speakerHidden = DeckLayout.Off(config, portrait, false),
-            micHidden = DeckLayout.Off(config, portrait, true),
+            speakerHidden = DeckLayout.Off(State.Config, portrait, false),
+            micHidden = DeckLayout.Off(State.Config, portrait, true),
         };
     }
 
@@ -118,10 +112,10 @@ partial class Program
     static object ControlPages(bool portrait)
     {
         var pages = new List<object>();
-        foreach (var entry in DeckLayout.ControlPages(config, portrait))
+        foreach (var entry in DeckLayout.ControlPages(State.Config, portrait))
         {
             bool speakerHidden, micHidden;
-            var c = DeckLayout.GetPageControls(config, portrait, entry.page, out speakerHidden, out micHidden);
+            var c = DeckLayout.GetPageControls(State.Config, portrait, entry.page, out speakerHidden, out micHidden);
             pages.Add(new
             {
                 page = entry.page, speakerHidden = speakerHidden, micHidden = micHidden,
@@ -135,19 +129,19 @@ partial class Program
 
     static object Grid(bool portrait)
     {
-        return new { columns = DeckLayout.Columns(config, portrait), rows = DeckLayout.Rows(config, portrait) };
+        return new { columns = DeckLayout.Columns(State.Config, portrait), rows = DeckLayout.Rows(State.Config, portrait) };
     }
 
     static void Signal()
     {
-        sync.Signal();
+        State.Sync.Signal();
     }
 
     // Settings from before 1.03 shared one entry between orientations; give each orientation its own copy.
     static void SplitOrientationApps()
     {
         var migrated = new List<AppEntry>();
-        foreach (var app in config.apps)
+        foreach (var app in State.Config.apps)
         {
             if (app.orientation == "landscape" || app.orientation == "portrait")
             {
@@ -163,12 +157,12 @@ partial class Program
             migrated.Add(app);
             migrated.Add(portrait);
         }
-        config.apps = migrated;
+        State.Config.apps = migrated;
     }
 
     static void Save()
     {
-        store.Save(config);
+        State.Store.Save(State.Config);
     }
 
     [STAThread]
@@ -183,15 +177,15 @@ partial class Program
             try
             {
                 LoadSettings();
-                WeatherService.Initialize(Data, delegate { lock (Gate) Signal(); });
+                WeatherService.Initialize(Data, delegate { lock (State.Gate) Signal(); });
                 DisplaySubscriptions.Changed = delegate
                 {
                     MetricsSampler.OnSubscriptionsChanged();
-                    lock (Gate) WeatherService.SetActive(DisplaySubscriptions.Current().weather.Count != 0, config);
+                    lock (State.Gate) WeatherService.SetActive(DisplaySubscriptions.Current().weather.Count != 0, State.Config);
                 };
                 MetricsSampler.Changed = delegate
                 {
-                    lock (Gate)
+                    lock (State.Gate)
                         Signal();
                 };
                 admin = RandomKey();
@@ -249,7 +243,7 @@ partial class Program
     // Loads data\settings-v2.json. Only its first creation may read legacy settings.json.
     static void LoadSettings()
     {
-        config = store.Load(
+        State.Config = State.Store.Load(
             delegate
             {
                 return new Settings
@@ -260,40 +254,40 @@ partial class Program
                 };
             }
         );
-        if (String.IsNullOrWhiteSpace(config.token))
-            config.token = RandomKey();
-        if (String.IsNullOrWhiteSpace(config.pairingKey))
-            config.pairingKey = ShortKey();
-        if (config.apps == null)
-            config.apps = new List<AppEntry>();
-        if (config.columns < 3 || config.columns > 8 || config.rows < 2 || config.rows > 5)
+        if (String.IsNullOrWhiteSpace(State.Config.token))
+            State.Config.token = RandomKey();
+        if (String.IsNullOrWhiteSpace(State.Config.pairingKey))
+            State.Config.pairingKey = ShortKey();
+        if (State.Config.apps == null)
+            State.Config.apps = new List<AppEntry>();
+        if (State.Config.columns < 3 || State.Config.columns > 8 || State.Config.rows < 2 || State.Config.rows > 5)
         {
-            config.columns = 5;
-            config.rows = 3;
-            config.keepAwake = true;
+            State.Config.columns = 5;
+            State.Config.rows = 3;
+            State.Config.keepAwake = true;
         }
-        DeckLayout.MigrateGrid(config);
+        DeckLayout.MigrateGrid(State.Config);
         NormalizeControlSlots();
-        foreach (var app in config.apps)
+        foreach (var app in State.Config.apps)
             if (IsType(app, "app") && String.IsNullOrEmpty(app.icon))
                 app.icon = StartApps.IsStartApp(app.path) ? StartApps.Icon(app.path) : AppIcons.Read(app.path);
-        if (config.devices == null)
-            config.devices = new List<PairedDevice>();
+        if (State.Config.devices == null)
+            State.Config.devices = new List<PairedDevice>();
         SplitOrientationApps();
-        DeckLayout.Migrate(config);
-        foreach (var app in config.apps)
+        DeckLayout.Migrate(State.Config);
+        foreach (var app in State.Config.apps)
         {
             if (String.IsNullOrWhiteSpace(app.type))
                 app.type = "app";
             WidgetRegistry.ValidateAndNormalize(app);
         }
-        DeckLayout.Validate(config);
+        DeckLayout.Validate(State.Config);
         Save();
     }
 
     static void StartServer()
     {
-        server = new TcpListener(IPAddress.Any, Port);
+        server = new TcpListener(IPAddress.Any, AppState.Port);
         server.Start(16);
         var t = new Thread(
             delegate()
@@ -348,6 +342,6 @@ partial class Program
 
     static void OpenSettings()
     {
-        Process.Start("http://127.0.0.1:" + Port + "/settings#" + admin);
+        Process.Start("http://127.0.0.1:" + AppState.Port + "/settings#" + admin);
     }
 }

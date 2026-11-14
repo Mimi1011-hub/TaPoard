@@ -33,9 +33,13 @@ public static class ControllerTests
             var devices = new FakeAudioDevices(); var shell = new FakeShellActions(); var store = new FakeSettingsStore(); var desktop = new FakeDesktop();
             var state = new AppState("root", "data", "test", new AppHost(keys, pointer, audio, devices, shell), store); state.Config = Settings();
             var router = new ApiRouter<ApiRequest>();
-            new PairingController(state, desktop).Register(router); new DeckController(state, desktop).Register(router);
-            new PageController(state, desktop).Register(router); new LookController(state, desktop).Register(router);
-            new InputController(state, desktop).Register(router); new SystemController(state, desktop).Register(router);
+            var deck = new DeckController(state, desktop);
+            new PairingController(state, desktop).Register(router);
+            deck.Register(router);
+            new PageController(state, desktop, deck).Register(router);
+            new LookController(state, desktop, deck).Register(router);
+            new InputController(state, desktop, deck).Register(router);
+            new SystemController(state, desktop).Register(router);
 
             ApiRequest request = Request("/api/state", null); router.Find("GET", request.path, false)(request);
             Assert(Body(request).Contains("\"revision\":"), "state response includes revision");

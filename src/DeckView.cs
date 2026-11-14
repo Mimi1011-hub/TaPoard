@@ -2,6 +2,21 @@ using System.Collections.Generic;
 
 static class DeckView
 {
+    internal static string NewId()
+    {
+        return System.Guid.NewGuid().ToString("N");
+    }
+
+    internal static string RandomKey()
+    {
+        return SecureKeys.Hex();
+    }
+
+    internal static string ShortKey()
+    {
+        return SecureKeys.Short();
+    }
+
     internal static bool IsType(AppEntry app, string type)
     {
         return System.String.Equals(app.type, type, System.StringComparison.OrdinalIgnoreCase);

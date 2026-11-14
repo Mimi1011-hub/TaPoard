@@ -9,19 +9,19 @@ partial class Program
 {
     static void InitPcWindow()
     {
-        lock (Gate)
-            config.pcWindow = PcWindowOptions.Normalize(config.pcWindow);
+        lock (State.Gate)
+            State.Config.pcWindow = PcWindowOptions.Normalize(State.Config.pcWindow);
         PcWindowService.UserDataFolder = Path.Combine(Data, "webview2");
         PcWindowService.ReadOptions = delegate
         {
-            lock (Gate)
-                return config.pcWindow.Clone();
+            lock (State.Gate)
+                return State.Config.pcWindow.Clone();
         };
         PcWindowService.SaveState = delegate(PcWindowOptions state)
         {
-            lock (Gate)
+            lock (State.Gate)
             {
-                var o = config.pcWindow;
+                var o = State.Config.pcWindow;
                 o.x = state.x;
                 o.y = state.y;
                 o.width = state.width;
@@ -36,22 +36,22 @@ partial class Program
         // The window signs in with the long key; the fragment never reaches the HTTP log.
         PcWindowService.DeckUrl = delegate
         {
-            lock (Gate)
-                return "http://127.0.0.1:" + Port + "/?view=pc#connect=" + Uri.EscapeDataString(config.token);
+            lock (State.Gate)
+                return "http://127.0.0.1:" + AppState.Port + "/?view=pc#connect=" + Uri.EscapeDataString(State.Config.token);
         };
         PcWindowService.OpenSettingsPage = OpenPcWindowSettings;
         PcWindowService.Notify = ShowNotice;
         PcWindowService.Changed = delegate
         {
-            lock (Gate)
+            lock (State.Gate)
                 Signal();
         };
     }
 
     static string StartupMode()
     {
-        lock (Gate)
-            return config.pcWindow.startup;
+        lock (State.Gate)
+            return State.Config.pcWindow.startup;
     }
 
     static void OpenPcWindow(bool fullscreen)
@@ -75,15 +75,15 @@ partial class Program
     // The PC window's own settings: a small page on this PC only (127.0.0.1 and the per-launch admin key).
     static void OpenPcWindowSettings()
     {
-        Process.Start("http://127.0.0.1:" + Port + "/pc-window#" + admin);
+        Process.Start("http://127.0.0.1:" + AppState.Port + "/pc-window#" + admin);
     }
 
     static object PcWindowView()
     {
-        lock (Gate)
+        lock (State.Gate)
             return new
             {
-                options = config.pcWindow.PublicView(),
+                options = State.Config.pcWindow.PublicView(),
                 open = PcWindowService.IsOpen,
                 viewOnly = PcWindowService.ViewOnly,
                 runtimeAvailable = PcWindowService.RuntimeAvailable,
@@ -93,11 +93,11 @@ partial class Program
     static void SavePcWindow(Dictionary<string, object> input)
     {
         PcWindowOptions copy;
-        lock (Gate)
+        lock (State.Gate)
         {
-            config.pcWindow.ApplyPreferences(input);
+            State.Config.pcWindow.ApplyPreferences(input);
             Save();
-            copy = config.pcWindow.Clone();
+            copy = State.Config.pcWindow.Clone();
         }
         PcWindowService.Apply(copy);
     }

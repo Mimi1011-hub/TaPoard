@@ -3,6 +3,7 @@ using System;
 // Shared by the API, tray and PC window. Callers must hold Gate while reading or writing mutable state.
 sealed class AppState
 {
+    internal const int Port = 18781;
     internal readonly object Gate = new object();
     internal readonly SyncHub Sync;
     internal readonly PageUndo Undo = new PageUndo();
