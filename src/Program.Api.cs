@@ -1023,17 +1023,17 @@ partial class Program
         bool notify;
         if (input.ContainsKey("volume"))
         {
-            audio = AudioControl.SetVolume(target, Convert.ToInt32(input["volume"]));
+            audio = host.Audio.SetVolume(target, Convert.ToInt32(input["volume"]));
             notify = input.ContainsKey("final") && Convert.ToBoolean(input["final"]);
         }
         else if (input.ContainsKey("delta"))
         {
-            audio = AudioControl.AdjustVolume(target, Convert.ToInt32(input["delta"]));
+            audio = host.Audio.AdjustVolume(target, Convert.ToInt32(input["delta"]));
             notify = true;
         }
         else if (input.ContainsKey("toggleMute") && Convert.ToBoolean(input["toggleMute"]))
         {
-            audio = AudioControl.ToggleMute(target);
+            audio = host.Audio.ToggleMute(target);
             notify = true;
         }
         else
@@ -1301,7 +1301,7 @@ partial class Program
                 action == "up" ? (byte)0xAF // VK_VOLUME_UP
                 : action == "down" ? (byte)0xAE // VK_VOLUME_DOWN
                 : (byte)0xAD; // VK_VOLUME_MUTE
-            NativeInput.KeyTap(key);
+            host.Pointer.KeyTap(key);
         }
         else if (action == "launch")
         {
@@ -1325,7 +1325,7 @@ partial class Program
     {
         if (IsType(app, "audioDevice"))
         {
-            AudioDevices.Switch(app.deviceTarget, app.deviceId);
+            host.AudioDevices.Switch(app.deviceTarget, app.deviceId);
             lock (Gate)
                 Signal();
             return (app.deviceTarget == "mic" ? "入力先" : "出力先") + "を「" + app.deviceName + "」へ切り替えました。";
@@ -1333,36 +1333,30 @@ partial class Program
         if (IsType(app, "hotkey"))
         {
             InputSessions.ReleaseActive();
-            ShortcutKeys.Send(app.action, app.hotkey);
-            if (ShortcutKeys.IsAudio(app.action))
+            host.Keys.Send(app.action, app.hotkey);
+            if (host.Keys.IsAudio(app.action))
                 lock (Gate)
                     Signal();
             return defaultMessage;
         }
         if (IsType(app, "url"))
         {
-            CustomActions.OpenUrl(app.url);
+            host.Shell.OpenUrl(app.url);
             return "URLを開きました。";
         }
         if (IsType(app, "clipboard"))
         {
-            CustomActions.CopyText(app.text);
+            host.Shell.CopyText(app.text);
             return "テキストをWindowsへコピーしました。";
         }
         // Start menu apps (Store apps included) open through Explorer.
-        if (StartApps.IsStartApp(app.path))
+        if (host.Shell.IsStartApp(app.path))
         {
-            StartApps.Start(app.path);
+            host.Shell.StartApp(app.path);
             return "アプリを起動しました。";
         }
         // Shortcuts (.lnk) go through the shell so their own target, arguments and folder apply.
-        Process.Start(
-            new ProcessStartInfo(app.path, app.args ?? "")
-            {
-                UseShellExecute = app.path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase),
-                WorkingDirectory = Path.GetDirectoryName(app.path),
-            }
-        );
+        host.Shell.StartProcess(app.path, app.args);
         return "アプリを起動しました。";
     }
 }
