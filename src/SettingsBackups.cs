@@ -5,15 +5,15 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 
-// 3.1: automatic copies of settings-v2.json, taken before a save replaces it (at most one every two
-// minutes, newest 30 kept) in data\backups, so a deleted page or button set can be brought back.
+// Automatic copies of settings-v3.json, taken before a save replaces it (at most one every two
+// minutes, newest 30 kept). The v2 data\backups folder is intentionally left untouched.
 static class SettingsBackups
 {
     internal const int Keep = 30;
     static readonly TimeSpan Spacing = TimeSpan.FromMinutes(2);
     static readonly Regex NamePattern = new Regex("\\Asettings-\\d{8}-\\d{6}\\z");
 
-    internal static string Folder(string data) { return Path.Combine(data, "backups"); }
+    internal static string Folder(string data) { return Path.Combine(data, "backups-v3"); }
 
     static string[] Files(string data)
     {
@@ -76,8 +76,8 @@ static class SettingsBackups
         if (id == null || !NamePattern.IsMatch(id)) throw new Exception("バックアップが見つかりません。");
         string file = Path.Combine(Folder(data), id + ".json");
         if (!File.Exists(file)) throw new Exception("バックアップが見つかりません。");
-        var s = new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Deserialize<Settings>(File.ReadAllText(file, Encoding.UTF8));
-        if (s == null) throw new Exception("バックアップのファイルが壊れています。");
-        return s;
+        var s = new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Deserialize<SettingsV3>(File.ReadAllText(file, Encoding.UTF8));
+        if (s == null || s.schemaVersion != SettingsFile.CurrentSchemaVersion) throw new Exception("バックアップのファイルが壊れています。");
+        return SettingsMigration.ToV2(s);
     }
 }

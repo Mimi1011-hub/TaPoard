@@ -240,7 +240,7 @@ partial class Program
         }
     }
 
-    // Loads data\settings-v2.json. Only its first creation may read legacy settings.json.
+    // Loads settings-v3.json, or reads settings-v2.json once when v3 does not exist.
     static void LoadSettings()
     {
         State.Config = State.Store.Load(

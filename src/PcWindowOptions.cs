@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-// 3.0 PC window. Stored in settings-v2.json as "pcWindow"; older files simply lack it.
+// 3.0 PC window. Stored in settings-v3.json as "pcWindow".
 class PcWindowOptions
 {
     // What happens when TaPoard starts: "none" (tray only / browser settings as before),

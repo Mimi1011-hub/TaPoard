@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-// Persisted in data\settings-v2.json. Property names are part of the file and API format.
+// The application's v2-compatible in-memory settings model and API format.
 class AppEntry
 {
     public string id { get; set; }
