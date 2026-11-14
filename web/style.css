@@ -3559,3 +3559,37 @@ textarea.name-input {
 .icon-pack-grid .icon-preset-group:first-child {
   margin-top: 4px;
 }
+
+/* 3.1: slideshow widget */
+.deck-key.slideshow-widget {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  background: #050608;
+}
+.slideshow-picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.slideshow-contain .slideshow-picture {
+  object-fit: contain;
+}
+.slideshow-picture.shown {
+  opacity: 1;
+}
+.slideshow-note {
+  position: absolute;
+  inset: auto 8px 8px;
+  color: #c8ccd6;
+  font-size: 12px;
+  text-align: center;
+  text-shadow: 0 1px 3px #000;
+}
+.slideshow-note:empty {
+  display: none;
+}

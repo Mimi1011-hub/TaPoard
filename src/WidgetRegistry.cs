@@ -28,6 +28,7 @@ static class WidgetRegistry
         Add(result, "wheel", "マウスホイール", new[] { "1x1", "1x2", "2x2" }, true);
         Add(result, "touchpad", "タッチパッド", new[] { "3x2", "2x3" }, true);
         Add(result, "keypad", "テンキー", new[] { "4x4", "4x5" }, true);
+        Add(result, "slideshow", "スライドショー", new[] { "3x3", "4x3", "4x4", "5x4", "5x5" }, true);
         return result;
     }
 
@@ -161,6 +162,20 @@ static class WidgetRegistry
             normalized["twoFingerScroll"] = BooleanValue(source, "twoFingerScroll", true);
             normalized["reverseScroll"] = BooleanValue(source, "reverseScroll", false);
             normalized["longPress"] = EnumValue(source, "longPress", "none", new[] { "none", "rightClick", "drag" });
+            RejectUnknown(source, normalized);
+        }
+        else if (definition.type == "slideshow")
+        {
+            string shape = DeckLayout.Width(app) + "x" + DeckLayout.Height(app);
+            if (Array.IndexOf(new[] { "3x3", "4x3", "4x4", "5x4", "5x5" }, shape) < 0)
+                throw new Exception("スライドショーは3×3・4×3・4×4・5×4・5×5です。");
+            string folder = ShortText(source, "folder", "", 260).Trim();
+            if (!Slideshow.ValidFolder(folder))
+                throw new Exception("スライドショーのフォルダは「C:\\写真」のような場所で指定してください。");
+            normalized["folder"] = folder;
+            normalized["interval"] = IntegerValue(source, "interval", 10, 3, 3600);
+            normalized["order"] = EnumValue(source, "order", "name", new[] { "name", "random" });
+            normalized["fit"] = EnumValue(source, "fit", "cover", new[] { "cover", "contain" });
             RejectUnknown(source, normalized);
         }
         else if (definition.type == "keypad")

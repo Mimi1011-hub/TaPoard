@@ -146,6 +146,19 @@
     },
     {
       category: 'widget',
+      title: '写真',
+      glyph: 'image',
+      note: 'PC のフォルダの画像を一定の間隔で切り替えて表示する部品',
+      items: [
+        ['widget-slideshow-3x3', 'スライドショー（3×3）', '横3・縦3の9マス'],
+        ['widget-slideshow-4x3', 'スライドショー（4×3）', '横4・縦3の12マス'],
+        ['widget-slideshow-4x4', 'スライドショー（4×4）', '横4・縦4の16マス'],
+        ['widget-slideshow-5x4', 'スライドショー（5×4）', '横5・縦4の20マス'],
+        ['widget-slideshow-5x5', 'スライドショー（5×5）', '横5・縦5の25マス'],
+      ],
+    },
+    {
+      category: 'widget',
       title: 'キーボード操作',
       glyph: 'keyboard',
       note: 'スマートフォンをWindowsのテンキーとして使う部品',
@@ -2162,6 +2175,123 @@
     } else if (a.id) bindTouchpadGesture(tile, a, options);
     return tile;
   }
+  // ---- 3.1 slideshow: pictures of a PC folder, changed every few seconds ----
+  // The state lives outside the tiles because the deck is redrawn often.
+  var slideshowState = {};
+  function slideshowOptions(a) {
+    var o = a.options || {};
+    return {
+      folder: typeof o.folder === 'string' ? o.folder : '',
+      interval: Math.max(3, Math.min(3600, Number(o.interval) || 10)),
+      order: o.order === 'random' ? 'random' : 'name',
+      fit: o.fit === 'contain' ? 'contain' : 'cover',
+    };
+  }
+  function slideshowTile(a, preview, index, slotIndex) {
+    var options = slideshowOptions(a),
+      tile = document.createElement('div'),
+      side = a.width || a.size || 3;
+    tile.className = 'deck-key slideshow-widget slideshow-' + options.fit;
+    tile.title = a.name || 'スライドショー';
+    tile.dataset.appIndex = index;
+    tile.dataset.size = a.size || 1;
+    tile.dataset.width = side;
+    tile.dataset.height = a.height || side;
+    tile.dataset.slideshowId = a.id || '';
+    tile.setAttribute('aria-label', a.name || 'スライドショー');
+    ['a', 'b'].forEach(function (layer) {
+      var img = document.createElement('img');
+      img.className = 'slideshow-picture slideshow-' + layer;
+      img.alt = '';
+      tile.appendChild(img);
+    });
+    var note = document.createElement('span');
+    note.className = 'slideshow-note';
+    tile.appendChild(note);
+    var state = a.id ? slideshowState[a.id] : null;
+    if (state && state.folder !== options.folder) {
+      delete slideshowState[a.id];
+      state = null;
+    }
+    if (state && state.data) {
+      tile.querySelector('.slideshow-a').src = state.data;
+      tile.querySelector('.slideshow-a').classList.add('shown');
+    } else note.textContent = a.id ? (options.folder ? '読み込んでいます…' : 'PC設定画面でフォルダを選んでください') : '保存すると表示されます';
+    if (state && state.error) note.textContent = state.error;
+    if (!preview)
+      // Tapping shows the next picture at once.
+      tile.addEventListener('click', function () {
+        if (a.id) showSlide(a, tile, 1);
+      });
+    if (preview) {
+      tile.ondragstart = function (e) {
+        e.dataTransfer.setData('text/plain', 'tile:' + index);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      tile.draggable = true;
+      addDropTarget(tile, index, slotIndex);
+      tile.oncontextmenu = function (e) {
+        openDeckContextMenu(e, index, a);
+      };
+    }
+    if (a.id && !state) setTimeout(function () {
+      showSlide(a, tile, 0);
+    }, 0);
+    return tile;
+  }
+  function showSlide(a, tile, step) {
+    var options = slideshowOptions(a),
+      state = slideshowState[a.id] || (slideshowState[a.id] = { index: -1, count: 0, folder: options.folder, data: '', loading: false, next: 0 });
+    if (state.loading) return;
+    var target = state.index < 0 ? 0 : state.index + step;
+    if (options.order === 'random' && state.count > 1 && state.index >= 0) {
+      target = Math.floor(Math.random() * (state.count - 1));
+      if (target >= state.index) target++;
+    }
+    state.loading = true;
+    state.next = Date.now() + options.interval * 1000;
+    api('slideshow?id=' + encodeURIComponent(a.id) + '&index=' + target, undefined, 20000)
+      .then(function (result) {
+        state.loading = false;
+        state.count = result.count || 0;
+        state.index = result.index || 0;
+        state.error = result.data ? '' : result.error || '';
+        if (result.data) state.data = result.data;
+        state.next = Date.now() + options.interval * 1000;
+        // The tile may have been redrawn while the picture loaded.
+        var live = document.querySelectorAll('.slideshow-widget[data-slideshow-id="' + a.id + '"]');
+        Array.prototype.forEach.call(live.length ? live : [tile], function (node) {
+          var note = node.querySelector('.slideshow-note');
+          note.textContent = state.error;
+          if (!result.data) return;
+          var shown = node.querySelector('.slideshow-picture.shown'),
+            next = shown && shown.classList.contains('slideshow-a') ? node.querySelector('.slideshow-b') : node.querySelector('.slideshow-a');
+          next.onload = function () {
+            next.classList.add('shown');
+            if (shown && shown !== next) shown.classList.remove('shown');
+          };
+          next.src = result.data;
+        });
+      })
+      .catch(function (e) {
+        state.loading = false;
+        state.error = e.message;
+        state.next = Date.now() + options.interval * 1000;
+      });
+  }
+  setInterval(function () {
+    if (document.hidden) return;
+    var now = Date.now();
+    Array.prototype.forEach.call(document.querySelectorAll('.slideshow-widget[data-slideshow-id]'), function (tile) {
+      var id = tile.dataset.slideshowId,
+        state = slideshowState[id];
+      if (!id || !state || state.loading || now < state.next) return;
+      var app = deckApps.filter(function (x) {
+        return x.id === id;
+      })[0];
+      if (app) showSlide(app, tile, 1);
+    });
+  }, 1000);
   function keypadTile(a, preview, index, slotIndex) {
     var tile = document.createElement('div'),
       sender = !preview && a.id ? inputSender(a.id) : null;
@@ -2287,6 +2417,21 @@
     return action === 'custom-url' ? 'url' : action === 'custom-clipboard' ? 'clipboard' : '';
   }
   function widgetFromAction(action) {
+    var slideshow = /^widget-slideshow-([345])x([345])$/.exec(action);
+    if (slideshow) {
+      var slideWidth = Number(slideshow[1]),
+        slideHeight = Number(slideshow[2]);
+      return {
+        name: 'スライドショー',
+        type: 'slideshow',
+        category: 'widget',
+        size: slideWidth === slideHeight ? slideWidth : 1,
+        width: slideWidth,
+        height: slideHeight,
+        hideLabel: true,
+        options: { folder: '', interval: 10, order: 'name', fit: 'cover' },
+      };
+    }
     if (action === 'widget-clock-digital' || action === 'widget-clock-digital-wide' || action === 'widget-clock-analog') {
       var analog = action === 'widget-clock-analog',
         wide = action === 'widget-clock-digital-wide';
@@ -2526,6 +2671,7 @@
     if (a.type === 'wheel') return wheelTile(a, preview, index, slotIndex);
     if (a.type === 'touchpad') return touchpadTile(a, preview, index, slotIndex);
     if (a.type === 'keypad') return keypadTile(a, preview, index, slotIndex);
+    if (a.type === 'slideshow') return slideshowTile(a, preview, index, slotIndex);
     var b = document.createElement(preview ? 'div' : 'button');
     b.className = 'deck-key';
     b.title = a.name;
@@ -3261,11 +3407,13 @@
                         ? 'タッチパッド'
                         : a.type === 'keypad'
                           ? 'テンキー'
+                          : a.type === 'slideshow'
+                            ? 'スライドショー'
               : 'アプリ';
     text.appendChild(hint);
     head.appendChild(text);
     menu.appendChild(head);
-    if (a.type !== 'clock' && a.type !== 'metrics' && a.type !== 'wheel' && a.type !== 'touchpad' && a.type !== 'keypad')
+    if (a.type !== 'clock' && a.type !== 'metrics' && a.type !== 'wheel' && a.type !== 'touchpad' && a.type !== 'keypad' && a.type !== 'slideshow')
       menu.appendChild(
         contextButton('アイコンを選ぶ', '', function () {
           if (rows[index]) openIconPicker(rows[index]);
@@ -5525,6 +5673,87 @@
     box.appendChild(area);
   }
 
+  function buildSlideshowSettings(fields, box) {
+    fields.options = slideshowOptions({ options: fields.options });
+    var area = document.createElement('fieldset');
+    area.className = 'wheel-settings slideshow-settings';
+    var legend = document.createElement('legend');
+    legend.textContent = 'スライドショー';
+    area.appendChild(legend);
+    var status = document.createElement('p');
+    status.className = 'editor-feedback';
+    function changed(text) {
+      status.textContent = text || '「設定を保存」で反映します。';
+      deckApps = rows.map(rowData);
+      renderPreview();
+    }
+    var folderLabel = document.createElement('label'),
+      folder = document.createElement('input'),
+      pick = document.createElement('button');
+    folderLabel.textContent = '画像のフォルダ（この PC の場所）';
+    folder.className = 'slideshow-folder';
+    folder.placeholder = '例：C:\\Users\\名前\\Pictures\\壁紙';
+    folder.maxLength = 260;
+    folder.value = fields.options.folder;
+    folder.onchange = function () {
+      fields.options.folder = folder.value.trim();
+      changed();
+    };
+    folderLabel.appendChild(folder);
+    area.appendChild(folderLabel);
+    pick.type = 'button';
+    pick.className = 'subtle';
+    pick.textContent = 'フォルダを選ぶ';
+    pick.onclick = function () {
+      pick.disabled = true;
+      status.textContent = 'PC にフォルダを選ぶ画面を開きました…';
+      api('slideshow/pick-folder', { folder: folder.value }, 600000)
+        .then(function (result) {
+          pick.disabled = false;
+          if (!result.picked) {
+            status.textContent = '';
+            return;
+          }
+          folder.value = result.folder;
+          fields.options.folder = result.folder;
+          changed('画像 ' + result.count + ' 枚が見つかりました。「設定を保存」で反映します。');
+        })
+        .catch(function (e) {
+          pick.disabled = false;
+          status.textContent = e.message;
+        });
+    };
+    area.appendChild(pick);
+    function choice(text, name, list) {
+      var label = document.createElement('label'),
+        input = document.createElement('select');
+      label.textContent = text;
+      input.className = 'slideshow-' + name;
+      list.forEach(function (pair) {
+        var option = document.createElement('option');
+        option.value = pair[0];
+        option.textContent = pair[1];
+        input.appendChild(option);
+      });
+      input.value = String(fields.options[name]);
+      input.onchange = function () {
+        fields.options[name] = name === 'interval' ? Number(input.value) : input.value;
+        changed();
+      };
+      label.appendChild(input);
+      area.appendChild(label);
+    }
+    choice('切り替える間隔', 'interval', [[5, '5秒'], [10, '10秒'], [30, '30秒'], [60, '1分'], [300, '5分'], [900, '15分'], [3600, '1時間']]);
+    if ([5, 10, 30, 60, 300, 900, 3600].indexOf(fields.options.interval) < 0) area.lastChild.querySelector('select').value = '10';
+    choice('順番', 'order', [['name', 'ファイル名の順'], ['random', 'ランダム']]);
+    choice('表示のしかた', 'fit', [['cover', '枠いっぱい（はみ出しは切る）'], ['contain', '全体を表示（余白あり）']]);
+    var note = document.createElement('p');
+    note.className = 'editor-feedback';
+    note.textContent = 'JPEG・PNG・BMP・GIF を読み込みます（フォルダの中のフォルダは見ません）。スマートフォンの画面をタップすると次の画像に進みます。';
+    area.appendChild(note);
+    area.appendChild(status);
+    box.appendChild(area);
+  }
   function buildTouchpadSettings(fields, box) {
     fields.options = touchpadOptions({ options: fields.options });
     var area = document.createElement('fieldset');
@@ -5659,6 +5888,8 @@
                         ? 'TOUCHPAD'
                       : fields.type === 'keypad'
                         ? 'KEYPAD'
+                      : fields.type === 'slideshow'
+                        ? 'SLIDESHOW'
               : 'APP';
     heading.appendChild(kind);
     box.appendChild(heading);
@@ -5713,6 +5944,7 @@
     if (fields.type === 'metrics') buildMetricsSettings(fields, box);
     if (fields.type === 'wheel') buildWheelSettings(fields, box);
     if (fields.type === 'touchpad') buildTouchpadSettings(fields, box);
+    if (fields.type === 'slideshow') buildSlideshowSettings(fields, box);
     if (fields.type === 'weather') {
       fields.options = fields.options || { forecastMode: 'days' };
       var weatherNote = document.createElement('p');
@@ -5736,7 +5968,7 @@
       refreshEditorIcon(fields);
     };
     refreshEditorIcon(fields);
-    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather' && fields.type !== 'wheel' && fields.type !== 'touchpad' && fields.type !== 'keypad') {
+    if (fields.type !== 'clock' && fields.type !== 'metrics' && fields.type !== 'weather' && fields.type !== 'wheel' && fields.type !== 'touchpad' && fields.type !== 'keypad' && fields.type !== 'slideshow') {
       var iconButton = document.createElement('button');
       iconButton.type = 'button';
       iconButton.className = 'subtle icon-select-button';
@@ -6460,14 +6692,21 @@
         op.textContent = pair[1];
         input.appendChild(op);
       });
-      input.value = fields[name];
+      // A slideshow's size names both sides ("4x3").
+      var shapeSize = name === 'size' && fields.type === 'slideshow';
+      input.value = shapeSize ? fields.width + 'x' + fields.height : fields[name];
       input.onchange = function () {
         var old = fields[name],
           oldWidth = fields.width,
           oldHeight = fields.height,
           oldPosition = fields[fields.orientation];
-        fields[name] = Number(input.value);
-        if (name === 'size') {
+        if (shapeSize) {
+          var wh = input.value.split('x');
+          fields.width = Number(wh[0]);
+          fields.height = Number(wh[1]);
+          fields.size = fields.width === fields.height ? fields.width : 1;
+        } else fields[name] = Number(input.value);
+        if (name === 'size' && !shapeSize) {
           fields.width = fields.type === 'clock' ? 2 : fields.size;
           fields.height = fields.size;
         }
@@ -6476,7 +6715,7 @@
           status.textContent = '「設定を保存」で反映します。';
           preview();
         } catch (e) {
-          if (name === 'size' && fields.size === 2) {
+          if (name === 'size' && (fields.size >= 2 || shapeSize)) {
             try {
               var candidate = findSpace(
                 rows.map(rowData),
@@ -6500,7 +6739,7 @@
           fields[name] = old;
           fields.width = oldWidth;
           fields.height = oldHeight;
-          input.value = old;
+          input.value = shapeSize ? oldWidth + 'x' + oldHeight : old;
           status.textContent = e.message;
         }
       };
@@ -6509,9 +6748,17 @@
     }
     if (fields.type !== 'keypad')
       select(
-        fields.type === 'clock' ? '時計の大きさ' : 'ボタンの大きさ',
+        fields.type === 'clock' ? '時計の大きさ' : fields.type === 'slideshow' ? 'スライドショーの大きさ' : 'ボタンの大きさ',
         'size',
-        fields.type === 'clock'
+        fields.type === 'slideshow'
+          ? [
+              ['3x3', '横3・縦3（9マス）'],
+              ['4x3', '横4・縦3（12マス）'],
+              ['4x4', '横4・縦4（16マス）'],
+              ['5x4', '横5・縦4（20マス）'],
+              ['5x5', '横5・縦5（25マス）'],
+            ]
+          : fields.type === 'clock'
           ? fields.options && fields.options.style === 'analog'
             ? [[2, '4マス（2×2）']]
             : [
