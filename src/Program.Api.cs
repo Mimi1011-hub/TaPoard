@@ -7,245 +7,26 @@ partial class Program
 {
     static void Route(Request r)
     {
-        var s = r.stream;
-        string path = r.path,
-            method = r.method;
-
-        // Pairing works before the phone has a key.
-        if (path == "/api/pair/start" && method == "POST")
-        {
-            PairStart(r);
-            return;
-        }
-        if (path == "/api/pair/status" && method == "GET")
-        {
-            PairStatus(r);
-            return;
-        }
-        if (path == "/api/pair/manage" && method == "GET" && r.isAdmin)
-        {
-            lock (Gate)
-                ReplyJson(s, 200, Pairing.View(config));
-            return;
-        }
+        Action<Request> handler = api.FindOpen(r.method, r.path);
+        if (handler != null) { handler(r); return; }
         if (!r.allowed)
         {
-            Reply(s, 401, JsonType, "{\"error\":\"接続キーを確認してください\"}");
+            Reply(r.stream, 401, JsonType, "{\"error\":\"接続キーを確認してください\"}");
             return;
         }
-
-        if (path == "/api/ping" && method == "GET")
+        if (r.method == "GET")
         {
-            Reply(s, 200, JsonType, "{\"ok\":true}");
+            handler = api.Find(r.method, r.path, r.isAdmin);
+            if (handler != null) { handler(r); return; }
+            Reply(r.stream, 404, JsonType, "{}");
             return;
         }
-        if (path == "/api/state" && method == "GET")
-        {
-            GetState(r);
-            return;
-        }
-        if (path == "/api/sync" && method == "GET")
-        {
-            WaitForSync(r);
-            return;
-        }
-        if (path == "/api/settings" && method == "GET" && r.isAdmin)
-        {
-            GetSettings(r);
-            return;
-        }
-        if (path == "/api/import" && r.isAdmin && method == "GET")
-        {
-            lock (Gate)
-                ReplyJson(s, 200, new { id = importId, result = importResult });
-            return;
-        }
-        if (path == "/api/devices" && method == "GET" && r.isAdmin)
-        {
-            ReplyJson(s, 200, new { devices = AudioDevices.List() });
-            return;
-        }
-        if (path == "/api/pc-window" && method == "GET" && r.isAdmin)
-        {
-            ReplyJson(s, 200, PcWindowView());
-            return;
-        }
-        if (path == "/api/background/image" && method == "GET")
-        {
-            string image;
-            lock (Gate)
-                image = DeckBackgrounds.ImageData(Data, config.background);
-            Reply(s, 200, JsonType, "{\"data\":" + (image == null ? "null" : "\"" + image + "\"") + "}");
-            return;
-        }
-        if (path == "/api/icon-packs" && method == "GET" && r.isAdmin)
-        {
-            ReplyJson(s, 200, new { packs = IconPacks.List(Data), maxPacks = IconPacks.MaxPacks, maxIcons = IconPacks.MaxIcons });
-            return;
-        }
-        if (path == "/api/icon-packs/get" && method == "GET" && r.isAdmin)
-        {
-            Reply(s, 200, JsonType, IconPacks.Serializer().Serialize(IconPacks.Get(Data, QueryValue(r.target, "id"))));
-            return;
-        }
-        if (path == "/api/backups" && method == "GET" && r.isAdmin)
-        {
-            ReplyJson(s, 200, new { backups = store.ListBackups() });
-            return;
-        }
-        if (path == "/api/presets" && method == "GET" && r.isAdmin)
-        {
-            ReplyJson(s, 200, new { presets = DeckPresets.Public() });
-            return;
-        }
-        if (path == "/api/icon-styles" && method == "GET" && r.isAdmin)
-        {
-            ReplyJson(s, 200, new { styles = IconStyles.List(Data), maxStyles = IconStyles.MaxStyles });
-            return;
-        }
-        if (path == "/api/slideshow" && method == "GET")
-        {
-            // Any paired device may read pictures, but only from a folder set on a slideshow widget.
-            string id = QueryValue(r.target, "id"), folder = null;
-            int index;
-            Int32.TryParse(QueryValue(r.target, "index"), out index);
-            lock (Gate)
-            {
-                var app = config.apps.Find(a => a.id == id && IsType(a, "slideshow"));
-                object raw;
-                if (app != null && app.options != null && app.options.TryGetValue("folder", out raw)) folder = raw as string;
-                if (app == null) { Reply(s, 404, JsonType, "{\"error\":\"スライドショーが見つかりません。\"}"); return; }
-            }
-            ReplyJson(s, 200, Slideshow.Picture(folder, index));
-            return;
-        }
-        if (path == "/api/firewall" && method == "GET" && r.isAdmin)
-        {
-            ReplyJson(s, 200, FirewallCheck.Status(Root));
-            return;
-        }
-        if (method != "POST")
-        {
-            Reply(s, 404, JsonType, "{}");
-            return;
-        }
-
-        var input = ReadInput(s, r.headers);
-        string json = Json(input);
-        if (path == "/api/pair/manage" && r.isAdmin)
-            ManagePairing(r, input);
-        else if (path == "/api/import" && r.isAdmin)
-            StartImport(r);
-        else if (path == "/api/page")
-            SetPage(r, input);
-        else if (path.StartsWith("/api/background", StringComparison.Ordinal) && r.isAdmin)
-            SetBackground(r, path, input, json);
-        else if (path == "/api/page/move" && r.isAdmin)
-            MovePage(r, input);
-        else if (path == "/api/page/delete" && r.isAdmin)
-            DeletePage(r, input);
-        else if (path == "/api/backups/restore" && r.isAdmin)
-            RestoreBackup(r, input);
-        else if (path == "/api/fader/remove" && r.isAdmin)
-            RemoveFader(r, input);
-        else if (path == "/api/slideshow/pick-folder" && r.isAdmin)
-        {
-            object start;
-            string chosen = Slideshow.PickFolder(input.TryGetValue("folder", out start) ? Convert.ToString(start) : "");
-            ReplyJson(r.stream, 200, new { folder = chosen ?? "", picked = chosen != null, count = chosen == null ? 0 : Slideshow.Files(chosen).Length });
-        }
-        else if (path == "/api/presets/apply" && r.isAdmin)
-            ApplyPreset(r, input);
-        else if (path == "/api/page/undo" && r.isAdmin)
-            UndoDeletePage(r);
-        else if (path == "/api/layout")
-            SetLayout(r, input);
-        else if (path == "/api/audio")
-            SetAudio(r, input);
-        else if (path == "/api/weather/search" && r.isAdmin)
-            ReplyJson(s, 200, new { results = WeatherService.Search(Convert.ToString(input["query"])) });
-        else if (path == "/api/weather/location" && r.isAdmin)
-            SetWeatherLocation(r, input);
-        else if (path == "/api/view")
-        {
-            object rawViewId;
-            if (!input.TryGetValue("viewId", out rawViewId))
-                throw new Exception("表示セッションが正しくありません。");
-            string viewId = Convert.ToString(rawViewId);
-            var visible = new List<string>();
-            object rawVisible;
-            if (input.TryGetValue("visibleIds", out rawVisible))
-            {
-                var list = rawVisible as System.Collections.IEnumerable;
-                if (list == null || rawVisible is string || rawVisible is Dictionary<string, object>)
-                    throw new Exception("表示部品が正しくありません。");
-                foreach (object id in list) visible.Add(Convert.ToString(id));
-            }
-            InputSessions.PublicSession[] sessions;
-            lock (Gate)
-            {
-                sessions = UpdateRuntimeSessions(r, viewId, visible.ToArray(), true, true);
-                TouchPhone(r.local);
-            }
-            ReplyJson(s, 200, new { ok = true, inputSessions = sessions });
-        }
-        else if (path == "/api/input")
-        {
-            object rawSession, rawView, rawSequence, rawEvents;
-            if (!input.TryGetValue("sessionId", out rawSession) || !input.TryGetValue("viewId", out rawView)
-                || !input.TryGetValue("sequence", out rawSequence) || !input.TryGetValue("events", out rawEvents))
-                throw new Exception("入力要求が正しくありません。");
-            string owner = ViewIdentity(r, Convert.ToString(rawView));
-            PcWindowService.YieldFocus();
-            var ack = InputSessions.Execute(
-                owner,
-                Convert.ToString(rawSession),
-                Convert.ToInt32(rawSequence),
-                InputSessions.ParseEvents(rawEvents)
-            );
-            ReplyJson(s, 200, ack);
-        }
-        else if (path == "/api/input/keepalive" || path == "/api/input/release")
-        {
-            object rawSession, rawView;
-            if (!input.TryGetValue("sessionId", out rawSession) || !input.TryGetValue("viewId", out rawView))
-                throw new Exception("入力要求が正しくありません。");
-            string owner = ViewIdentity(r, Convert.ToString(rawView));
-            if (path == "/api/input/keepalive") InputSessions.Keepalive(owner, Convert.ToString(rawSession));
-            else InputSessions.Release(owner, Convert.ToString(rawSession));
-            Reply(s, 200, JsonType, "{\"ok\":true}");
-        }
-        else if (path == "/api/settings" && r.isAdmin)
-        {
-            SaveSettings(json);
-            Reply(s, 200, JsonType, "{\"ok\":true}");
-        }
-        else if (path.StartsWith("/api/icon-styles/", StringComparison.Ordinal) && r.isAdmin)
-            IconStyleAction(r, path.Substring("/api/icon-styles/".Length), input);
-        else if (path.StartsWith("/api/icon-packs/", StringComparison.Ordinal) && r.isAdmin)
-            IconPackAction(r, path.Substring("/api/icon-packs/".Length), input, json);
-        else if (path == "/api/rotate" && r.isAdmin)
-        {
-            RotateKeys();
-            Reply(s, 200, JsonType, "{\"ok\":true}");
-        }
-        else if (path == "/api/action")
-            RunAction(r, input);
-        else if (path == "/api/pc-window" && r.isAdmin)
-            SavePcWindow(r, input);
-        else if (path == "/api/pc-window/open" && r.isAdmin)
-        {
-            object full;
-            OpenPcWindow(input.TryGetValue("fullscreen", out full) && Convert.ToBoolean(full));
-            ReplyJson(s, 200, PcWindowView());
-        }
-        else if (path == "/api/firewall/repair" && r.isAdmin)
-        {
-            FirewallCheck.StartRepair(Root);
-            ReplyJson(s, 200, FirewallCheck.Status(Root));
-        }
-        else
-            Reply(s, 403, JsonType, "{}");
+        if (r.method != "POST") { Reply(r.stream, 404, JsonType, "{}"); return; }
+        r.input = ReadInput(r.stream, r.headers);
+        r.json = Json(r.input);
+        handler = api.Find(r.method, r.path, r.isAdmin);
+        if (handler != null) { handler(r); return; }
+        Reply(r.stream, 403, JsonType, "{}");
     }
 
     static void PairStart(Request r)
