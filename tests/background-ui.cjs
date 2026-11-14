@@ -60,6 +60,19 @@ async function until(check, what) {
     // Buttons follow the background color by default, can be see-through or stay black.
     assert.equal(await screen.evaluate(e => e.classList.contains('keys-tint')), true);
     assert.match(await admin.locator('#preview-deck .deck-key').first().evaluate(e => getComputedStyle(e).backgroundImage), /linear-gradient\(145deg, rgb\((?!23, 25, 30)/);
+    // White and other light backgrounds give light buttons (not grey) with dark widget text.
+    const before = await background();
+    await api('background', { ...before, color: '#f7f7f5', color2: '' });
+    await admin.waitForFunction(() => document.querySelector('#phone-shell .phone-screen').classList.contains('keys-light'));
+    const keyBg = await admin.locator('#preview-deck .deck-key').first().evaluate(e => getComputedStyle(e).backgroundImage);
+    const firstRgb = keyBg.match(/rgb\((\d+), (\d+), (\d+)\)/).slice(1).map(Number);
+    assert(Math.min(...firstRgb) > 220, 'white background, near-white buttons: ' + keyBg);
+    await api('background', { ...before, color: '#2193b0', color2: '' });
+    await admin.waitForFunction(() => !document.querySelector('#phone-shell .phone-screen').classList.contains('keys-light'));
+    const seaRgb = (await admin.locator('#preview-deck .deck-key').first().evaluate(e => getComputedStyle(e).backgroundImage)).match(/rgb\((\d+), (\d+), (\d+)\)/).slice(1).map(Number);
+    assert(seaRgb[2] - seaRgb[0] > 80, 'mid colors stay vivid: ' + seaRgb);
+    await api('background', before);
+    await admin.waitForFunction(c => document.querySelector('#phone-shell .phone-screen').style.background.includes('gradient'), null);
     await admin.locator('#background-keys').selectOption('glass');
     await until(async () => (await background()).keys === 'glass', 'glass saved');
     assert.equal(await screen.evaluate(e => e.classList.contains('keys-glass') && !e.classList.contains('keys-tint')), true);

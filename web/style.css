@@ -3498,6 +3498,49 @@ body.preset-screen-open {
 .keys-glass .deck-key .key-label {
   text-shadow: 0 1px 2px #0009;
 }
+/* Light backgrounds (white, cream, peach, ...): light buttons, so text and widget colors turn dark. */
+.keys-light .deck-key {
+  color: #1d2331;
+}
+/* Button names sit on their own dark band over the icon, so they stay white. */
+.keys-light .deck-key svg,
+.keys-light .audio-mute svg,
+.keys-light .icon-fallback { color: #3a5bd0; }
+.keys-light .deck-key .app-icon { filter: drop-shadow(0 2px 2px #0003); }
+.keys-light .clock-widget,
+.keys-light .clock-time,
+.keys-light .metrics-widget,
+.keys-light .metrics-small .metric-value,
+.keys-light .weather-widget,
+.keys-light .wheel-widget { color: #1d2331; }
+.keys-light .clock-date,
+.keys-light .clock-marker,
+.keys-light .metrics-small .metric-name,
+.keys-light .metrics-heading,
+.keys-light .metrics-memory-detail,
+.keys-light .weather-heading,
+.keys-light .weather-days small,
+.keys-light .weather-message small,
+.keys-light .weather-updated,
+.keys-light .fader-value,
+.keys-light .wheel-center,
+.keys-light .touchpad-widget,
+.keys-light .preview-grid .empty-key { color: #4b5568; }
+.keys-light .metric-cpu strong { color: #2c5fd6; }
+.keys-light .metric-memory strong { color: #0f8a6e; }
+.keys-light .metric-gpu strong { color: #b87500; }
+.keys-light .metric-gpu-memory strong { color: #9136cf; }
+.keys-light .metrics-graph .cpu-line { stroke: #2c5fd6; }
+.keys-light .metrics-graph .memory-line { stroke: #0f8a6e; }
+.keys-light .metrics-graph .gpu-line { stroke: #b87500; }
+.keys-light .metrics-graph .gpu-memory-line { stroke: #9136cf; }
+.keys-light .weather-icon,
+.keys-light .weather-days b { color: #d99100; }
+.keys-light .weather-rain,
+.keys-light .weather-days em { color: #2a66cc; }
+.keys-light .weather-days i { color: #d2412f; }
+.keys-light .weather-error { color: #b3261e; }
+.keys-light .deck-key.empty-key { box-shadow: inset 0 2px 6px #0002 !important; }
 .background-keys-row label {
   display: inline-flex;
   align-items: center;
