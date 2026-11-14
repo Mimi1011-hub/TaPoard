@@ -20,6 +20,8 @@ class DeckBackground
     // How buttons follow the background: "" (auto: the background color, or see-through on a picture),
     // "glass" (see-through) or "standard" (the original black buttons).
     public string keys { get; set; }
+    // How see-through the buttons' own background is, 0 (solid) to 100 percent. A button can set its own.
+    public int keyClear { get; set; }
 }
 
 class BackgroundPosition
@@ -62,6 +64,7 @@ static class DeckBackgrounds
         if (next == null) next = new DeckBackground();
         if (!IconPresets.ValidColor(next.color) || !IconPresets.ValidColor(next.color2)) throw new Exception("背景色が正しくありません。");
         if (next.dim < 0 || next.dim > 80 || next.blur < 0 || next.blur > 20) throw new Exception("背景の暗さ・ぼかしが範囲外です。");
+        if (next.keyClear < 0 || next.keyClear > 100) throw new Exception("ボタンの透過度が範囲外です。");
         return new DeckBackground
         {
             color = next.color ?? "",
@@ -75,6 +78,7 @@ static class DeckBackgrounds
             keys = next.keys == "glass" || next.keys == "standard" ? next.keys : "",
             dim = next.dim,
             blur = next.blur,
+            keyClear = next.keyClear,
         };
     }
 
@@ -94,6 +98,7 @@ static class DeckBackgrounds
             keys = b.keys ?? "",
             dim = b.dim,
             blur = b.blur,
+            keyClear = b.keyClear,
         };
     }
 

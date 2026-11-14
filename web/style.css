@@ -3701,3 +3701,21 @@ textarea.name-input {
 @media (max-width: 1100px) {
   .picker-top-button { right: 20px; bottom: 20px; }
 }
+
+/* 3.1: see-through buttons (background panel / per button). Only the button's own background
+   fades; it is copied to a layer behind the content (see fadeKeys in app.js). */
+.deck-key.key-fade {
+  background: none !important;
+  isolation: isolate;
+  box-shadow: none !important;
+}
+.deck-key.key-fade::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--key-fill);
+  opacity: var(--key-alpha);
+  pointer-events: none;
+}

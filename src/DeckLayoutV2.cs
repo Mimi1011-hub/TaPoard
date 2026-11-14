@@ -429,7 +429,7 @@ static class DeckLayout
         foreach (var app in s.apps)
         {
             WidgetRegistry.ValidateDimensions(app);
-            if (app.fontSize < 8 || app.fontSize > 28 || app.iconScale < 20 || app.iconScale > 100 || !app.labelOpacity.HasValue || app.labelOpacity.Value < 0 || app.labelOpacity.Value > 100) throw new Exception("文字・アイコンの表示設定が範囲外です。");
+            if (app.fontSize < 8 || app.fontSize > 28 || app.iconScale < 20 || app.iconScale > 100 || !app.labelOpacity.HasValue || app.labelOpacity.Value < 0 || app.labelOpacity.Value > 100 || (app.keyClear.HasValue && (app.keyClear.Value < 0 || app.keyClear.Value > 100))) throw new Exception("文字・アイコンの表示設定が範囲外です。");
         }
         foreach (bool portrait in new[] { false, true })
         {
