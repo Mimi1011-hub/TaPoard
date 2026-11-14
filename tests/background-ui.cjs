@@ -104,6 +104,34 @@ async function until(check, what) {
     await until(async () => (await background()).landscape.zoom === 2, 'zoom saved');
     assert.equal(await admin.locator('#background-zoom-value').textContent(), '200%');
 
+    // Pinch like a phone wallpaper: two fingers apart zoom in around the point between them.
+    await admin.locator('#background-center').click();
+    await until(async () => (await background()).landscape.zoom === 1, 'centered');
+    assert(await admin.locator('#phone-shell .bg-adjust-bar').isVisible(), 'done bar on the preview');
+    assert(Number(await admin.locator('#preview-deck').evaluate(e => getComputedStyle(e.closest('.phone-screen > *')).opacity)) < 0.5, 'buttons fade while adjusting');
+    await admin.evaluate(() => {
+      const screen = document.querySelector('#phone-shell .phone-screen'), r = screen.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const send = (type, id, x, y) => screen.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: id === 1 }));
+      send('pointerdown', 1, cx - 20, cy);
+      send('pointerdown', 2, cx + 20, cy);
+      for (let i = 1; i <= 5; i++) { send('pointermove', 1, cx - 20 - i * 8, cy); send('pointermove', 2, cx + 20 + i * 8, cy); }
+      send('pointerup', 2, cx + 60, cy);
+      send('pointerup', 1, cx - 60, cy);
+    });
+    await until(async () => (await background()).landscape.zoom > 2.5, 'pinch zoomed');
+    b = await background();
+    assert(Math.abs(b.landscape.x - 50) < 2 && Math.abs(b.landscape.y - 50) < 2, 'zoomed around the middle: ' + JSON.stringify(b.landscape));
+    // Touchpad pinch / mouse wheel zooms out again.
+    await admin.locator('#phone-shell .phone-screen').hover({ position: { x: 60, y: 60 } });
+    await admin.mouse.wheel(0, 400);
+    await until(async () => (await background()).landscape.zoom < 2.5, 'wheel zoomed out');
+    await admin.locator('#background-zoom').fill('2');
+    await until(async () => (await background()).landscape.zoom === 2, 'zoom saved again');
+    await admin.locator('#phone-shell .bg-adjust-bar [data-bg="done"]').click();
+    assert.equal(await admin.locator('#background-adjust').getAttribute('aria-pressed'), 'false', 'done ends adjusting');
+    await admin.locator('#background-adjust').click();
+
     // Portrait keeps its own position.
     await admin.locator('#preview-portrait').click();
     await admin.waitForFunction(() => document.querySelector('#background-orientation-note').textContent.startsWith('縦'));
@@ -135,7 +163,7 @@ async function until(check, what) {
     await admin.waitForFunction(() => !document.querySelector('#phone-shell .phone-screen').classList.contains('has-deck-bg'));
     await phone.waitForFunction(() => !document.querySelector('#deck').parentNode.classList.contains('has-deck-bg'), null, { timeout: 15000 });
     assert.deepEqual(errors, []);
-    console.log('PASS background: colors, gradient, dim, picture upload, per-orientation drag and zoom, phone view, removal and reset');
+    console.log('PASS background: colors, gradient, dim, picture upload, per-orientation drag and zoom, pinch and wheel zoom around a point, done bar, phone view, removal and reset');
   } finally {
     if (browser) await browser.close();
     host.kill();

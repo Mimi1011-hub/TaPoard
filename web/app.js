@@ -5398,7 +5398,7 @@
         renderBackgroundControls();
         showPreviewForAdjust();
         return loadBackgroundImage().then(function () {
-          message('背景画像を設定しました。プレビューをドラッグすると位置を動かせます。');
+          message('背景画像を設定しました。プレビューをドラッグで移動、ピンチやホイールで拡大して位置を合わせ、「完了」を押してください。');
         });
       })
       .catch(function (e) {
@@ -5477,65 +5477,154 @@
       renderBackgroundControls();
       if (backgroundAdjust) showPreviewForAdjust();
     };
-    // In adjust mode, dragging the preview moves the picture and the wheel zooms it.
+    // In adjust mode the preview works like setting a phone wallpaper: drag with one finger or the
+    // mouse to move the picture, pinch with two fingers (or a touchpad, or the mouse wheel) to zoom
+    // around the point between the fingers. The buttons fade out meanwhile so the picture shows.
     var screen = document.querySelector('#phone-shell .phone-screen'),
-      drag = null;
+      pointers = {},
+      gesture = null;
+    function pictureLayout(p) {
+      var width = screen.clientWidth || 1,
+        height = screen.clientHeight || 1,
+        iw = backgroundImageSize.width || deckBackground.imageWidth || 1,
+        ih = backgroundImageSize.height || deckBackground.imageHeight || 1,
+        base = p.fit === 'contain' ? Math.min(width / iw, height / ih) : Math.max(width / iw, height / ih),
+        scale = base * p.zoom,
+        overX = iw * scale - width,
+        overY = ih * scale - height;
+      // background-position x% puts the picture's x% point on the screen's x% point.
+      return { width: width, height: height, base: base, scale: scale, overX: overX, overY: overY, left: -overX * p.x / 100, top: -overY * p.y / 100 };
+    }
+    // The position that keeps the picture point under (ax, ay) there when the zoom changes and the
+    // anchor moves to (bx, by).
+    function zoomAround(start, startLayout, zoom, ax, ay, bx, by) {
+      zoom = Math.max(1, Math.min(5, zoom));
+      var next = { fit: start.fit, zoom: zoom, x: start.x, y: start.y },
+        l = pictureLayout(next),
+        ux = (ax - startLayout.left) / startLayout.scale,
+        uy = (ay - startLayout.top) / startLayout.scale,
+        left = bx - ux * l.scale,
+        top = by - uy * l.scale;
+      if (l.overX > 0) next.x = Math.max(0, Math.min(100, (-left / l.overX) * 100));
+      if (l.overY > 0) next.y = Math.max(0, Math.min(100, (-top / l.overY) * 100));
+      return next;
+    }
+    function localPoint(e) {
+      var r = screen.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+    function adjusting() {
+      return backgroundAdjust && deckBackground.image;
+    }
+    // Starts (again) from the current picture whenever a finger is added or lifted.
+    function beginGesture() {
+      var ids = Object.keys(pointers);
+      if (!ids.length) {
+        gesture = null;
+        return;
+      }
+      var a = pointers[ids[0]],
+        b = pointers[ids[1]] || a,
+        p = backgroundPosition(previewOrientation);
+      gesture = { start: p, layout: pictureLayout(p), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), two: !!pointers[ids[1]] };
+    }
+    function moveGesture() {
+      if (!gesture) return;
+      var ids = Object.keys(pointers),
+        a = pointers[ids[0]],
+        b = pointers[ids[1]] || a,
+        mx = (a.x + b.x) / 2,
+        my = (a.y + b.y) / 2,
+        zoom = gesture.two ? gesture.start.zoom * (Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) / gesture.distance) : gesture.start.zoom;
+      deckBackground[previewOrientation] = zoomAround(gesture.start, gesture.layout, zoom, gesture.mx, gesture.my, mx, my);
+      paintBackground();
+      showZoomValue();
+    }
+    function showZoomValue() {
+      var p = backgroundPosition(previewOrientation);
+      $('background-zoom').value = p.zoom;
+      $('background-zoom-value').textContent = Math.round(p.zoom * 100) + '%';
+    }
     screen.addEventListener(
       'pointerdown',
       function (e) {
-        if (!backgroundAdjust || !deckBackground.image) return;
+        if (!adjusting() || e.target.closest('.bg-adjust-bar')) return;
         e.preventDefault();
         e.stopPropagation();
-        var p = backgroundPosition(previewOrientation);
-        drag = { x: e.clientX, y: e.clientY, start: p, id: e.pointerId };
-        screen.setPointerCapture(e.pointerId);
+        pointers[e.pointerId] = localPoint(e);
+        if (Object.keys(pointers).length > 2) delete pointers[e.pointerId];
+        else {
+          try {
+            screen.setPointerCapture(e.pointerId);
+          } catch (err) {}
+          beginGesture();
+        }
       },
       true,
     );
     screen.addEventListener('pointermove', function (e) {
-      if (!drag || e.pointerId !== drag.id) return;
-      var width = screen.clientWidth,
-        height = screen.clientHeight,
-        iw = backgroundImageSize.width || deckBackground.imageWidth || 1,
-        ih = backgroundImageSize.height || deckBackground.imageHeight || 1,
-        p = drag.start,
-        scale = (p.fit === 'contain' ? Math.min(width / iw, height / ih) : Math.max(width / iw, height / ih)) * p.zoom,
-        overflowX = iw * scale - width,
-        overflowY = ih * scale - height;
-      // background-position percentages move the picture by its overflow; dragging right shows more of the left side.
-      var x = overflowX ? p.x - ((e.clientX - drag.x) / overflowX) * 100 : p.x,
-        y = overflowY ? p.y - ((e.clientY - drag.y) / overflowY) * 100 : p.y;
-      var o = previewOrientation;
-      deckBackground[o] = { fit: p.fit, zoom: p.zoom, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
-      paintBackground();
+      if (!pointers[e.pointerId]) return;
+      pointers[e.pointerId] = localPoint(e);
+      moveGesture();
     });
-    function endDrag(e) {
-      if (!drag || e.pointerId !== drag.id) return;
-      drag = null;
-      setBackgroundPosition({});
+    function endPointer(e) {
+      if (!pointers[e.pointerId]) return;
+      delete pointers[e.pointerId];
+      beginGesture();
+      if (!gesture) setBackgroundPosition({});
     }
-    screen.addEventListener('pointerup', endDrag);
-    screen.addEventListener('pointercancel', endDrag);
+    screen.addEventListener('pointerup', endPointer);
+    screen.addEventListener('pointercancel', endPointer);
     screen.addEventListener(
       'click',
       function (e) {
-        if (backgroundAdjust && deckBackground.image) {
+        if (adjusting() && !e.target.closest('.bg-adjust-bar')) {
           e.preventDefault();
           e.stopPropagation();
         }
       },
       true,
     );
+    // Mouse wheel and touchpad pinch (sent as wheel with Ctrl) zoom around the pointer.
+    var wheelSave = 0;
     screen.addEventListener(
       'wheel',
       function (e) {
-        if (!backgroundAdjust || !deckBackground.image) return;
+        if (!adjusting()) return;
         e.preventDefault();
-        var p = backgroundPosition(previewOrientation);
-        setBackgroundPosition({ zoom: p.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08) });
+        var p = backgroundPosition(previewOrientation),
+          at = localPoint(e),
+          step = Math.max(-0.5, Math.min(0.5, -e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
+        deckBackground[previewOrientation] = zoomAround(p, pictureLayout(p), p.zoom * Math.exp(step), at.x, at.y, at.x, at.y);
+        paintBackground();
+        showZoomValue();
+        clearTimeout(wheelSave);
+        wheelSave = setTimeout(function () {
+          setBackgroundPosition({});
+        }, 250);
       },
       { passive: false },
     );
+    // Safari on iPhone/iPad (settings opened on a phone) pinches with gesture events.
+    screen.addEventListener('gesturestart', function (e) {
+      if (adjusting()) e.preventDefault();
+    });
+    // The buttons on the preview while adjusting: done and back to the middle.
+    var bar = document.createElement('div');
+    bar.className = 'bg-adjust-bar';
+    bar.innerHTML = '<span>ドラッグで移動・ピンチで拡大</span><button type="button" data-bg="center">リセット</button><button type="button" data-bg="done">完了</button>';
+    bar.onclick = function (e) {
+      var button = e.target.closest('button');
+      if (!button) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (button.dataset.bg === 'center') setBackgroundPosition({ x: 50, y: 50, zoom: 1 });
+      else {
+        backgroundAdjust = false;
+        renderBackgroundControls();
+      }
+    };
+    screen.appendChild(bar);
     renderBackgroundControls();
   }
   window.addEventListener('resize', paintBackground);
