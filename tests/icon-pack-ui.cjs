@@ -205,6 +205,8 @@ function zip(files) {
     const sd = (await api('icon-packs/get?id=' + sdInfo.id)).data;
     assert.deepEqual(sd.icons.map(i => [i.name, i.group]), [['Live', '配信'], ['Chat', 'SNS'], ['Rec', '配信']], JSON.stringify(sd.icons.map(i => [i.name, i.group])) + ' ' + await admin.locator('#message').innerText());
     assert.match(sd.icons[0].data, /^data:image\/(png|webp);base64,/, 'SVG drawn into a picture');
+    // Bulk change names how many pictures match standard icons (Live/Chat/Rec all match).
+    assert.equal(await admin.locator('#icon-pack-bulk-pack option', { hasText: 'SDパック（対応 3個）' }).count(), 1);
     await admin.locator('.icon-select-button').first().click();
     await admin.locator('.icon-pack-tabs').getByRole('tab', { name: 'SDパック' }).click();
     await admin.locator('.icon-pack-grid .icon-choice').first().waitFor();
@@ -232,6 +234,8 @@ function zip(files) {
     assert.match(await admin.locator('#message').innerText(), /大きいパック.*1500個/);
     const bigInfo = (await api('icon-packs')).data.packs[4];
     assert.equal(bigInfo.count, many);
+    assert.equal(await admin.locator('#icon-pack-bulk-pack option', { hasText: '大きいパック' }).count(), 0, 'a pack with no matches is not offered for bulk change');
+    assert.match(await admin.locator('#icon-pack-bulk-note').innerText(), /Stream Deck/);
     await admin.locator('.icon-select-button').first().click();
     await admin.locator('.icon-pack-tabs').getByRole('tab', { name: '大きいパック' }).click();
     await admin.waitForFunction(n => document.querySelectorAll('.icon-pack-grid .icon-choice').length === n, many);

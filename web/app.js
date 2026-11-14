@@ -4575,13 +4575,21 @@
     if (!select) return;
     var before = select.value;
     select.textContent = '';
-    [{ id: '', name: '標準アイコンに戻す' }].concat(iconPacks).forEach(function (pack) {
+    // Only packs whose pictures are matched to standard icon kinds can switch buttons over
+    // (.tpicons with "key", or pictures named like "microphone"); others are left out.
+    var usable = iconPacks.filter(function (p) { return p.mapped > 0; });
+    [{ id: '', name: '標準アイコンに戻す' }].concat(usable).forEach(function (pack) {
       var option = document.createElement('option');
       option.value = pack.id;
-      option.textContent = pack.id ? pack.name + (pack.mapped ? '' : '（対応づけなし）') : pack.name;
+      option.textContent = pack.id ? pack.name + '（対応 ' + pack.mapped + '個）' : pack.name;
       select.appendChild(option);
     });
-    select.value = iconPacks.some(function (p) { return p.id === before; }) ? before : iconPacks.length ? iconPacks[iconPacks.length - 1].id : '';
+    select.value = usable.some(function (p) { return p.id === before; }) ? before : usable.length ? usable[usable.length - 1].id : '';
+    if ($('icon-pack-bulk-note'))
+      $('icon-pack-bulk-note').textContent =
+        iconPacks.length > usable.length
+          ? '標準アイコンと対応づけのないパック（Stream Deck のパックなど）は一括変更に使えないため、一覧に出していません。アイコン選択画面から1つずつ選んでください。'
+          : '';
   }
   function inBulkScope(r, scope) {
     if (scope !== 'page') return true;
