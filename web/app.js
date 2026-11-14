@@ -4085,6 +4085,11 @@
             icons.push({ name: baseName(entry.name), key: guessPresetKey(baseName(entry.name)), group: folder.slice(0, 40), tags: '', entry: entry });
           });
         if (!icons.length) throw new Error('パックの中にアイコン画像が見つかりません。');
+        // When most headings hold one picture each (packs that tag each icon with its own name), drop them.
+        var used = {};
+        icons.forEach(function (icon) { if (icon.group) used[icon.group] = (used[icon.group] || 0) + 1; });
+        var single = icons.filter(function (icon) { return icon.group && used[icon.group] < 2; }).length;
+        if (single > icons.length * 0.4) icons.forEach(function (icon) { if (icon.group && used[icon.group] < 2) icon.group = ''; });
         return {
           name: String((manifest && manifest.name) || info.Name || info.name || baseName(archive.name)).slice(0, 80),
           author: String((manifest && manifest.author) || info.Author || info.author || '').slice(0, 80),
@@ -4392,7 +4397,35 @@
             return { title: group.title, keys: group.items.map(function (i) { return i[0]; }), icons: [] };
           }),
           others = { title: 'その他', keys: [], icons: [] };
-        if (pack.icons.some(function (icon) { return icon.group; })) {
+        // Headings help only when they gather several pictures each. Packs whose first tag is the
+        // picture's own name (one heading per icon) would list everything in a single column.
+        var groupCount = {};
+        pack.icons.forEach(function (icon) {
+          if (icon.group) groupCount[icon.group] = (groupCount[icon.group] || 0) + 1;
+        });
+        var groupNames = Object.keys(groupCount),
+          grouped = pack.icons.filter(function (icon) { return icon.group && groupCount[icon.group] > 1; }).length,
+          usefulGroups = groupNames.length > 0 && groupNames.length <= 60 && grouped >= pack.icons.length * 0.6;
+        if (!usefulGroups && pack.icons.length > 120 && pack.icons.filter(function (icon) { return keyOf(icon); }).length < pack.icons.length * 0.3) {
+          // A big pack of named pictures (brand logos and the like): A–Z headings, by name.
+          var initial = function (icon) {
+              var c = (icon.name || '').trim().charAt(0).toUpperCase();
+              return /[A-Z]/.test(c) ? c : /[0-9]/.test(c) ? '0-9' : 'その他';
+            },
+            byInitial = {};
+          pack.icons.forEach(function (icon) {
+            var t = initial(icon);
+            (byInitial[t] = byInitial[t] || []).push({ icon: icon, key: '' });
+          });
+          sections = Object.keys(byInitial)
+            .filter(function (t) { return t !== 'その他'; })
+            .sort(function (a, b) { return a === '0-9' ? -1 : b === '0-9' ? 1 : a < b ? -1 : 1; })
+            .map(function (t) { return { title: t, keys: [], icons: byInitial[t] }; });
+          others = { title: 'その他', keys: [], icons: byInitial['その他'] || [] };
+          sections.concat([others]).forEach(function (sec) {
+            sec.icons.sort(function (a, b) { return a.icon.name.localeCompare(b.icon.name, 'ja', { sensitivity: 'base' }); });
+          });
+        } else if (usefulGroups) {
           // The pack's own headings, in the order the pack lists them.
           sections = [];
           pack.icons.forEach(function (icon) {
