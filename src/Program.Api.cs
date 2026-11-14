@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Threading;
 using System.Web.Script.Serialization;
 
 // /api/* endpoints. Every handler runs on a thread-pool thread; an exception becomes a 400 reply.
@@ -93,7 +90,7 @@ partial class Program
         }
         if (path == "/api/backups" && method == "GET" && r.isAdmin)
         {
-            ReplyJson(s, 200, new { backups = SettingsBackups.List(Data) });
+            ReplyJson(s, 200, new { backups = store.ListBackups() });
             return;
         }
         if (path == "/api/presets" && method == "GET" && r.isAdmin)
@@ -301,13 +298,7 @@ partial class Program
     // Call while holding Gate. Requests from other devices count as the phone being connected.
     static void TouchPhone(bool localRequest)
     {
-        bool was = PhoneConnected();
-        if (!localRequest)
-        {
-            phoneLastSeen = DateTime.UtcNow;
-            if (!was)
-                Signal();
-        }
+        sync.Touch(localRequest);
     }
 
     class IconPackAddRequest
@@ -375,11 +366,8 @@ partial class Program
                 version = NewId();
                 Signal();
                 // Restoring a look can be undone once, like a page delete or a preset.
-                pageUndoSettings = before;
-                pageUndoAfter = UndoSignature(config);
-                pageUndoOrientation = "landscape";
-                pageUndoPage = 0;
-                ReplyJson(r.stream, 200, new { ok = true, changed = changed, background = DeckBackgrounds.Public(config.background), landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+                pageUndo.Remember(before, config, "landscape", 0);
+                ReplyJson(r.stream, 200, new { ok = true, changed = changed, background = DeckBackgrounds.Public(config.background), landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = sync.Revision });
             }
         else if (action == "rename")
         {
@@ -420,7 +408,7 @@ partial class Program
                     widgetDefinitions = apps == null ? null : WidgetRegistry.PublicDefinitions(),
                     version = version,
                     appVersion = AppVersion,
-                    revision = revision,
+                    revision = sync.Revision,
                     pairingRevision = Pairing.Revision,
                     landscapePage = landscapePage,
                     portraitPage = portraitPage,
@@ -462,18 +450,17 @@ partial class Program
         lock (Gate)
         {
             TouchPhone(r.local);
-            if (known == revision)
-                Monitor.Wait(Gate, 15000);
+            sync.Wait(known, 15000);
             // The visible IDs were sent before the wait and may be stale: only renew, never re-plan.
             RenewRuntimeSessions(r);
             if (!r.local)
-                phoneLastSeen = DateTime.UtcNow;
+                sync.MarkPhoneSeen();
             ReplyJson(
                 r.stream,
                 200,
                 new
                 {
-                    revision = revision,
+                    revision = sync.Revision,
                     pairingRevision = Pairing.Revision,
                     landscapePage = landscapePage,
                     portraitPage = portraitPage,
@@ -529,7 +516,7 @@ partial class Program
                     widgetDefinitions = WidgetRegistry.PublicDefinitions(),
                     version = version,
                     appVersion = AppVersion,
-                    revision = revision,
+                    revision = sync.Revision,
                     pairingRevision = Pairing.Revision,
                     landscapePage = landscapePage,
                     portraitPage = portraitPage,
@@ -679,7 +666,7 @@ partial class Program
                     orientation = orientation,
                     page = selected,
                     pages = pages,
-                    revision = revision,
+                    revision = sync.Revision,
                 }
             );
         }
@@ -700,22 +687,8 @@ partial class Program
                 throw new Exception("不明な操作です。");
             Save();
             Signal();
-            ReplyJson(r.stream, 200, new { ok = true, background = DeckBackgrounds.Public(config.background), revision = revision });
+            ReplyJson(r.stream, 200, new { ok = true, background = DeckBackgrounds.Public(config.background), revision = sync.Revision });
         }
-    }
-
-    // The settings before the last page delete, kept until anything else changes the settings.
-    static string pageUndoSettings, pageUndoAfter;
-    static string pageUndoOrientation;
-    static int pageUndoPage;
-
-    // Settings as the undo check sees them: paired phones may change without blocking an undo.
-    static string UndoSignature(Settings s)
-    {
-        var devices = s.devices;
-        s.devices = null;
-        try { return IconPacks.Serializer().Serialize(s); }
-        finally { s.devices = devices; }
     }
 
     static void MovePage(Request r, Dictionary<string, object> input)
@@ -738,7 +711,7 @@ partial class Program
             Save();
             version = NewId();
             Signal();
-            ReplyJson(r.stream, 200, new { ok = true, landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+            ReplyJson(r.stream, 200, new { ok = true, landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = sync.Revision });
         }
     }
 
@@ -764,18 +737,15 @@ partial class Program
             Save();
             version = NewId();
             Signal();
-            pageUndoSettings = before;
-            pageUndoAfter = UndoSignature(config);
-            pageUndoOrientation = orientation;
-            pageUndoPage = target;
-            ReplyJson(r.stream, 200, new { ok = true, removed = removed, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+            pageUndo.Remember(before, config, orientation, target);
+            ReplyJson(r.stream, 200, new { ok = true, removed = removed, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = sync.Revision });
         }
     }
 
     // 3.1: puts an automatic backup back. Phone keys, paired phones and the PC window stay as they are.
     static void RestoreBackup(Request r, Dictionary<string, object> input)
     {
-        var restored = SettingsBackups.Read(Data, Convert.ToString(input["id"]));
+        var restored = store.ReadBackup(Convert.ToString(input["id"]));
         lock (Gate)
         {
             string before = IconPacks.Serializer().Serialize(config);
@@ -811,11 +781,8 @@ partial class Program
             Save();
             version = NewId();
             Signal();
-            pageUndoSettings = before;
-            pageUndoAfter = UndoSignature(config);
-            pageUndoOrientation = "landscape";
-            pageUndoPage = 0;
-            ReplyJson(r.stream, 200, new { ok = true, buttons = kept.Count, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = 0, portraitPage = 0, version = version, revision = revision });
+            pageUndo.Remember(before, config, "landscape", 0);
+            ReplyJson(r.stream, 200, new { ok = true, buttons = kept.Count, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = 0, portraitPage = 0, version = version, revision = sync.Revision });
         }
     }
 
@@ -835,7 +802,7 @@ partial class Program
             config = candidate;
             Save();
             Signal();
-            ReplyJson(r.stream, 200, new { ok = true, revision = revision });
+            ReplyJson(r.stream, 200, new { ok = true, revision = sync.Revision });
         }
     }
 
@@ -868,11 +835,8 @@ partial class Program
             Save();
             version = NewId();
             Signal();
-            pageUndoSettings = before;
-            pageUndoAfter = UndoSignature(config);
-            pageUndoOrientation = orientation;
-            pageUndoPage = target;
-            ReplyJson(r.stream, 200, new { ok = true, page = target, placed = placed, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+            pageUndo.Remember(before, config, orientation, target);
+            ReplyJson(r.stream, 200, new { ok = true, page = target, placed = placed, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = sync.Revision });
         }
     }
 
@@ -880,19 +844,20 @@ partial class Program
     {
         lock (Gate)
         {
-            if (pageUndoSettings == null || UndoSignature(config) != pageUndoAfter)
+            Settings restored;
+            string orientation;
+            int page;
+            if (!pageUndo.TryTake(config, out restored, out orientation, out page))
                 throw new Exception("その後に設定が変わったため、元に戻せません。");
-            var restored = IconPacks.Serializer().Deserialize<Settings>(pageUndoSettings);
             restored.token = config.token;
             restored.pairingKey = config.pairingKey;
             restored.devices = config.devices;
             config = restored;
-            if (pageUndoOrientation == "portrait") portraitPage = pageUndoPage; else landscapePage = pageUndoPage;
-            pageUndoSettings = pageUndoAfter = null;
+            if (orientation == "portrait") portraitPage = page; else landscapePage = page;
             Save();
             version = NewId();
             Signal();
-            ReplyJson(r.stream, 200, new { ok = true, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+            ReplyJson(r.stream, 200, new { ok = true, landscapePages = DeckLayout.Pages(config, "landscape"), portraitPages = DeckLayout.Pages(config, "portrait"), landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = sync.Revision });
         }
     }
 
@@ -968,7 +933,7 @@ partial class Program
                     portraitPage = portraitPage,
                     landscapePages = landscapePages,
                     portraitPages = portraitPages,
-                    revision = revision,
+                    revision = sync.Revision,
                 }
             );
         }
@@ -1016,11 +981,10 @@ partial class Program
     }
 
     // Volume changes while dragging do not notify other clients; only the final value and mute toggles do.
-    static void SetAudio(Request r, Dictionary<string, object> input)
+    static AudioState ApplyAudio(Dictionary<string, object> input, out string target, out bool notify)
     {
-        string target = Convert.ToString(input["target"]);
+        target = Convert.ToString(input["target"]);
         AudioState audio;
-        bool notify;
         if (input.ContainsKey("volume"))
         {
             audio = host.Audio.SetVolume(target, Convert.ToInt32(input["volume"]));
@@ -1038,6 +1002,14 @@ partial class Program
         }
         else
             throw new Exception("音量操作を指定してください。");
+        return audio;
+    }
+
+    static void SetAudio(Request r, Dictionary<string, object> input)
+    {
+        string target;
+        bool notify;
+        AudioState audio = ApplyAudio(input, out target, out notify);
         lock (Gate)
         {
             if (notify)
@@ -1050,7 +1022,7 @@ partial class Program
                     ok = true,
                     target = target,
                     audio = audio,
-                    revision = revision,
+                    revision = sync.Revision,
                 }
             );
         }
@@ -1103,7 +1075,7 @@ partial class Program
             Save();
             WeatherService.Configure(config);
             Signal();
-            ReplyJson(r.stream, 200, new { ok = true, weatherLocation = WeatherService.PublicLocation(config), revision = revision });
+            ReplyJson(r.stream, 200, new { ok = true, weatherLocation = WeatherService.PublicLocation(config), revision = sync.Revision });
         }
     }
 
@@ -1297,11 +1269,7 @@ partial class Program
         if (action == "up" || action == "down" || action == "mute")
         {
             InputSessions.ReleaseActive();
-            byte key =
-                action == "up" ? (byte)0xAF // VK_VOLUME_UP
-                : action == "down" ? (byte)0xAE // VK_VOLUME_DOWN
-                : (byte)0xAD; // VK_VOLUME_MUTE
-            host.Pointer.KeyTap(key);
+            host.Pointer.KeyTap(VolumeKey(action));
         }
         else if (action == "launch")
         {
@@ -1318,6 +1286,13 @@ partial class Program
         else
             throw new Exception("不明な操作です");
         ReplyJson(r.stream, 200, new { ok = true, message = resultMessage });
+    }
+
+    static byte VolumeKey(string action)
+    {
+        return action == "up" ? (byte)0xAF // VK_VOLUME_UP
+            : action == "down" ? (byte)0xAE // VK_VOLUME_DOWN
+            : (byte)0xAD; // VK_VOLUME_MUTE
     }
 
     // Runs one registered button and returns the message shown on the phone.

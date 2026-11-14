@@ -18,9 +18,12 @@ partial class Program
     static readonly string AppVersion = BuildInfo.DisplayVersion;
     static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     static readonly string Data = Path.Combine(Root, "data");
+    static ISettingsStore store = new FileSettingsStore(Data);
 
     // Guards every field below. Monitor.PulseAll on it wakes waiting /api/sync requests.
     static readonly object Gate = new object();
+    static readonly SyncHub sync = new SyncHub(Gate);
+    static readonly PageUndo pageUndo = new PageUndo();
     static Settings config;
     static TcpListener server;
     static NotifyIcon tray;
@@ -37,14 +40,15 @@ partial class Program
         host = value;
     }
 
+    internal static void UseStore(ISettingsStore value)
+    {
+        store = value;
+    }
+
     // Changes whenever the app list changes, so phones can skip re-downloading icons.
     static string version = NewId();
     static int landscapePage,
         portraitPage;
-
-    // Incremented by Signal() on every change that phones should pick up.
-    static long revision = 1;
-    static DateTime phoneLastSeen = DateTime.MinValue;
 
     static string RandomKey()
     {
@@ -73,7 +77,7 @@ partial class Program
 
     static bool PhoneConnected()
     {
-        return phoneLastSeen != DateTime.MinValue && (DateTime.UtcNow - phoneLastSeen).TotalSeconds < 30;
+        return sync.PhoneConnected;
     }
 
     static void NormalizeControlSlots()
@@ -137,8 +141,7 @@ partial class Program
 
     static void Signal()
     {
-        revision++;
-        Monitor.PulseAll(Gate);
+        sync.Signal();
     }
 
     // Settings from before 1.03 shared one entry between orientations; give each orientation its own copy.
@@ -166,7 +169,7 @@ partial class Program
 
     static void Save()
     {
-        SettingsFile.Save(Data, config);
+        store.Save(config);
     }
 
     [STAThread]
@@ -246,8 +249,7 @@ partial class Program
     // Loads data\settings-v2.json. Only its first creation may read legacy settings.json.
     static void LoadSettings()
     {
-        config = SettingsFile.Load(
-            Data,
+        config = store.Load(
             delegate
             {
                 return new Settings
