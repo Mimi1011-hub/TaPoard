@@ -3122,6 +3122,47 @@ body.pc-window main {
 .background-adjusting .phone-screen:active {
   cursor: grabbing;
 }
+.background-adjusting .phone-screen {
+  touch-action: none;
+}
+/* Like setting a phone wallpaper: the buttons fade so the whole picture can be lined up. */
+.background-adjusting .phone-screen > :not(.deck-bg):not(.bg-adjust-bar) {
+  opacity: 0.18;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.bg-adjust-bar {
+  display: none;
+}
+.background-adjusting .bg-adjust-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 12px;
+  border-radius: 999px;
+  background: rgba(20, 22, 28, 0.82);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: default;
+}
+.bg-adjust-bar button {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.bg-adjust-bar button[data-bg="done"] {
+  background: #4f7cff;
+  color: #fff;
+  border-color: transparent;
+}
 .background-image-controls label,
 .background-sliders label {
   white-space: nowrap;
