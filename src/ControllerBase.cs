@@ -1,37 +1,48 @@
 using System;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
+using Request = ApiRequest;
 
-// /api/* endpoints. Every handler runs on a thread-pool thread; an exception becomes a 400 reply.
-partial class Program
+abstract class ControllerBase
 {
-    static void Route(Request r)
-    {
-        Action<Request> handler = api.FindOpen(r.method, r.path);
-        if (handler != null) { handler(r); return; }
-        if (!r.allowed)
-        {
-            Reply(r.stream, 401, JsonType, "{\"error\":\"接続キーを確認してください\"}");
-            return;
-        }
-        if (r.method == "GET")
-        {
-            handler = api.Find(r.method, r.path, r.isAdmin);
-            if (handler != null) { handler(r); return; }
-            Reply(r.stream, 404, JsonType, "{}");
-            return;
-        }
-        if (r.method != "POST") { Reply(r.stream, 404, JsonType, "{}"); return; }
-        r.input = ReadInput(r.stream, r.headers);
-        r.json = Json(r.input);
-        handler = api.Find(r.method, r.path, r.isAdmin);
-        if (handler != null) { handler(r); return; }
-        Reply(r.stream, 403, JsonType, "{}");
-    }
+    protected readonly AppState state;
+    protected readonly IDesktop desktop;
+    protected ControllerBase(AppState state, IDesktop desktop) { this.state = state; this.desktop = desktop; }
+    protected Settings config { get { return state.Config; } set { state.Config = value; } }
+    protected object Gate { get { return state.Gate; } }
+    protected SyncHub sync { get { return state.Sync; } }
+    protected PageUndo pageUndo { get { return state.Undo; } }
+    protected ISettingsStore store { get { return state.Store; } }
+    protected AppHost host { get { return state.Host; } }
+    protected string Data { get { return state.Data; } }
+    protected string Root { get { return state.Root; } }
+    protected string AppVersion { get { return state.AppVersion; } }
+    protected string version { get { return state.Version; } set { state.Version = value; } }
+    protected int landscapePage { get { return state.LandscapePage; } set { state.LandscapePage = value; } }
+    protected int portraitPage { get { return state.PortraitPage; } set { state.PortraitPage = value; } }
+    protected LanNetwork lan { get { return state.Lan; } }
+    protected const string JsonType = HttpIO.JsonType;
+    protected const int Port = 18781;
+    protected static string Json(object value) { return HttpIO.Json(value); }
+    protected static string QueryValue(string target, string name) { return HttpIO.QueryValue(target, name); }
+    protected static void Reply(System.IO.Stream stream, int code, string type, string body) { HttpIO.Reply(stream, code, type, body); }
+    protected static void ReplyJson(System.IO.Stream stream, int code, object body) { HttpIO.ReplyJson(stream, code, body); }
+    protected static bool IsType(AppEntry app, string type) { return DeckView.IsType(app, type); }
+    protected object Controls(bool portrait) { return DeckView.Controls(config, portrait); }
+    protected object ControlPages(bool portrait) { return DeckView.ControlPages(config, portrait); }
+    protected object Grid(bool portrait) { return DeckView.Grid(config, portrait); }
+    protected void NormalizeControlSlots() { DeckView.NormalizeControlSlots(config); }
+    protected void Signal() { state.Signal(); }
+    protected void Save() { state.Save(); }
+    protected void TouchPhone(bool localRequest) { state.TouchPhone(localRequest); }
+    protected bool PhoneConnected() { return state.PhoneConnected; }
+    protected static string NewId() { return Guid.NewGuid().ToString("N"); }
+    protected static string RandomKey() { return SecureKeys.Hex(); }
+    protected static string ShortKey() { return SecureKeys.Short(); }
 
-    static void PairStart(Request r)
+    internal void PairStart(Request r)
     {
-        var request = ReadInput(r.stream, r.headers);
+        var request = HttpIO.ReadInput(r.stream, r.headers);
         lock (Gate)
         {
             var p = Pairing.Start(Convert.ToString(request["name"]), r.remote.ToString());
@@ -50,14 +61,14 @@ partial class Program
         }
     }
 
-    static void PairStatus(Request r)
+    internal void PairStatus(Request r)
     {
         string secret = r.auth != null && r.auth.StartsWith("Bearer ") ? r.auth.Substring(7) : null;
         lock (Gate)
             ReplyJson(r.stream, 200, Pairing.Poll(QueryValue(r.target, "id"), secret));
     }
 
-    static void ManagePairing(Request r, Dictionary<string, object> input)
+    internal void ManagePairing(Request r, Dictionary<string, object> input)
     {
         lock (Gate)
         {
@@ -77,7 +88,7 @@ partial class Program
     }
 
     // Call while holding Gate. Requests from other devices count as the phone being connected.
-    static void TouchPhone(bool localRequest)
+    internal void TouchPhoneLegacy(bool localRequest)
     {
         sync.Touch(localRequest);
     }
@@ -89,7 +100,7 @@ partial class Program
     }
 
     // 3.1 icon pack create/add/rename/delete. Packs live beside the settings in data\icon-packs.
-    static void IconPackAction(Request r, string action, Dictionary<string, object> input, string json)
+    internal void IconPackAction(Request r, string action, Dictionary<string, object> input, string json)
     {
         object raw;
         string id = input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null;
@@ -117,7 +128,7 @@ partial class Program
     }
 
     // 3.1 saved looks: save the current icons and background, put one back, rename or delete one.
-    static void IconStyleAction(Request r, string action, Dictionary<string, object> input)
+    internal void IconStyleAction(Request r, string action, Dictionary<string, object> input)
     {
         object raw;
         string id = input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null;
@@ -164,7 +175,7 @@ partial class Program
             Reply(r.stream, 404, JsonType, "{}");
     }
 
-    static void GetState(Request r)
+    internal void GetState(Request r)
     {
         lock (Gate)
         {
@@ -224,7 +235,7 @@ partial class Program
     }
 
     // Long poll: answers when the revision changes or after 15 seconds.
-    static void WaitForSync(Request r)
+    internal void WaitForSync(Request r)
     {
         long known;
         long.TryParse(QueryValue(r.target, "revision"), out known);
@@ -273,7 +284,7 @@ partial class Program
         }
     }
 
-    static void GetSettings(Request r)
+    internal void GetSettings(Request r)
     {
         lock (Gate)
         {
@@ -335,7 +346,7 @@ partial class Program
         }
     }
 
-    static InputSessions.PublicSession[] UpdateRuntimeSessions(Request r, bool renewMetrics, bool renewWeather)
+    internal InputSessions.PublicSession[] UpdateRuntimeSessions(Request r, bool renewMetrics, bool renewWeather)
     {
         string viewId = QueryValue(r.target, "viewId");
         if (String.IsNullOrEmpty(viewId)) return new InputSessions.PublicSession[0];
@@ -343,7 +354,7 @@ partial class Program
         return UpdateRuntimeSessions(r, viewId, raw.Length == 0 ? new string[0] : raw.Split(','), renewMetrics, renewWeather);
     }
 
-    static void RenewRuntimeSessions(Request r)
+    internal void RenewRuntimeSessions(Request r)
     {
         string viewId = QueryValue(r.target, "viewId");
         if (String.IsNullOrEmpty(viewId)) return;
@@ -354,14 +365,14 @@ partial class Program
         InputSessions.Touch(identity);
     }
 
-    static InputSessions.PublicSession[] UpdateRuntimeSessions(Request r, string viewId, string[] ids, bool renewMetrics, bool renewWeather)
+    internal InputSessions.PublicSession[] UpdateRuntimeSessions(Request r, string viewId, string[] ids, bool renewMetrics, bool renewWeather)
     {
         string identity = ViewIdentity(r, viewId);
         DisplaySubscriptions.Update(identity, config.apps, ids, renewMetrics, renewWeather);
         return InputSessions.Prepare(identity, config.apps, ids);
     }
 
-    static string ViewIdentity(Request r, string viewId)
+    internal string ViewIdentity(Request r, string viewId)
     {
         if (String.IsNullOrEmpty(viewId) || viewId.Length < 8 || viewId.Length > 64 || !System.Text.RegularExpressions.Regex.IsMatch(viewId, "\\A[a-zA-Z0-9_-]+\\z"))
             throw new Exception("表示セッションが正しくありません。");
@@ -369,54 +380,32 @@ partial class Program
     }
 
     // Opens the drag-and-drop window on the UI thread; the browser polls GET /api/import for the result.
-    static void StartImport(Request r)
+    internal void StartImport(Request r)
     {
-        string ticket = NewId();
-        ui.Invoke(
-            (Action)
-                delegate
-                {
-                    if (importWindow != null && !importWindow.IsDisposed)
-                        importWindow.Close();
-                    lock (Gate)
-                    {
-                        importId = ticket;
-                        importResult = null;
-                    }
-                    importWindow = new ImportWindow(
-                        delegate(List<AppEntry> apps)
-                        {
-                            lock (Gate)
-                                importResult = new { cancelled = apps == null, apps = apps };
-                        }
-                    );
-                    importWindow.Show();
-                    importWindow.Activate();
-                }
-        );
+        string ticket = desktop.StartImport();
         ReplyJson(r.stream, 200, new { id = ticket });
     }
 
-    static string ReadOrientation(Dictionary<string, object> input)
+    internal string ReadOrientation(Dictionary<string, object> input)
     {
         return input.ContainsKey("orientation") ? Convert.ToString(input["orientation"]) : "landscape";
     }
 
-    static void RequireOrientation(string orientation)
+    internal void RequireOrientation(string orientation)
     {
         if (orientation != "landscape" && orientation != "portrait")
             throw new Exception("画面の向きが正しくありません。");
     }
 
     // Keeps the current pages inside the page counts after the layout changed.
-    static void ShrinkCurrentPages(int landscapePages, int portraitPages)
+    internal void ShrinkCurrentPages(int landscapePages, int portraitPages)
     {
         landscapePage = Math.Min(landscapePage, landscapePages - 1);
         portraitPage = Math.Min(portraitPage, portraitPages - 1);
     }
 
     // Selects the shown page. The settings page may add one page by asking for the page after the last.
-    static void SetPage(Request r, Dictionary<string, object> input)
+    internal void SetPage(Request r, Dictionary<string, object> input)
     {
         int requested = Convert.ToInt32(input["page"]);
         string orientation = ReadOrientation(input);
@@ -454,7 +443,7 @@ partial class Program
     }
 
     // 3.1: the deck background style, picture upload and removal (settings page only).
-    static void SetBackground(Request r, string path, Dictionary<string, object> input, string json)
+    internal void SetBackground(Request r, string path, Dictionary<string, object> input, string json)
     {
         lock (Gate)
         {
@@ -472,7 +461,7 @@ partial class Program
         }
     }
 
-    static void MovePage(Request r, Dictionary<string, object> input)
+    internal void MovePage(Request r, Dictionary<string, object> input)
     {
         string orientation = ReadOrientation(input);
         RequireOrientation(orientation);
@@ -496,7 +485,7 @@ partial class Program
         }
     }
 
-    static void DeletePage(Request r, Dictionary<string, object> input)
+    internal void DeletePage(Request r, Dictionary<string, object> input)
     {
         string orientation = ReadOrientation(input);
         RequireOrientation(orientation);
@@ -524,7 +513,7 @@ partial class Program
     }
 
     // 3.1: puts an automatic backup back. Phone keys, paired phones and the PC window stay as they are.
-    static void RestoreBackup(Request r, Dictionary<string, object> input)
+    internal void RestoreBackup(Request r, Dictionary<string, object> input)
     {
         var restored = store.ReadBackup(Convert.ToString(input["id"]));
         lock (Gate)
@@ -568,7 +557,7 @@ partial class Program
     }
 
     // 3.1: removes the speaker or microphone fader from every page of one orientation, or restores it.
-    static void RemoveFader(Request r, Dictionary<string, object> input)
+    internal void RemoveFader(Request r, Dictionary<string, object> input)
     {
         string orientation = ReadOrientation(input);
         RequireOrientation(orientation);
@@ -589,7 +578,7 @@ partial class Program
 
     // 3.1: overwrites the page being shown with a purpose preset (grid size, faders, buttons, widgets).
     // Uses the same one-step undo as a page delete.
-    static void ApplyPreset(Request r, Dictionary<string, object> input)
+    internal void ApplyPreset(Request r, Dictionary<string, object> input)
     {
         string orientation = ReadOrientation(input);
         RequireOrientation(orientation);
@@ -621,7 +610,7 @@ partial class Program
         }
     }
 
-    static void UndoDeletePage(Request r)
+    internal void UndoDeletePage(Request r)
     {
         lock (Gate)
         {
@@ -643,7 +632,7 @@ partial class Program
     }
 
     // Changes the grid size or the fader positions of one orientation, plus the screen-awake option.
-    static void SetLayout(Request r, Dictionary<string, object> input)
+    internal void SetLayout(Request r, Dictionary<string, object> input)
     {
         int columns = Convert.ToInt32(input["columns"]),
             rows = Convert.ToInt32(input["rows"]);
@@ -721,7 +710,7 @@ partial class Program
     }
 
     // Applies the fader fields present in the request to the given orientation.
-    static void ApplyControlInput(Settings target, bool portrait, Dictionary<string, object> input)
+    internal void ApplyControlInput(Settings target, bool portrait, Dictionary<string, object> input)
     {
         // A request with "page" edits only that page; without it the shared placement changes.
         int page = input.ContainsKey("page") ? Convert.ToInt32(input["page"]) : -1;
@@ -762,7 +751,7 @@ partial class Program
     }
 
     // Volume changes while dragging do not notify other clients; only the final value and mute toggles do.
-    static AudioState ApplyAudio(Dictionary<string, object> input, out string target, out bool notify)
+    internal AudioState ApplyAudio(Dictionary<string, object> input, out string target, out bool notify)
     {
         target = Convert.ToString(input["target"]);
         AudioState audio;
@@ -786,7 +775,7 @@ partial class Program
         return audio;
     }
 
-    static void SetAudio(Request r, Dictionary<string, object> input)
+    internal void SetAudio(Request r, Dictionary<string, object> input)
     {
         string target;
         bool notify;
@@ -810,7 +799,7 @@ partial class Program
     }
 
     // Replaces the button list. Layout, keys and paired devices stay as they are on the server.
-    static void SaveSettings(string json)
+    internal void SaveSettings(string json)
     {
         var next = new JavaScriptSerializer().Deserialize<Settings>(json);
         if (next.apps == null || next.apps.Count > 80)
@@ -841,7 +830,7 @@ partial class Program
         }
     }
 
-    static void SetWeatherLocation(Request r, Dictionary<string, object> input)
+    internal void SetWeatherLocation(Request r, Dictionary<string, object> input)
     {
         string name = Convert.ToString(input["name"]), timezone = Convert.ToString(input["timezone"]);
         double latitude = Convert.ToDouble(input["latitude"], System.Globalization.CultureInfo.InvariantCulture),
@@ -861,7 +850,7 @@ partial class Program
     }
 
     // Validates one submitted button and clears the fields its type does not use.
-    static void ValidateEntry(AppEntry a)
+    internal void ValidateEntry(AppEntry a)
     {
         if (String.IsNullOrWhiteSpace(a.type))
             a.type = "app";
@@ -963,7 +952,7 @@ partial class Program
     }
 
     // A device that is unplugged right now may still be saved if it was already registered.
-    static AudioDeviceInfo ResolveAudioDevice(AppEntry a)
+    internal AudioDeviceInfo ResolveAudioDevice(AppEntry a)
     {
         try
         {
@@ -988,7 +977,7 @@ partial class Program
     }
 
     // Call while holding Gate.
-    static void KeepServerFields(Settings next)
+    internal void KeepServerFields(Settings next)
     {
         next.schemaVersion = config.schemaVersion;
         next.token = config.token;
@@ -1025,7 +1014,7 @@ partial class Program
     }
 
     // Issues new phone keys and forgets every paired device.
-    static void RotateKeys()
+    internal void RotateKeys()
     {
         lock (Gate)
         {
@@ -1042,7 +1031,7 @@ partial class Program
         PcWindowService.TokenChanged();
     }
 
-    static void RunAction(Request r, Dictionary<string, object> input)
+    internal void RunAction(Request r, Dictionary<string, object> input)
     {
         string resultMessage = "操作を送信しました。";
         string action = Convert.ToString(input["action"]);
@@ -1069,7 +1058,7 @@ partial class Program
         ReplyJson(r.stream, 200, new { ok = true, message = resultMessage });
     }
 
-    static byte VolumeKey(string action)
+    internal byte VolumeKey(string action)
     {
         return action == "up" ? (byte)0xAF // VK_VOLUME_UP
             : action == "down" ? (byte)0xAE // VK_VOLUME_DOWN
@@ -1077,7 +1066,7 @@ partial class Program
     }
 
     // Runs one registered button and returns the message shown on the phone.
-    static string Launch(AppEntry app, string defaultMessage)
+    internal string Launch(AppEntry app, string defaultMessage)
     {
         if (IsType(app, "audioDevice"))
         {

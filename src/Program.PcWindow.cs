@@ -90,7 +90,7 @@ partial class Program
             };
     }
 
-    static void SavePcWindow(Request r, Dictionary<string, object> input)
+    static void SavePcWindow(Dictionary<string, object> input)
     {
         PcWindowOptions copy;
         lock (Gate)
@@ -100,7 +100,6 @@ partial class Program
             copy = config.pcWindow.Clone();
         }
         PcWindowService.Apply(copy);
-        ReplyJson(r.stream, 200, PcWindowView());
     }
 
     static void ShowNotice(string text)
@@ -113,5 +112,27 @@ partial class Program
                 tray.ShowBalloonTip(5000, "TaPoard", text, ToolTipIcon.Info);
             })
         );
+    }
+
+    internal sealed class ProgramDesktop : IDesktop
+    {
+        public object PcWindowView() { return Program.PcWindowView(); }
+        public void SavePcWindow(Dictionary<string, object> input) { Program.SavePcWindow(input); }
+        public void OpenPcWindow(bool fullscreen) { Program.OpenPcWindow(fullscreen); }
+        public string StartImport()
+        {
+            string ticket = NewId();
+            ui.Invoke((Action)delegate
+            {
+                if (importWindow != null && !importWindow.IsDisposed) importWindow.Close();
+                lock (State.Gate) { State.ImportId = ticket; State.ImportResult = null; }
+                importWindow = new ImportWindow(delegate(List<AppEntry> apps)
+                {
+                    lock (State.Gate) State.ImportResult = new { cancelled = apps == null, apps = apps };
+                });
+                importWindow.Show(); importWindow.Activate();
+            });
+            return ticket;
+        }
     }
 }

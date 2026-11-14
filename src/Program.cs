@@ -13,18 +13,17 @@ using System.Windows.Forms;
 // Program.Http.cs holds the HTTP plumbing and Program.Api.cs the API endpoints.
 partial class Program
 {
-    static AppHost host = AppHost.CreateWindows();
     const int Port = 18781;
     static readonly string AppVersion = BuildInfo.DisplayVersion;
     static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     static readonly string Data = Path.Combine(Root, "data");
-    static ISettingsStore store = new FileSettingsStore(Data);
-
-    // Guards every field below. Monitor.PulseAll on it wakes waiting /api/sync requests.
-    static readonly object Gate = new object();
-    static readonly SyncHub sync = new SyncHub(Gate);
-    static readonly PageUndo pageUndo = new PageUndo();
-    static Settings config;
+    internal static readonly AppState State = new AppState(Root, Data, AppVersion, AppHost.CreateWindows(), new FileSettingsStore(Data));
+    static Settings
+        config { get { return State.Config; } set { State.Config = value; } }
+    static object Gate { get { return State.Gate; } }
+    static SyncHub sync { get { return State.Sync; } }
+    static ISettingsStore store { get { return State.Store; } }
+    static AppHost host { get { return State.Host; } }
     static TcpListener server;
     static NotifyIcon tray;
     static Icon appIcon;
@@ -32,23 +31,23 @@ partial class Program
     static LanNetwork lan;
     static Control ui;
     static ImportWindow importWindow;
-    static string importId;
-    static object importResult;
+    static string importId { get { return State.ImportId; } set { State.ImportId = value; } }
+    static object importResult { get { return State.ImportResult; } set { State.ImportResult = value; } }
 
     internal static void UseHost(AppHost value)
     {
-        host = value;
+        State.Host = value;
     }
 
     internal static void UseStore(ISettingsStore value)
     {
-        store = value;
+        State.Store = value;
     }
 
     // Changes whenever the app list changes, so phones can skip re-downloading icons.
-    static string version = NewId();
-    static int landscapePage,
-        portraitPage;
+    static string version { get { return State.Version; } set { State.Version = value; } }
+    static int landscapePage { get { return State.LandscapePage; } set { State.LandscapePage = value; } }
+    static int portraitPage { get { return State.PortraitPage; } set { State.PortraitPage = value; } }
 
     static string RandomKey()
     {
@@ -197,6 +196,7 @@ partial class Program
                 };
                 admin = RandomKey();
                 lan = new LanNetwork(Path.Combine(Root, "network.json"));
+                State.Lan = lan;
                 File.WriteAllText(Path.Combine(Root, "network-status.txt"), lan.Status);
                 StartServer();
                 ui = new Control();
