@@ -31,6 +31,8 @@ class AppEntry
     public int fontSize { get; set; }
     public int iconScale { get; set; }
     public int? labelOpacity { get; set; }
+    // 3.1: this button's own background transparency (0-100); null follows the background setting.
+    public int? keyClear { get; set; }
     public bool hideLabel { get; set; }
     public string hotkey { get; set; }
     public Dictionary<string, object> options { get; set; }

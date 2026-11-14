@@ -73,6 +73,26 @@ async function until(check, what) {
     assert(seaRgb[2] - seaRgb[0] > 80, 'mid colors stay vivid: ' + seaRgb);
     await api('background', before);
     await admin.waitForFunction(c => document.querySelector('#phone-shell .phone-screen').style.background.includes('gradient'), null);
+    // See-through buttons: the whole deck from the background panel, one button on its own.
+    await admin.locator('#background-key-clear').fill('60');
+    await until(async () => (await background()).keyClear === 60, 'key transparency saved');
+    const firstKey = admin.locator('#preview-deck .deck-key').first();
+    await admin.waitForFunction(() => document.querySelector('#preview-deck .deck-key').classList.contains('key-fade'));
+    assert.equal(await firstKey.evaluate(e => e.style.getPropertyValue('--key-alpha')), '0.4');
+    assert.match(await firstKey.evaluate(e => getComputedStyle(e, '::before').backgroundImage), /gradient/, 'the button background moves to the faded layer');
+    const settings = (await api('settings')).data;
+    settings.apps[0].keyClear = 0;
+    assert.equal((await api('settings', { apps: settings.apps })).status, 200);
+    await admin.reload();
+    await admin.locator('#preview-deck .deck-key').first().waitFor();
+    await admin.waitForFunction(() => document.querySelectorAll('#preview-deck .deck-key.key-fade').length > 0);
+    assert.equal(await admin.locator('#preview-deck [data-app-index="0"]').evaluate(e => e.classList.contains('key-fade')), false, 'a button can stay solid');
+    const bad = (await api('settings')).data;
+    bad.apps[0].keyClear = 150;
+    assert.notEqual((await api('settings', { apps: bad.apps })).status, 200);
+    await admin.locator('#background-key-clear').fill('0');
+    await until(async () => (await background()).keyClear === 0, 'key transparency off');
+    await admin.waitForFunction(() => !document.querySelector('#preview-deck .deck-key.key-fade'));
     await admin.locator('#background-keys').selectOption('glass');
     await until(async () => (await background()).keys === 'glass', 'glass saved');
     assert.equal(await screen.evaluate(e => e.classList.contains('keys-glass') && !e.classList.contains('keys-tint')), true);
@@ -176,7 +196,7 @@ async function until(check, what) {
     await admin.waitForFunction(() => !document.querySelector('#phone-shell .phone-screen').classList.contains('has-deck-bg'));
     await phone.waitForFunction(() => !document.querySelector('#deck').parentNode.classList.contains('has-deck-bg'), null, { timeout: 15000 });
     assert.deepEqual(errors, []);
-    console.log('PASS background: colors, gradient, dim, picture upload, per-orientation drag and zoom, pinch and wheel zoom around a point, done bar, phone view, removal and reset');
+    console.log('PASS background: colors, see-through buttons (all and per button), gradient, dim, picture upload, per-orientation drag and zoom, pinch and wheel zoom around a point, done bar, phone view, removal and reset');
   } finally {
     if (browser) await browser.close();
     host.kill();

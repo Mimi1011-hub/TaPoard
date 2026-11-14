@@ -2675,7 +2675,16 @@
       persistRows(found.item[1] + 'を追加して自動保存しました。');
     });
   }
+  // Every tile carries its own background transparency, if it has one (see fadeKeys).
   function appTile(a, preview, index, slotIndex) {
+    var tile = appTileInner(a, preview, index, slotIndex);
+    if (tile && tile.dataset) {
+      if (typeof a.keyClear === 'number') tile.dataset.keyClear = a.keyClear;
+      else delete tile.dataset.keyClear;
+    }
+    return tile;
+  }
+  function appTileInner(a, preview, index, slotIndex) {
     if (a.type === 'clock') return clockTile(a, preview, index, slotIndex);
     if (a.type === 'metrics') return metricsTile(a, preview, index, slotIndex);
     if (a.type === 'weather') return weatherTile(a, preview, index, slotIndex);
@@ -5229,9 +5238,36 @@
     target.style.setProperty('--key-empty', rgbCss(one, 0.45));
     target.style.setProperty('--key-shadow', rgbCss(mixRgb(two, [0, 0, 0], light ? 0.3 : 0.55)));
   }
+  // See-through buttons: the button's own background (whatever its style) is copied to a layer
+  // behind its content and that layer is faded, so icons and text stay solid.
+  function fadeKeys(target) {
+    var global = Math.max(0, Math.min(100, deckBackground.keyClear || 0));
+    Array.prototype.forEach.call(target.querySelectorAll('.deck-key'), function (key) {
+      var own = key.dataset.keyClear,
+        clear = own !== undefined && own !== '' ? Number(own) : global;
+      if (key.classList.contains('key-fade')) key.classList.remove('key-fade');
+      if (!(clear > 0)) {
+        key.style.removeProperty('--key-fill');
+        key.style.removeProperty('--key-alpha');
+        return;
+      }
+      var cs = getComputedStyle(key),
+        fill = cs.backgroundImage && cs.backgroundImage !== 'none' ? cs.backgroundImage + ', ' + cs.backgroundColor : cs.backgroundColor;
+      key.style.setProperty('--key-fill', fill);
+      key.style.setProperty('--key-alpha', String(1 - clear / 100));
+      key.classList.add('key-fade');
+    });
+  }
   function paintBackground() {
     var target = backgroundTarget();
     if (!target) return;
+    try {
+      paintBackgroundInner(target);
+    } finally {
+      fadeKeys(target);
+    }
+  }
+  function paintBackgroundInner(target) {
     var layer = target.querySelector(':scope > .deck-bg'),
       b = deckBackground,
       active = !!(b.color || (b.image && backgroundImageData));
@@ -5312,6 +5348,7 @@
         dim: deckBackground.dim || 0,
         keys: deckBackground.keys || '',
         blur: deckBackground.blur || 0,
+        keyClear: deckBackground.keyClear || 0,
         landscape: backgroundPosition('landscape'),
         portrait: backgroundPosition('portrait'),
       };
@@ -5385,6 +5422,8 @@
     $('background-dim').value = b.dim || 0;
     $('background-blur').value = b.blur || 0;
     $('background-dim-value').textContent = (b.dim || 0) + '%';
+    $('background-key-clear').value = b.keyClear || 0;
+    $('background-key-clear-value').textContent = (b.keyClear || 0) + '%';
     $('background-blur-value').textContent = (b.blur || 0) + 'px';
     var hasImage = !!b.image,
       p = backgroundPosition(previewOrientation);
@@ -5503,6 +5542,10 @@
     $('background-keys').onchange = function () {
       deckBackground.keys = this.value;
       saveBackground('ボタンの色を変えました。');
+    };
+    $('background-key-clear').oninput = function () {
+      deckBackground.keyClear = Number(this.value);
+      saveBackground();
     };
     $('background-dim').oninput = function () {
       deckBackground.dim = Number(this.value);
@@ -6042,6 +6085,7 @@
       fontSize: a.fontSize || 11,
       iconScale: a.iconScale || 82,
       labelOpacity: typeof a.labelOpacity === 'number' ? a.labelOpacity : 45,
+      keyClear: typeof a.keyClear === 'number' ? a.keyClear : null,
       hideLabel: !!a.hideLabel,
       hotkey: a.hotkey || '',
       box: box,
@@ -6266,6 +6310,7 @@
       fontSize: r.fontSize,
       iconScale: r.iconScale,
       labelOpacity: r.labelOpacity,
+      keyClear: typeof r.keyClear === 'number' ? r.keyClear : null,
       hideLabel: r.hideLabel,
       hotkey: r.hotkey,
       name: r.name.value.trim(),
@@ -7010,6 +7055,25 @@
     opacityLabel.appendChild(opacityText);
     opacityLabel.appendChild(opacityInput);
     area.appendChild(opacityLabel);
+    // This button's background transparency; by default it follows the background panel.
+    var clearLabel = document.createElement('label'),
+      clearSelect = document.createElement('select');
+    clearLabel.textContent = 'ボタン背景の透過度';
+    clearSelect.className = 'appearance-keyClear';
+    [['', '背景の設定に合わせる'], [0, '0%（透かさない）'], [10, '10%'], [20, '20%'], [30, '30%'], [40, '40%'], [50, '50%'], [60, '60%'], [70, '70%'], [80, '80%'], [90, '90%'], [100, '100%（枠だけ）']].forEach(function (pair) {
+      var op = document.createElement('option');
+      op.value = String(pair[0]);
+      op.textContent = pair[1];
+      clearSelect.appendChild(op);
+    });
+    clearSelect.value = typeof fields.keyClear === 'number' ? String(fields.keyClear) : '';
+    clearSelect.onchange = function () {
+      fields.keyClear = this.value === '' ? null : Number(this.value);
+      status.textContent = '「設定を保存」で反映します。';
+      preview();
+    };
+    clearLabel.appendChild(clearSelect);
+    area.appendChild(clearLabel);
     var label = document.createElement('label'),
       check = document.createElement('input');
     check.type = 'checkbox';

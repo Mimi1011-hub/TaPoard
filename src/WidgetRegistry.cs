@@ -297,6 +297,7 @@ static class WidgetRegistry
         result["fontSize"] = app.fontSize;
         result["iconScale"] = app.iconScale;
         result["labelOpacity"] = app.labelOpacity;
+        result["keyClear"] = app.keyClear;
         result["hideLabel"] = app.hideLabel;
         result["options"] = PublicOptions(app);
         return result;
