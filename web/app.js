@@ -1556,18 +1556,25 @@
     fieldset.classList.add('weather-location-attention');
     $('weather-query').focus({ preventScroll: true });
   }
+  // The tile shown is the entry it was drawn from (the same id can sit in both orientations,
+  // so a lookup by id alone could pick the other orientation's size).
+  function tileEntry(tile) {
+    var index = Number(tile.dataset.appIndex),
+      app = deckApps[index];
+    if (app && app.id === tile.dataset.widgetId) return app;
+    var orientation = admin ? previewOrientation : currentOrientation(false);
+    return deckApps.filter(function (entry) { return entry.id === tile.dataset.widgetId && entry.orientation === orientation; })[0];
+  }
   function updateWeatherTiles() {
     Array.prototype.forEach.call(document.querySelectorAll('.weather-widget[data-widget-id]'), function (tile) {
-      var app = deckApps.filter(function (entry) { return entry.id === tile.dataset.widgetId; })[0];
-      if (app) renderWeatherTile(tile, app);
+      var app = tileEntry(tile);
+      if (app) { renderWeatherTile(tile, app); fadeKey(tile); }
     });
   }
   function updateMetricTiles() {
     Array.prototype.forEach.call(document.querySelectorAll('.metrics-widget[data-widget-id]'), function (tile) {
-      var app = deckApps.filter(function (entry) {
-        return entry.id === tile.dataset.widgetId;
-      })[0];
-      if (app) renderMetricsTile(tile, app);
+      var app = tileEntry(tile);
+      if (app) { renderMetricsTile(tile, app); fadeKey(tile); }
     });
   }
 
@@ -5278,22 +5285,24 @@
   // See-through buttons: the button's own background (whatever its style) is copied to a layer
   // behind its content and that layer is faded, so icons and text stay solid.
   function fadeKeys(target) {
-    var global = Math.max(0, Math.min(100, deckBackground.keyClear || 0));
-    Array.prototype.forEach.call(target.querySelectorAll('.deck-key'), function (key) {
-      var own = key.dataset.keyClear,
-        clear = own !== undefined && own !== '' ? Number(own) : global;
-      if (key.classList.contains('key-fade')) key.classList.remove('key-fade');
-      if (!(clear > 0)) {
-        key.style.removeProperty('--key-fill');
-        key.style.removeProperty('--key-alpha');
-        return;
-      }
-      var cs = getComputedStyle(key),
-        fill = cs.backgroundImage && cs.backgroundImage !== 'none' ? cs.backgroundImage + ', ' + cs.backgroundColor : cs.backgroundColor;
-      key.style.setProperty('--key-fill', fill);
-      key.style.setProperty('--key-alpha', String(1 - clear / 100));
-      key.classList.add('key-fade');
-    });
+    Array.prototype.forEach.call(target.querySelectorAll('.deck-key'), fadeKey);
+  }
+  // Also used after a widget redraws itself in place (its class list is rebuilt then).
+  function fadeKey(key) {
+    var global = Math.max(0, Math.min(100, deckBackground.keyClear || 0)),
+      own = key.dataset.keyClear,
+      clear = own !== undefined && own !== '' ? Number(own) : global;
+    if (key.classList.contains('key-fade')) key.classList.remove('key-fade');
+    if (!(clear > 0)) {
+      key.style.removeProperty('--key-fill');
+      key.style.removeProperty('--key-alpha');
+      return;
+    }
+    var cs = getComputedStyle(key),
+      fill = cs.backgroundImage && cs.backgroundImage !== 'none' ? cs.backgroundImage + ', ' + cs.backgroundColor : cs.backgroundColor;
+    key.style.setProperty('--key-fill', fill);
+    key.style.setProperty('--key-alpha', String(1 - clear / 100));
+    key.classList.add('key-fade');
   }
   function paintBackground() {
     var target = backgroundTarget();
@@ -5861,21 +5870,30 @@
     cycleLabel.appendChild(cycle);
     cycleLabel.appendChild(document.createTextNode('CPUとメモリを自動で切り替える'));
     area.appendChild(cycleLabel);
-    function previewMetrics() {
+    function syncMetrics() {
       fields.options.primary = primary.value;
       fields.options.cycle = cycle.checked;
       fields.options.gpuId = gpuSelect.value;
       var chosenGpu = availableGpus.filter(function (gpu) { return gpu && gpu.id === gpuSelect.value; })[0];
       if (chosenGpu) fields.options.gpuName = String(chosenGpu.name || '').slice(0, 128);
       else if (typeof fields.options.gpuName !== 'string') fields.options.gpuName = '';
-      gpuLabel.hidden = primary.value !== 'gpu' && primary.value !== 'gpuMemory' && (fields.width !== 2 || fields.height !== 2);
+      var large = fields.width === 2 && fields.height === 2;
+      // The 2x2 tile shows every value at once, so the one-value choices only matter for 1x1.
+      primaryLabel.hidden = large;
+      cycleLabel.hidden = large;
+      gpuLabel.hidden = primary.value !== 'gpu' && primary.value !== 'gpuMemory' && !large;
+    }
+    function previewMetrics() {
+      syncMetrics();
       deckApps = rows.map(rowData);
       renderPreview();
     }
     primary.onchange = previewMetrics;
     cycle.onchange = previewMetrics;
     gpuSelect.onchange = previewMetrics;
-    previewMetrics();
+    fields.syncMetrics = syncMetrics;
+    // While the editor is being built this row is not in the list yet, so only the fields are set up.
+    syncMetrics();
     var note = document.createElement('p');
     note.className = 'editor-feedback';
     note.textContent = '4マスではCPU・メモリ・選択したGPUと直近60秒のグラフを表示します。表示中だけPCから2秒ごとに取得します。';
@@ -6367,6 +6385,8 @@
       iconPack: r.customIcon ? r.iconPack || '' : '',
       iconPackItem: r.customIcon ? r.iconPackItem || '' : '',
       options: r.options,
+      // The app's own icon (read from the shortcut by the PC) is kept for the preview.
+      icon: r.icon || null,
     };
   }
   function persistRows(success) {
@@ -6382,7 +6402,8 @@
     saveQueue = saveQueue
       .catch(function () {})
       .then(function () {
-        return api('settings', { apps: apps });
+        // The PC reads app icons itself, so the preview's copies are not sent back.
+        return api('settings', { apps: apps.map(function (a) { var c = Object.assign({}, a); delete c.icon; return c; }) });
       })
       .then(function () {
         return settings();
@@ -6965,6 +6986,7 @@
     status.className = 'editor-feedback';
     status.setAttribute('role', 'status');
     function preview() {
+      if (fields.syncMetrics) fields.syncMetrics();
       deckApps = rows.map(rowData);
       renderPreview();
     }
