@@ -13,6 +13,7 @@ using System.Windows.Forms;
 // Program.Http.cs holds the HTTP plumbing and Program.Api.cs the API endpoints.
 partial class Program
 {
+    static AppHost host = AppHost.CreateWindows();
     const int Port = 18781;
     static readonly string AppVersion = BuildInfo.DisplayVersion;
     static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
@@ -30,6 +31,11 @@ partial class Program
     static ImportWindow importWindow;
     static string importId;
     static object importResult;
+
+    internal static void UseHost(AppHost value)
+    {
+        host = value;
+    }
 
     // Changes whenever the app list changes, so phones can skip re-downloading icons.
     static string version = NewId();
