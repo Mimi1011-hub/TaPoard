@@ -217,7 +217,8 @@ function zip(files) {
     const many = 1500, bigIcons = [], bigFiles = [];
     for (let i = 0; i < many; i++) {
       const name = 'logo' + i;
-      bigIcons.push({ path: name + '.svg', name: name, tags: [i < 750 ? 'A' : 'B'] });
+      // Like Simple Icons: each picture's first tag is its own name.
+      bigIcons.push({ path: name + '.svg', name: (i % 2 ? 'Brand' : 'logo') + i, tags: [name, 'brand'] });
       bigFiles.push({ name: 'com.big.sdIconPack/icons/' + name + '.svg', data: Buffer.from(svg.replace('#e2455b', '#' + (0x100000 + i * 97).toString(16).slice(-6))) });
     }
     const bigFile = path.join(temp, 'big.streamDeckIconPack');
@@ -234,10 +235,13 @@ function zip(files) {
     await admin.locator('.icon-select-button').first().click();
     await admin.locator('.icon-pack-tabs').getByRole('tab', { name: '大きいパック' }).click();
     await admin.waitForFunction(n => document.querySelectorAll('.icon-pack-grid .icon-choice').length === n, many);
+    assert.deepEqual(await admin.locator('.icon-pack-grid .icon-preset-group h3').allTextContents(), ['B', 'L'], 'one heading per picture is replaced by A-Z headings');
+    const rows = await admin.evaluate(() => new Set(Array.from(document.querySelectorAll('.icon-pack-grid .icon-choice')).slice(0, 12).map(b => b.getBoundingClientRect().top)).size);
+    assert(rows < 6, 'pictures sit side by side (' + rows + ' rows for 12)');
     await admin.waitForFunction(() => document.querySelector('.icon-pack-grid .pack-icon[src]'));
     const loaded = await admin.evaluate(() => Array.from(document.querySelectorAll('.icon-pack-grid .pack-icon')).filter(i => i.getAttribute('src')).length);
     assert(loaded > 0 && loaded < many, 'only icons near the view get their picture (' + loaded + ')');
-    await admin.locator('#icon-search').fill('logo1499');
+    await admin.locator('#icon-search').fill('brand1499');
     await admin.waitForFunction(() => { const img = document.querySelector('.icon-pack-grid .icon-choice:not([hidden]) .pack-icon'); return img && img.getAttribute('src'); });
     await admin.locator('#icon-search').fill('');
     await admin.locator('#icon-picker-close').click();
