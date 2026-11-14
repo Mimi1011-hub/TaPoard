@@ -143,6 +143,8 @@ partial class Program
             SetPage(r, input);
         else if (path.StartsWith("/api/background", StringComparison.Ordinal) && r.isAdmin)
             SetBackground(r, path, input, json);
+        else if (path == "/api/page/move" && r.isAdmin)
+            MovePage(r, input);
         else if (path == "/api/page/delete" && r.isAdmin)
             DeletePage(r, input);
         else if (path == "/api/backups/restore" && r.isAdmin)
@@ -714,6 +716,30 @@ partial class Program
         s.devices = null;
         try { return IconPacks.Serializer().Serialize(s); }
         finally { s.devices = devices; }
+    }
+
+    static void MovePage(Request r, Dictionary<string, object> input)
+    {
+        string orientation = ReadOrientation(input);
+        RequireOrientation(orientation);
+        int target = Convert.ToInt32(input["page"]), to = Convert.ToInt32(input["to"]);
+        lock (Gate)
+        {
+            var candidate = IconPacks.Serializer().Deserialize<Settings>(IconPacks.Serializer().Serialize(config));
+            DeckLayout.MovePage(candidate, orientation, target, to);
+            DeckLayout.Validate(candidate);
+            config = candidate;
+            InputSessions.ClearAll();
+            bool portrait = orientation == "portrait";
+            int current = portrait ? portraitPage : landscapePage;
+            if (current == target) current = to;
+            else if (current == to) current = target;
+            if (portrait) portraitPage = current; else landscapePage = current;
+            Save();
+            version = NewId();
+            Signal();
+            ReplyJson(r.stream, 200, new { ok = true, landscapePage = landscapePage, portraitPage = portraitPage, version = version, revision = revision });
+        }
     }
 
     static void DeletePage(Request r, Dictionary<string, object> input)

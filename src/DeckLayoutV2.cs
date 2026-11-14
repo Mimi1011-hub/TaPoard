@@ -369,6 +369,29 @@ static class DeckLayout
         return removed;
     }
 
+    // 3.1: swaps one page of one orientation with the page next to it (to = page - 1 or page + 1).
+    // Buttons, widgets and the page's own fader layout move with it.
+    internal static void MovePage(Settings s, string orientation, int page, int to)
+    {
+        bool portrait = orientation == "portrait";
+        int pages = Pages(s, orientation);
+        if (page < 0 || page >= pages || to < 0 || to >= pages || Math.Abs(page - to) != 1) throw new Exception("ページを移動できません。");
+        foreach (var app in s.apps)
+        {
+            if (app.orientation != orientation) continue;
+            var position = Position(app, portrait);
+            if (position == null) continue;
+            if (position.page == page) position.page = to;
+            else if (position.page == to) position.page = page;
+        }
+        foreach (var entry in ControlPages(s, portrait))
+        {
+            if (entry == null) continue;
+            if (entry.page == page) entry.page = to;
+            else if (entry.page == to) entry.page = page;
+        }
+    }
+
     // 3.1 presets: places new buttons of one orientation in reading order from firstPage on, around the
     // buttons and faders already there. A page that fills up continues on the next one.
     internal static void PlaceFrom(Settings s, string orientation, List<AppEntry> added, int firstPage)
