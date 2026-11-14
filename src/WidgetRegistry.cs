@@ -28,8 +28,19 @@ static class WidgetRegistry
         Add(result, "wheel", "マウスホイール", new[] { "1x1", "1x2", "2x2" }, true);
         Add(result, "touchpad", "タッチパッド", new[] { "3x2", "2x3" }, true);
         Add(result, "keypad", "テンキー", new[] { "4x4", "4x5" }, true);
-        Add(result, "slideshow", "スライドショー", new[] { "3x3", "4x3", "4x4", "5x4", "5x5" }, true);
+        Add(result, "slideshow", "スライドショー", SlideshowSizes(), true);
         return result;
+    }
+
+    // Every width x height from 3x3 up to the largest grid (8x8); the settings page offers the
+    // ones that fit the grid in use.
+    static string[] SlideshowSizes()
+    {
+        var list = new List<string>();
+        for (int w = 3; w <= 8; w++)
+            for (int h = 3; h <= 8; h++)
+                list.Add(w + "x" + h);
+        return list.ToArray();
     }
 
     static void Add(
@@ -167,8 +178,8 @@ static class WidgetRegistry
         else if (definition.type == "slideshow")
         {
             string shape = DeckLayout.Width(app) + "x" + DeckLayout.Height(app);
-            if (Array.IndexOf(new[] { "3x3", "4x3", "4x4", "5x4", "5x5" }, shape) < 0)
-                throw new Exception("スライドショーは3×3・4×3・4×4・5×4・5×5です。");
+            if (Array.IndexOf(SlideshowSizes(), shape) < 0)
+                throw new Exception("スライドショーは横・縦とも3〜8マスです。");
             string folder = ShortText(source, "folder", "", 260).Trim();
             if (!Slideshow.ValidFolder(folder))
                 throw new Exception("スライドショーのフォルダは「C:\\写真」のような場所で指定してください。");

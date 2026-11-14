@@ -150,12 +150,9 @@
       glyph: 'image',
       note: 'PC のフォルダの画像を一定の間隔で切り替えて表示する部品',
       items: [
-        ['widget-slideshow-3x3', 'スライドショー（3×3）', '横3・縦3の9マス'],
-        ['widget-slideshow-4x3', 'スライドショー（4×3）', '横4・縦3の12マス'],
-        ['widget-slideshow-4x4', 'スライドショー（4×4）', '横4・縦4の16マス'],
-        ['widget-slideshow-5x4', 'スライドショー（5×4）', '横5・縦4の20マス'],
-        ['widget-slideshow-5x5', 'スライドショー（5×5）', '横5・縦5の25マス'],
+        // Filled in from the grid shown (every size from 3×3 up to the whole grid); see slideshowSizes.
       ],
+      slideshow: true,
     },
     {
       category: 'widget',
@@ -2416,8 +2413,22 @@
     if (action === 'custom-audio-input') return 'audio-input';
     return action === 'custom-url' ? 'url' : action === 'custom-clipboard' ? 'clipboard' : '';
   }
+  // Slideshow sizes: every width × height from 3×3 up to the grid of the orientation shown,
+  // wide ones first (6×5 grid: 6×5, 6×4, 6×3, 5×5, ...). Sizes can go up to 8×8.
+  function slideshowSizes() {
+    var grid = gridFor(admin ? previewOrientation : currentOrientation(false)) || { columns: 5, rows: 5 },
+      list = [];
+    for (var w = Math.min(8, Math.max(3, grid.columns)); w >= 3; w--)
+      for (var h = Math.min(8, Math.max(3, grid.rows)); h >= 3; h--) list.push([w, h]);
+    return list;
+  }
+  function slideshowCatalogItems() {
+    return slideshowSizes().map(function (wh) {
+      return ['widget-slideshow-' + wh[0] + 'x' + wh[1], 'スライドショー（' + wh[0] + '×' + wh[1] + '）', '横' + wh[0] + '・縦' + wh[1] + 'の' + wh[0] * wh[1] + 'マス'];
+    });
+  }
   function widgetFromAction(action) {
-    var slideshow = /^widget-slideshow-([345])x([345])$/.exec(action);
+    var slideshow = /^widget-slideshow-([3-8])x([3-8])$/.exec(action);
     if (slideshow) {
       var slideWidth = Number(slideshow[1]),
         slideHeight = Number(slideshow[2]);
@@ -2836,6 +2847,7 @@
     if (active || pcWindowOpen) settingsRoot.appendChild(connection);
     else settingsRoot.insertBefore(connection, studio);
   }
+  var lastSlideshowGrid = '';
   function syncGridControls() {
     var orientation = admin ? previewOrientation : currentOrientation(false),
       grid = gridFor(orientation),
@@ -2852,6 +2864,14 @@
     });
     $('grid-columns').value = grid.columns;
     $('grid-rows').value = grid.rows;
+    // The slideshow sizes offered follow the grid.
+    if (admin && $('shortcut-groups') && $('shortcut-groups').childNodes.length) {
+      var sizesKey = grid.columns + 'x' + grid.rows;
+      if (sizesKey !== lastSlideshowGrid) {
+        lastSlideshowGrid = sizesKey;
+        renderCatalog();
+      }
+    }
     $('admin-columns').value = grid.columns;
     $('admin-rows').value = grid.rows;
     [$('grid-columns'), $('admin-columns')].forEach(function (select) {
@@ -6319,7 +6339,7 @@
       details.appendChild(summary);
       var list = document.createElement('div');
       list.className = 'shortcut-list';
-      group.items.forEach(function (item) {
+      (group.slideshow ? slideshowCatalogItems() : group.items).forEach(function (item) {
         var row = document.createElement('div');
         row.className = 'shortcut-row';
         row.draggable = true;
@@ -6935,13 +6955,14 @@
         fields.type === 'clock' ? '時計の大きさ' : fields.type === 'slideshow' ? 'スライドショーの大きさ' : 'ボタンの大きさ',
         'size',
         fields.type === 'slideshow'
-          ? [
-              ['3x3', '横3・縦3（9マス）'],
-              ['4x3', '横4・縦3（12マス）'],
-              ['4x4', '横4・縦4（16マス）'],
-              ['5x4', '横5・縦4（20マス）'],
-              ['5x5', '横5・縦5（25マス）'],
-            ]
+          ? (function () {
+              var sizes = slideshowSizes(),
+                own = [fields.width, fields.height];
+              if (!sizes.some(function (wh) { return wh[0] === own[0] && wh[1] === own[1]; })) sizes.unshift(own);
+              return sizes.map(function (wh) {
+                return [wh[0] + 'x' + wh[1], '横' + wh[0] + '・縦' + wh[1] + '（' + wh[0] * wh[1] + 'マス）'];
+              });
+            })()
           : fields.type === 'clock'
           ? fields.options && fields.options.style === 'analog'
             ? [[2, '4マス（2×2）']]
