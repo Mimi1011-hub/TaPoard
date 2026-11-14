@@ -67,6 +67,22 @@ function button(id, name, page, row, column, orientation = 'landscape') {
     assert.deepEqual(settings.landscapeControlPages.map(p => p.page), [1, 2]);
     assert.equal((await api('page/undo', {})).status, 400, 'only one undo');
 
+    // Move page 2 back one: its buttons and fader layout swap places with page 1.
+    await admin.locator('#preview-move-left').click();
+    await admin.waitForFunction(() => document.querySelector('#preview-page-label').textContent === '1 / 3');
+    settings = (await api('settings')).data;
+    assert.deepEqual(settings.apps.filter(a => a.orientation === 'landscape').map(a => [a.name, a.landscape.page]), [['A', 1], ['B1', 0], ['B2', 0], ['C', 2]]);
+    assert.deepEqual(settings.landscapeControlPages.map(p => [p.page, p.micSlot]).sort(), [[0, 5], [2, 6]]);
+    assert.deepEqual(settings.apps.find(a => a.name === 'P').portrait, { page: 1, row: 1, column: 1 }, 'portrait is untouched');
+    assert.equal(await admin.locator('#preview-move-left').isDisabled(), true, 'first page cannot go further back');
+    // And forward again.
+    await admin.locator('#preview-move-right').click();
+    await admin.waitForFunction(() => document.querySelector('#preview-page-label').textContent === '2 / 3');
+    settings = (await api('settings')).data;
+    assert.deepEqual(settings.apps.filter(a => a.orientation === 'landscape').map(a => [a.name, a.landscape.page]), [['A', 0], ['B1', 1], ['B2', 1], ['C', 2]]);
+    assert.equal((await api('page/move', { orientation: 'landscape', page: 2, to: 3 })).status, 400, 'no page after the last');
+    assert.equal((await api('page/move', { orientation: 'landscape', page: 0, to: 2 })).status, 400, 'only next to it');
+
     // An empty page goes without a question; the last page cannot be deleted.
     await admin.locator('#preview-portrait').click();
     await admin.waitForFunction(() => document.querySelector('#preview-page-label').textContent === '1 / 2');
@@ -90,7 +106,7 @@ function button(id, name, page, row, column, orientation = 'landscape') {
     const phone = await fetch(base + '/api/page/delete', { method: 'POST', headers: { Authorization: 'Bearer test-phone', 'Content-Type': 'application/json' }, body: JSON.stringify({ orientation: 'landscape', page: 0 }) });
     assert.notEqual(phone.status, 200);
     assert.deepEqual(errors, []);
-    console.log('PASS page delete: buttons and fader layout of the page go, later pages move up, other orientation untouched, one undo, last page kept');
+    console.log('PASS page delete and move: pages swap with their neighbor (buttons and faders), buttons and fader layout of the page go, later pages move up, other orientation untouched, one undo, last page kept');
   } finally {
     if (browser) await browser.close();
     host.kill();

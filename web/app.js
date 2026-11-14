@@ -2871,6 +2871,10 @@
     $('preview-page-label').textContent = page + 1 + ' / ' + pageCount;
     $('preview-prev').disabled = page === 0;
     $('preview-next').disabled = page === pageCount - 1;
+    if ($('preview-move-left')) {
+      $('preview-move-left').disabled = page === 0;
+      $('preview-move-right').disabled = page >= pageCount - 1;
+    }
     $('preview-delete-page').disabled = pageCount <= 1;
     paintBackground();
     renderBackgroundControls();
@@ -7492,6 +7496,35 @@
     setPage(layoutPages());
   };
   // 3.1: delete the shown page of the shown orientation; later pages move up. One step can be undone.
+  // 3.1: swaps the page shown with the one before or after it (its buttons and faders go along).
+  function movePage(step) {
+    var orientation = previewOrientation,
+      from = page,
+      to = page + step,
+      side = orientation === 'portrait' ? '縦' : '横';
+    if (to < 0 || to >= layoutPages()) {
+      message(step < 0 ? 'このページが最初のページです。' : 'このページが最後のページです。');
+      return;
+    }
+    api('page/move', { orientation: orientation, page: from, to: to })
+      .then(function () {
+        pageByOrientation[orientation] = to;
+        page = to;
+        $('preview-undo-page').hidden = true;
+        return settings().then(function () {
+          message(side + '向きの ' + (from + 1) + ' ページ目を ' + (to + 1) + ' ページ目へ移動しました。');
+        });
+      })
+      .catch(function (e) {
+        message(e.message);
+      });
+  }
+  $('preview-move-left').onclick = function () {
+    movePage(-1);
+  };
+  $('preview-move-right').onclick = function () {
+    movePage(1);
+  };
   $('preview-delete-page').onclick = function () {
     var orientation = previewOrientation,
       target = page,
