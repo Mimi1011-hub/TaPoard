@@ -14,6 +14,9 @@ class IconPackItem
     // Optional preset icon key this picture stands for, used when a whole deck switches to the pack.
     public string key { get; set; }
     public string data { get; set; }
+    // 3.1: the heading the pack puts this picture under, and search words (Stream Deck "tags").
+    public string group { get; set; }
+    public string tags { get; set; }
 }
 
 class IconPack
@@ -150,7 +153,10 @@ static class IconPacks
                 string baseId = itemId;
                 while (used.Contains(itemId)) itemId = baseId + "-" + n++;
                 used.Add(itemId);
-                pack.icons.Add(new IconPackItem { id = itemId, name = icon.name, key = icon.key ?? "", data = icon.data });
+                string group = (icon.group ?? "").Trim(), tags = (icon.tags ?? "").Trim();
+                if (group.Length > 40) group = group.Substring(0, 40);
+                if (tags.Length > 200) tags = tags.Substring(0, 200);
+                pack.icons.Add(new IconPackItem { id = itemId, name = icon.name, key = icon.key ?? "", data = icon.data, group = group, tags = tags });
             }
             Write(data, pack);
             return pack.icons.Count;

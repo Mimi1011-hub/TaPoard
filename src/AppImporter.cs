@@ -68,6 +68,7 @@ static class AppImporter
 
     internal static bool ValidPath(string path)
     {
+        if (StartApps.IsStartApp(path)) return true;
         return !String.IsNullOrWhiteSpace(path)
             && Path.IsPathRooted(path)
             && File.Exists(path)
@@ -86,6 +87,13 @@ sealed class ImportWindow : Form
     readonly TextBox urlBox;
     readonly TextBox nameBox;
     readonly Label urlFeedback;
+    readonly Panel appView;
+    readonly TextBox appSearch;
+    readonly ListView appList;
+    readonly Label appFeedback;
+    List<StartApp> startApps;
+    int pictureIndex;
+    readonly Timer pictureTimer = new Timer { Interval = 15 };
     readonly Action<List<AppEntry>> complete;
     bool completed;
 
@@ -116,9 +124,11 @@ sealed class ImportWindow : Form
             TextAlign = ContentAlignment.MiddleCenter,
         };
         var pick = new Button { Text = "ファイルを選んで追加", Dock = DockStyle.Fill };
+        var chooseApp = new Button { Text = "アプリを選んで追加", Dock = DockStyle.Fill };
         var enterUrl = new Button { Text = "URLを入力して追加", Dock = DockStyle.Fill };
         enterUrl.Click += delegate { ShowUrlView(); };
-        var buttons = ButtonRow(50, pick, enterUrl);
+        chooseApp.Click += delegate { ShowAppView(); };
+        var buttons = ButtonRow3(pick, chooseApp, enterUrl);
         pick.Click += delegate
         {
             using (
@@ -169,8 +179,37 @@ sealed class ImportWindow : Form
         urlView.Controls.Add(urlLabel);
         urlView.Controls.Add(urlTitle);
         urlView.Controls.Add(urlButtons);
+        // 3.1: the Start menu's app list (Store apps included), for apps with no file to drop.
+        appView = new Panel { Dock = DockStyle.Fill, Visible = false, Padding = new Padding(16, 12, 16, 0) };
+        var appTitle = new Label
+        {
+            Text = "アプリを選んで追加（スタートメニューのすべてのアプリ）",
+            Dock = DockStyle.Top,
+            Height = 36,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 12),
+        };
+        appSearch = new TextBox { Dock = DockStyle.Top, MaxLength = 80 };
+        var searchLabel = new Label { Text = "名前で絞り込む（複数選べます：Ctrl + クリック）", Dock = DockStyle.Top, Height = 22, TextAlign = ContentAlignment.BottomLeft };
+        appList = new ListView { Dock = DockStyle.Fill, View = View.LargeIcon, MultiSelect = true, HideSelection = false };
+        appList.LargeImageList = new ImageList { ImageSize = new Size(40, 40), ColorDepth = ColorDepth.Depth32Bit };
+        appFeedback = new Label { Dock = DockStyle.Bottom, Height = 24, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Firebrick };
+        var addApps = new Button { Text = "選んだアプリを追加", Dock = DockStyle.Fill };
+        var appBack = new Button { Text = "戻る", Dock = DockStyle.Fill };
+        addApps.Click += delegate { ImportStartApps(); };
+        appBack.Click += delegate { ShowDropView(); };
+        appList.ItemActivate += delegate { ImportStartApps(); };
+        appSearch.TextChanged += delegate { FillAppList(); };
+        pictureTimer.Tick += delegate { LoadPictures(); };
+        appView.Controls.Add(appList);
+        appView.Controls.Add(appSearch);
+        appView.Controls.Add(searchLabel);
+        appView.Controls.Add(appTitle);
+        appView.Controls.Add(appFeedback);
+        appView.Controls.Add(ButtonRow(70, addApps, appBack));
         Controls.Add(dropView);
         Controls.Add(urlView);
+        Controls.Add(appView);
         DragEnter += EnterFiles;
         DragDrop += DropFiles;
         title.AllowDrop = true;
@@ -181,6 +220,7 @@ sealed class ImportWindow : Form
         feedback.DragDrop += DropFiles;
         FormClosed += delegate
         {
+            pictureTimer.Dispose();
             if (!completed)
                 complete(null);
         };
@@ -200,6 +240,102 @@ sealed class ImportWindow : Form
         return row;
     }
 
+    static TableLayoutPanel ButtonRow3(Button first, Button second, Button third)
+    {
+        var row = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 46, ColumnCount = 3, RowCount = 1, Margin = Padding.Empty };
+        for (int i = 0; i < 3; i++) row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        first.Margin = new Padding(0, 0, 2, 0);
+        second.Margin = new Padding(2, 0, 2, 0);
+        third.Margin = new Padding(2, 0, 0, 0);
+        row.Controls.Add(first, 0, 0);
+        row.Controls.Add(second, 1, 0);
+        row.Controls.Add(third, 2, 0);
+        return row;
+    }
+
+    void ShowAppView()
+    {
+        dropView.Visible = false;
+        urlView.Visible = false;
+        appView.Visible = true;
+        ClientSize = new Size(640, 560);
+        CenterToScreen();
+        appFeedback.Text = "";
+        if (startApps == null)
+        {
+            try
+            {
+                Cursor = Cursors.WaitCursor;
+                startApps = StartApps.List();
+            }
+            catch (Exception e)
+            {
+                startApps = new List<StartApp>();
+                appFeedback.Text = "アプリの一覧を読めませんでした：" + e.Message;
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
+            if (startApps.Count == 0 && appFeedback.Text.Length == 0) appFeedback.Text = "アプリが見つかりませんでした。";
+        }
+        FillAppList();
+        appSearch.Focus();
+    }
+
+    void FillAppList()
+    {
+        string query = appSearch.Text.Trim();
+        appList.BeginUpdate();
+        appList.Items.Clear();
+        foreach (var app in startApps)
+            if (query.Length == 0 || app.name.IndexOf(query, StringComparison.CurrentCultureIgnoreCase) >= 0)
+            {
+                var item = new ListViewItem(app.name) { Tag = app, ImageKey = app.id };
+                appList.Items.Add(item);
+            }
+        appList.EndUpdate();
+        pictureIndex = 0;
+        pictureTimer.Start();
+    }
+
+    // Pictures load a few at a time so the list shows at once.
+    void LoadPictures()
+    {
+        for (int n = 0; n < 6; n++)
+        {
+            if (pictureIndex >= appList.Items.Count)
+            {
+                pictureTimer.Stop();
+                return;
+            }
+            var app = (StartApp)appList.Items[pictureIndex++].Tag;
+            if (appList.LargeImageList.Images.ContainsKey(app.id)) continue;
+            var picture = StartApps.Picture(app.id, 40);
+            if (picture != null) appList.LargeImageList.Images.Add(app.id, picture);
+        }
+        appList.Invalidate();
+    }
+
+    void ImportStartApps()
+    {
+        if (appList.SelectedItems.Count == 0)
+        {
+            appFeedback.Text = "追加するアプリを選んでください。";
+            return;
+        }
+        if (appList.SelectedItems.Count > 40)
+        {
+            appFeedback.Text = "一度に追加できるのは40個までです。";
+            return;
+        }
+        var apps = new List<AppEntry>();
+        foreach (ListViewItem item in appList.SelectedItems) apps.Add(StartApps.Entry((StartApp)item.Tag));
+        pictureTimer.Stop();
+        Finish(apps);
+    }
+
     void ShowUrlView()
     {
         dropView.Visible = false;
@@ -212,11 +348,19 @@ sealed class ImportWindow : Form
     void ShowDropView()
     {
         urlView.Visible = false;
+        appView.Visible = false;
+        pictureTimer.Stop();
+        ClientSize = new Size(490, 260);
         dropView.Visible = true;
     }
 
     protected override bool ProcessDialogKey(Keys keyData)
     {
+        if (keyData == Keys.Enter && appView.Visible)
+        {
+            ImportStartApps();
+            return true;
+        }
         if (keyData == Keys.Enter && urlView.Visible)
         {
             ImportUrl();

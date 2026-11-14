@@ -3560,7 +3560,7 @@
     var key = button.dataset.iconKey || button.dataset.searchKey || '',
       group = button.closest('.icon-preset-group'),
       heading = group && group.querySelector('h3');
-    return [button.title, button.textContent, key, ICON_WORDS[key] || '', heading ? heading.textContent : ''].join(' ').toLowerCase();
+    return [button.title, button.textContent, key, ICON_WORDS[key] || '', button.dataset.searchTags || '', heading ? heading.textContent : ''].join(' ').toLowerCase();
   }
   function filterIcons() {
     var input = $('icon-search');
@@ -3750,10 +3750,10 @@
     return new Blob(parts.concat(central, [end.buffer]), { type: 'application/zip' });
   }
   function imageType(name) {
-    var m = /\.(png|jpe?g|webp|gif)$/i.exec(name || '');
+    var m = /\.(png|jpe?g|webp|gif|svg)$/i.exec(name || '');
     if (!m) return '';
     var ext = m[1].toLowerCase();
-    return ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/' + ext;
+    return ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'svg' ? 'image/svg+xml' : 'image/' + ext;
   }
   function baseName(name) {
     return (name || '').split('/').pop().replace(/\.[^.]+$/, '');
@@ -3782,8 +3782,37 @@
     return found;
   }
   // Shrinks one picture to a square icon the server accepts (the same limit as an original icon).
+  // SVG pictures (common in Stream Deck packs) are drawn through an <img>, which createImageBitmap cannot read.
+  function decodePicture(blob) {
+    if (blob.type !== 'image/svg+xml') return createImageBitmap(blob);
+    // The page's security policy allows data: pictures, not blob: ones.
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () {
+        reject(new Error('SVG画像を読み込めませんでした。'));
+      };
+      reader.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var canvas = document.createElement('canvas'),
+            w = img.naturalWidth || 144,
+            h = img.naturalHeight || 144,
+            scale = 288 / Math.max(w, h);
+          canvas.width = Math.max(1, Math.round(w * scale));
+          canvas.height = Math.max(1, Math.round(h * scale));
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas);
+        };
+        img.onerror = function () {
+          reject(new Error('SVG画像を読み込めませんでした。'));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(new Blob([blob], { type: 'image/svg+xml' }));
+    });
+  }
   function packIconData(blob) {
-    return createImageBitmap(blob).then(function (bitmap) {
+    return decodePicture(blob).then(function (bitmap) {
       var attempts = [
           [144, 'image/png'],
           [144, 'image/webp'],
@@ -3831,13 +3860,14 @@
       var images = files.filter(function (f) {
         return imageType(f.name);
       });
-      if (!images.length) return Promise.reject(new Error('.tpicons・.zip、または PNG・JPEG・WebP 画像を選んでください。'));
+      if (!images.length) return Promise.reject(new Error('.tpicons・.zip・.streamDeckIconPack、または PNG・JPEG・WebP・SVG 画像を選んでください。'));
       var folder = (images[0].webkitRelativePath || '').split('/')[0];
       return Promise.resolve({
         name: folder || baseName(images[0].name) + ' ほか',
         author: '',
         icons: images.map(function (f) {
-          return { name: baseName(f.name), key: guessPresetKey(baseName(f.name)), blob: f };
+          var parts = (f.webkitRelativePath || '').split('/');
+          return { name: baseName(f.name), key: guessPresetKey(baseName(f.name)), group: parts.length > 2 ? parts[parts.length - 2].slice(0, 40) : '', blob: f };
         }),
       });
     }
@@ -3886,13 +3916,25 @@
             if (!item || typeof item !== 'object') return;
             var entry = find(item.file || item.path || item.image);
             if (!entry || !imageType(entry.name)) return;
-            var name = String(item.name || baseName(entry.name)).slice(0, 80);
-            icons.push({ name: name, key: presetMap[item.key] ? item.key : guessPresetKey(name) || guessPresetKey(baseName(entry.name)), entry: entry });
+            var name = String(item.name || baseName(entry.name)).slice(0, 80),
+              tags = Array.isArray(item.tags) ? item.tags.map(String) : typeof item.tags === 'string' ? item.tags.split(/[,、\s]+/) : [];
+            icons.push({
+              name: name,
+              key: presetMap[item.key] ? item.key : guessPresetKey(name) || guessPresetKey(baseName(entry.name)),
+              // A pack can sort its pictures itself: "group" (or "category"), else the first Stream Deck tag.
+              group: String(item.group || item.category || tags.filter(Boolean)[0] || '').slice(0, 40),
+              tags: tags.join(' ').slice(0, 200),
+              entry: entry,
+            });
           });
         } else
           entries.forEach(function (entry) {
             if (!imageType(entry.name)) return;
-            icons.push({ name: baseName(entry.name), key: guessPresetKey(baseName(entry.name)), entry: entry });
+            // Without a list, sub-folders become the headings.
+            var parts = entry.name.split('/'),
+              folder = parts.length > 2 ? parts[parts.length - 2] : '';
+            if (/^(icons?|images?|png|svg)$/i.test(folder)) folder = '';
+            icons.push({ name: baseName(entry.name), key: guessPresetKey(baseName(entry.name)), group: folder.slice(0, 40), tags: '', entry: entry });
           });
         if (!icons.length) throw new Error('パックの中にアイコン画像が見つかりません。');
         return {
@@ -3902,6 +3944,8 @@
             return {
               name: icon.name,
               key: icon.key,
+              group: icon.group,
+              tags: icon.tags,
               read: function () {
                 return readZipEntry(buffer, icon.entry).then(function (bytes) {
                   return new Blob([bytes], { type: imageType(icon.entry.name) });
@@ -3943,7 +3987,7 @@
               .then(packIconData)
               .then(
                 function (data) {
-                  batch.push({ id: 'i' + (index + 1), name: icon.name, key: icon.key || '', data: data });
+                  batch.push({ id: 'i' + (index + 1), name: icon.name, key: icon.key || '', group: icon.group || '', tags: icon.tags || '', data: data });
                   batchSize += data.length + 200;
                 },
                 function () {
@@ -4008,7 +4052,7 @@
       if (used[file.toLowerCase()]) file = safeFileName(icon.name || 'icon') + '-' + (index + 1) + '.' + image.ext;
       used[file.toLowerCase()] = true;
       files.push({ name: 'icons/' + file, bytes: image.bytes });
-      manifest.icons.push({ file: 'icons/' + file, name: icon.name || '', key: icon.key || '' });
+      manifest.icons.push({ file: 'icons/' + file, name: icon.name || '', key: icon.key || '', group: icon.group || '' });
     });
     files.unshift({ name: 'icons.json', bytes: new TextEncoder().encode(JSON.stringify(manifest, null, 2)) });
     return buildZip(files);
@@ -4182,14 +4226,30 @@
             return { title: group.title, keys: group.items.map(function (i) { return i[0]; }), icons: [] };
           }),
           others = { title: 'その他', keys: [], icons: [] };
-        pack.icons.forEach(function (icon) {
-          var key = keyOf(icon),
-            home = sections.filter(function (sec) { return key && sec.keys.indexOf(key) >= 0; })[0] || others;
-          home.icons.push({ icon: icon, key: key });
-        });
-        sections.forEach(function (sec) {
-          sec.icons.sort(function (a, b) { return sec.keys.indexOf(a.key) - sec.keys.indexOf(b.key); });
-        });
+        if (pack.icons.some(function (icon) { return icon.group; })) {
+          // The pack's own headings, in the order the pack lists them.
+          sections = [];
+          pack.icons.forEach(function (icon) {
+            var title = icon.group || 'その他',
+              sec = sections.filter(function (x) { return x.title === title; })[0];
+            if (!sec) sections.push((sec = { title: title, keys: [], icons: [] }));
+            sec.icons.push({ icon: icon, key: keyOf(icon) });
+          });
+          var rest = sections.filter(function (x) { return x.title === 'その他'; })[0];
+          if (rest) {
+            sections.splice(sections.indexOf(rest), 1);
+            others = rest;
+          }
+        } else {
+          pack.icons.forEach(function (icon) {
+            var key = keyOf(icon),
+              home = sections.filter(function (sec) { return key && sec.keys.indexOf(key) >= 0; })[0] || others;
+            home.icons.push({ icon: icon, key: key });
+          });
+          sections.forEach(function (sec) {
+            sec.icons.sort(function (a, b) { return sec.keys.indexOf(a.key) - sec.keys.indexOf(b.key); });
+          });
+        }
         sections.concat([others]).forEach(function (sec) {
           if (!sec.icons.length) return;
           var section = document.createElement('section'),
@@ -4225,6 +4285,7 @@
           button.appendChild(img);
           button.appendChild(name);
           if (key) button.dataset.searchKey = key;
+          if (icon.tags) button.dataset.searchTags = icon.tags;
           button.onclick = function () {
             choosePackIcon(pack, icon);
           };
