@@ -15,7 +15,7 @@ public static class ApiRouteTableTests
         {
             FieldInfo field = typeof(Program).GetField("api", BindingFlags.Static | BindingFlags.NonPublic);
             Assert(field != null, "Program.api exists");
-            var router = (ApiRouter<Program.Request>)field.GetValue(null);
+            var router = (ApiRouter<ApiRequest>)field.GetValue(null);
             var actual = new HashSet<string>(router.Describe(), StringComparer.Ordinal);
             string[] expected = new[]
             {

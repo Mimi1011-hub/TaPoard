@@ -16,6 +16,7 @@ public static class ApiStatusTests
 
     static void Set(string name, object value)
     {
+        if (name == "config") { Program.State.Config = (Settings)value; return; }
         typeof(Program).GetField(name, BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, value);
     }
 

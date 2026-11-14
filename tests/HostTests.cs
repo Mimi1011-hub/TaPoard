@@ -9,9 +9,6 @@ public static class HostTests
     static FakeAudioService audio;
     static FakeAudioDevices devices;
     static FakeShellActions shell;
-    static MethodInfo launch;
-    static MethodInfo volumeKey;
-    static MethodInfo applyAudio;
 
     static void Assert(bool condition, string message)
     {
@@ -30,7 +27,7 @@ public static class HostTests
 
     static string Launch(AppEntry app)
     {
-        return (string)launch.Invoke(null, new object[] { app, "default" });
+        return Program.InputApi.Launch(app, "default");
     }
 
     static void Hotkey()
@@ -86,17 +83,16 @@ public static class HostTests
 
     static void VolumeKeys()
     {
-        Assert((byte)volumeKey.Invoke(null, new object[] { "up" }) == 0xAF, "volume up key");
-        Assert((byte)volumeKey.Invoke(null, new object[] { "down" }) == 0xAE, "volume down key");
-        Assert((byte)volumeKey.Invoke(null, new object[] { "mute" }) == 0xAD, "volume mute key");
+        Assert(Program.InputApi.VolumeKey("up") == 0xAF, "volume up key");
+        Assert(Program.InputApi.VolumeKey("down") == 0xAE, "volume down key");
+        Assert(Program.InputApi.VolumeKey("mute") == 0xAD, "volume mute key");
     }
 
     static bool Apply(Dictionary<string, object> input, out string target)
     {
-        object[] arguments = new object[] { input, null, false };
-        applyAudio.Invoke(null, arguments);
-        target = (string)arguments[1];
-        return (bool)arguments[2];
+        bool notify;
+        Program.InputApi.ApplyAudio(input, out target, out notify);
+        return notify;
     }
 
     static void AudioActions()
@@ -121,23 +117,20 @@ public static class HostTests
 
     static void SettingsStore()
     {
-        FieldInfo storeField = typeof(Program).GetField("store", BindingFlags.Static | BindingFlags.NonPublic);
-        FieldInfo configField = typeof(Program).GetField("config", BindingFlags.Static | BindingFlags.NonPublic);
-        MethodInfo save = typeof(Program).GetMethod("Save", BindingFlags.Static | BindingFlags.NonPublic);
-        ISettingsStore originalStore = (ISettingsStore)storeField.GetValue(null);
-        Settings originalConfig = (Settings)configField.GetValue(null);
+        ISettingsStore originalStore = Program.State.Store;
+        Settings originalConfig = Program.State.Config;
         var fake = new FakeSettingsStore();
         var settings = new Settings { schemaVersion = 2, apps = new List<AppEntry>() };
         try
         {
             Program.UseStore(fake);
-            configField.SetValue(null, settings);
-            save.Invoke(null, null);
+            Program.State.Config = settings;
+            Program.State.Save();
             Assert(fake.Calls.Count == 1 && fake.Calls[0] == "Save" && Object.ReferenceEquals(fake.Saved, settings), "Program.Save uses the injected store");
         }
         finally
         {
-            configField.SetValue(null, originalConfig);
+            Program.State.Config = originalConfig;
             Program.UseStore(originalStore);
         }
     }
@@ -146,12 +139,6 @@ public static class HostTests
     {
         try
         {
-            launch = typeof(Program).GetMethod("Launch", BindingFlags.Static | BindingFlags.NonPublic);
-            volumeKey = typeof(Program).GetMethod("VolumeKey", BindingFlags.Static | BindingFlags.NonPublic);
-            applyAudio = typeof(Program).GetMethod("ApplyAudio", BindingFlags.Static | BindingFlags.NonPublic);
-            Assert(launch != null, "Program.Launch not found");
-            Assert(volumeKey != null, "Program.VolumeKey not found");
-            Assert(applyAudio != null, "Program.ApplyAudio not found");
             Hotkey();
             Url();
             Clipboard();

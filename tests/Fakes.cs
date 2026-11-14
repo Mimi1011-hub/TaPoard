@@ -91,3 +91,12 @@ sealed class FakeSettingsStore : ISettingsStore
         return Backup;
     }
 }
+
+sealed class FakeDesktop : IDesktop
+{
+    internal readonly List<string> Calls = new List<string>();
+    public object PcWindowView() { Calls.Add("PcWindowView"); return new { open = false }; }
+    public void SavePcWindow(Dictionary<string, object> input) { Calls.Add("SavePcWindow"); }
+    public void OpenPcWindow(bool fullscreen) { Calls.Add("OpenPcWindow:" + fullscreen); }
+    public string StartImport() { Calls.Add("StartImport"); return "ticket"; }
+}
