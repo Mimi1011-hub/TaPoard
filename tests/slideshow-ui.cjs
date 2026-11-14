@@ -99,9 +99,31 @@ function slideshow(side, folder, extra) {
     assert.match((await api('settings', { apps: [wide] })).data.error, /スライドショー|5x2/);
 
     // The catalog adds one.
-    assert.equal(await admin.locator('.shortcut-row[data-action^="widget-slideshow-"]').count(), 5);
+    // The catalog offers every size that fits the grid shown: 5x3 grid -> 5x3, 4x3, 3x3.
+    assert.deepEqual(await admin.locator('.shortcut-row[data-action^="widget-slideshow-"]').evaluateAll(r => r.map(x => x.dataset.action)),
+      ['widget-slideshow-5x3', 'widget-slideshow-4x3', 'widget-slideshow-3x3']);
+    // A bigger grid offers bigger (and wide) sizes, up to the whole grid.
+    await admin.locator('#admin-columns').selectOption('6');
+    await admin.locator('#admin-rows').selectOption('5');
+    await admin.waitForFunction(() => document.querySelectorAll('.shortcut-row[data-action^="widget-slideshow-"]').length === 12);
+    const offered = await admin.locator('.shortcut-row[data-action^="widget-slideshow-"]').evaluateAll(r => r.map(x => x.dataset.action.replace('widget-slideshow-', '')));
+    assert.deepEqual(offered.slice(0, 3), ['6x5', '6x4', '6x3']);
+    for (let i = 0; i < 30; i++) {
+      const g = (await api('settings')).data.landscapeGrid;
+      if (g && g.columns === 6 && g.rows === 5) break;
+      await admin.waitForTimeout(200);
+    }
+    await admin.waitForTimeout(500);
+    await admin.locator('details.shortcut-group[data-group="写真"]').evaluate(d => { d.open = true; });
+    await admin.locator('.shortcut-row[data-action="widget-slideshow-6x4"] button').click();
+    let big;
+    for (let i = 0; i < 30 && !big; i++) {
+      big = (await api('settings')).data.apps.find(a => a.type === 'slideshow' && a.width === 6 && a.height === 4);
+      if (!big) await admin.waitForTimeout(200);
+    }
+    assert(big, '6x4 slideshow saved: ' + await admin.locator('#message').innerText() + ' ' + JSON.stringify((await api('settings')).data.apps.map(a => [a.type, a.width, a.height])));
     assert.deepEqual(errors, []);
-    console.log('PASS slideshow: 3x3/4x3/4x4/5x4/5x5 widget, folder pictures as JPEG in name order with wrap-around, timed change in the preview, editor (folder, interval, order, size), server checks');
+    console.log('PASS slideshow: sizes follow the grid (5x3 grid: 3 sizes, 6x5 grid: 12 incl. 6x4 added), folder pictures as JPEG in name order with wrap-around, timed change in the preview, editor (folder, interval, order, size), server checks');
   } finally {
     if (browser) await browser.close();
     host.kill();
