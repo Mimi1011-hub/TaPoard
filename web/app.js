@@ -4296,22 +4296,6 @@
       });
   }
   // Exports the pictures the buttons use now (original images and pack icons) as a new pack.
-  function exportCurrentIcons() {
-    var icons = [],
-      seen = {};
-    rows.map(rowData).forEach(function (app) {
-      var data = app.customIcon;
-      if (!data || seen[data]) return;
-      seen[data] = true;
-      icons.push({ name: app.name, key: app.iconKey || '', data: data });
-    });
-    if (!icons.length) {
-      message('画像アイコンを使っているボタンがありません。オリジナル画像かパックのアイコンを設定したボタンが書き出されます。');
-      return;
-    }
-    downloadBlob(packZip('TaPoard のボタン', '', icons), 'TaPoard-buttons.tpicons');
-    message(icons.length + '個のアイコンを書き出しました。');
-  }
   function deleteIconPack(pack) {
     if (!confirm('アイコンパック「' + pack.name + '」を削除しますか？\nボタンに設定済みのアイコンはそのまま残ります。')) return;
     api('icon-packs/delete', { id: pack.id })
@@ -4577,7 +4561,6 @@
     $('icon-pack-folder').onchange = function () {
       if (this.files && this.files.length) importIconPack(this.files);
     };
-    $('icon-pack-export-buttons').onclick = exportCurrentIcons;
   }
   // ---- 3.1 bulk change: every preset icon in scope switches to the matching pack picture ----
   var bulkUndo = null;
