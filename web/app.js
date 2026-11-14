@@ -5160,25 +5160,53 @@
   function lightness(c) {
     return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
   }
-  function keyShade(c) {
+  function rgbHsl(c) {
+    var r = c[0] / 255, g = c[1] / 255, b = c[2] / 255,
+      max = Math.max(r, g, b), min = Math.min(r, g, b),
+      l = (max + min) / 2, d = max - min, h = 0, s = 0;
+    if (d) {
+      s = d / (1 - Math.abs(2 * l - 1));
+      h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    return [h, s, l];
+  }
+  function hslRgb(h, s, l) {
+    var c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2,
+      v = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return v.map(function (n) { return Math.round((n + m) * 255); });
+  }
+  // Light backgrounds get light buttons with dark text; others a deeper shade of the same, still vivid, color.
+  function lightBackground(b) {
+    var one = hexRgb(b.color), two = b.color2 ? hexRgb(b.color2) : one;
+    return !!one && (lightness(one) + lightness(two)) / 2 > 0.6;
+  }
+  function keyShade(c, light) {
+    if (light) return mixRgb(c, [255, 255, 255], 0.4);
     var l = lightness(c);
-    return l < 0.18 ? mixRgb(c, [255, 255, 255], 0.13) : mixRgb(c, [0, 0, 0], l > 0.6 ? 0.5 : 0.3);
+    if (l < 0.18) return mixRgb(c, [255, 255, 255], 0.13);
+    // Mixing with black made bright colors muddy; keep the hue and saturation, lower only the lightness.
+    var hsl = rgbHsl(c);
+    return hslRgb(hsl[0], Math.min(1, hsl[1] * 1.1), hsl[2] * 0.78);
   }
   function paintKeys(target, active) {
     var b = deckBackground,
       mode = !active || b.keys === 'standard' ? '' : b.keys === 'glass' || !b.color ? 'glass' : 'tint';
+    var light = mode === 'tint' && lightBackground(b);
     target.classList.toggle('keys-tint', mode === 'tint');
     target.classList.toggle('keys-glass', mode === 'glass');
+    target.classList.toggle('keys-light', light);
     ['--key-bg', '--key-border', '--key-empty', '--key-shadow'].forEach(function (name) {
       target.style.removeProperty(name);
     });
     if (mode !== 'tint') return;
-    var one = keyShade(hexRgb(b.color)),
-      two = b.color2 ? keyShade(hexRgb(b.color2)) : mixRgb(one, [0, 0, 0], 0.25);
+    var one = keyShade(hexRgb(b.color), light),
+      two = b.color2 ? keyShade(hexRgb(b.color2), light) : mixRgb(one, light ? [255, 255, 255] : [0, 0, 0], light ? 0.35 : 0.25);
     target.style.setProperty('--key-bg', 'linear-gradient(145deg, ' + rgbCss(one) + ', ' + rgbCss(two) + ')');
-    target.style.setProperty('--key-border', rgbCss(mixRgb(one, [255, 255, 255], 0.28)));
+    target.style.setProperty('--key-border', rgbCss(light ? mixRgb(one, [0, 0, 0], 0.16) : mixRgb(one, [255, 255, 255], 0.28)));
     target.style.setProperty('--key-empty', rgbCss(one, 0.45));
-    target.style.setProperty('--key-shadow', rgbCss(mixRgb(two, [0, 0, 0], 0.55)));
+    target.style.setProperty('--key-shadow', rgbCss(mixRgb(two, [0, 0, 0], light ? 0.3 : 0.55)));
   }
   function paintBackground() {
     var target = backgroundTarget();
