@@ -646,6 +646,14 @@
       s = document.createElement('span');
     s.className = 'preset-icon ' + (preset ? 'preset-' + preset.className : 'preset-basic');
     s.textContent = preset ? preset.glyph : '?';
+    // Two-character glyphs ("◀|", "▣▣") are drawn smaller so they fit the box with any font.
+    if (preset && Array.from(preset.glyph).length > 1) {
+      s.textContent = '';
+      var wide = document.createElement('span');
+      wide.className = 'glyph-wide';
+      wide.textContent = preset.glyph;
+      s.appendChild(wide);
+    }
     s.title = preset ? preset.name : 'アイコン';
     if (presetPaths[key])
       s.innerHTML =

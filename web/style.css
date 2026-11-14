@@ -1997,6 +1997,9 @@ body:not(.admin-view) .deck-grid[data-columns="8"] .deck-key:not(.audio-fader) >
   font-weight: 700;
   font-size: clamp(18px, 3vw, 34px);
   line-height: 1;
+  /* Two-character glyphs such as "◀|" must stay on one line in small boxes. */
+  white-space: nowrap;
+  overflow: hidden;
   box-shadow:
     inset 0 1px 0 #ffffff44,
     0 4px 10px #0007;
@@ -3372,6 +3375,13 @@ body.preset-screen-open {
 .preset-help-icon .preset-icon {
   width: 40px;
   height: 40px;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+.preset-icon .glyph-wide {
+  font-size: 0.62em;
+  letter-spacing: -0.05em;
+  line-height: 1;
 }
 .preset-help-row p {
   margin: 2px 0;
