@@ -98,7 +98,7 @@ const server = http.createServer(async (req, res) => {
     admin.on('pageerror', error => errors.push(String(error)));
     await admin.goto(base + '/settings#test');
     const group = admin.locator('.shortcut-group').filter({ hasText: '時計・情報表示' });
-    await admin.locator('.shortcut-group').first().locator('summary').click();
+    // Catalog groups start closed.
     await group.locator('summary').click();
     const savedCpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'POST');
     const refreshedCpu = admin.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'GET');

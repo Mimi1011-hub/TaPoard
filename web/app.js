@@ -2422,10 +2422,43 @@
       for (var h = Math.min(8, Math.max(3, grid.rows)); h >= 3; h--) list.push([w, h]);
     return list;
   }
+  // One catalog entry; its width and height are picked beside it, up to the grid in use.
+  var slideshowPick = { width: 3, height: 3 };
   function slideshowCatalogItems() {
-    return slideshowSizes().map(function (wh) {
-      return ['widget-slideshow-' + wh[0] + 'x' + wh[1], 'スライドショー（' + wh[0] + '×' + wh[1] + '）', '横' + wh[0] + '・縦' + wh[1] + 'の' + wh[0] * wh[1] + 'マス'];
+    var sizes = slideshowSizes(),
+      maxW = sizes.length ? sizes[0][0] : 3,
+      maxH = sizes.length ? sizes[0][1] : 3;
+    slideshowPick.width = Math.min(Math.max(3, slideshowPick.width), maxW);
+    slideshowPick.height = Math.min(Math.max(3, slideshowPick.height), maxH);
+    return [['widget-slideshow-' + slideshowPick.width + 'x' + slideshowPick.height, 'スライドショー', '横・縦のマス数を選んで追加（最大 横' + maxW + '・縦' + maxH + '）', maxW, maxH]];
+  }
+  function slideshowSizePicker(item, row) {
+    var box = document.createElement('span');
+    box.className = 'slideshow-size-pick';
+    [['width', '横', item[3]], ['height', '縦', item[4]]].forEach(function (side) {
+      var label = document.createElement('label'),
+        select = document.createElement('select');
+      label.textContent = side[1];
+      select.className = 'slideshow-pick-' + side[0];
+      for (var n = 3; n <= side[2]; n++) {
+        var op = document.createElement('option');
+        op.value = String(n);
+        op.textContent = String(n);
+        select.appendChild(op);
+      }
+      select.value = String(slideshowPick[side[0]]);
+      select.onchange = function () {
+        slideshowPick[side[0]] = Number(this.value);
+        item[0] = 'widget-slideshow-' + slideshowPick.width + 'x' + slideshowPick.height;
+        row.dataset.action = item[0];
+      };
+      select.addEventListener('mousedown', function (e) {
+        e.stopPropagation();
+      });
+      label.appendChild(select);
+      box.appendChild(label);
     });
+    return box;
   }
   function widgetFromAction(action) {
     var slideshow = /^widget-slideshow-([3-8])x([3-8])$/.exec(action);
@@ -6375,7 +6408,7 @@
       var details = document.createElement('details');
       details.className = 'shortcut-group';
       details.dataset.group = group.title;
-      details.open = previous.length ? !!opened[group.title] : groupIndex === 0;
+      details.open = previous.length ? !!opened[group.title] : false;
       var summary = document.createElement('summary');
       summary.appendChild(shortcutGlyph(group.category, group.glyph));
       var text = document.createElement('span');
@@ -6449,6 +6482,7 @@
           );
           persistRows(item[1] + 'を追加して自動保存しました。');
         };
+        if (group.slideshow) label.appendChild(slideshowSizePicker(item, row));
         row.appendChild(label);
         row.appendChild(add);
         list.appendChild(row);
@@ -7020,6 +7054,49 @@
               [2, '4マス（2×2）'],
             ],
       );
+    if (fields.type === 'slideshow') {
+      // Width and height are picked one by one; the combined menu above stays as the one that
+      // checks the space and moves the slideshow, but is hidden.
+      var combined = area.querySelector('.appearance-size'),
+        sizes = slideshowSizes(),
+        pickRow = document.createElement('div');
+      combined.parentNode.hidden = true;
+      pickRow.className = 'slideshow-size-pick editor-size-pick';
+      var maxW = Math.max(fields.width, sizes.length ? sizes[0][0] : 3),
+        maxH = Math.max(fields.height, sizes.length ? sizes[0][1] : 3),
+        sides = {};
+      [['width', 'スライドショーの横', maxW], ['height', 'スライドショーの縦', maxH]].forEach(function (side) {
+        var label = document.createElement('label'),
+          pick = document.createElement('select');
+        label.textContent = side[1];
+        pick.className = 'appearance-slideshow-' + side[0];
+        for (var n = 3; n <= side[2]; n++) {
+          var op = document.createElement('option');
+          op.value = String(n);
+          op.textContent = n + 'マス';
+          pick.appendChild(op);
+        }
+        pick.value = String(fields[side[0]]);
+        pick.onchange = function () {
+          var value = sides.width.value + 'x' + sides.height.value;
+          if (!combined.querySelector('option[value="' + value + '"]')) {
+            var op = document.createElement('option');
+            op.value = value;
+            op.textContent = value;
+            combined.appendChild(op);
+          }
+          combined.value = value;
+          combined.onchange();
+          // A size that does not fit is undone by the combined menu; show what is kept.
+          sides.width.value = String(fields.width);
+          sides.height.value = String(fields.height);
+        };
+        sides[side[0]] = pick;
+        label.appendChild(pick);
+        pickRow.appendChild(label);
+      });
+      combined.parentNode.parentNode.insertBefore(pickRow, combined.parentNode.nextSibling);
+    }
     select('文字サイズ', 'fontSize', [
       [8, '小さめ 8'],
       [11, '標準 11'],

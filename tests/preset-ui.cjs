@@ -142,6 +142,8 @@ function button(name, page, row, column, orientation = 'landscape') {
     assert.equal((await api('settings', { apps })).status, 200, 'cell 0,0 is free on a new page');
     await admin.reload();
     await admin.locator('#preset-open').waitFor();
+    // Catalog groups start closed.
+    await admin.locator('details.shortcut-group[data-group="スピーカー・マイク"] summary').click();
     assert.equal(await admin.locator('.shortcut-row[data-action="control-speaker-fader"] button').textContent(), 'すべてのページに表示');
     await admin.locator('.shortcut-row[data-action="control-speaker-fader"] button').click();
     await admin.waitForFunction(() => /すべてのページに.*戻しました/.test(document.querySelector('#message').textContent));

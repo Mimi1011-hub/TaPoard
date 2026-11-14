@@ -78,7 +78,8 @@ function slideshow(side, folder, extra) {
     await admin.locator('#editor-float .slideshow-interval').selectOption('30');
     await admin.locator('#editor-float .slideshow-order').selectOption('random');
     // 4x3 would run off the grid where it is, so it moves to a free spot by itself.
-    await admin.locator('#editor-float .appearance-size').selectOption('4x3');
+    assert(await admin.locator('#editor-float .appearance-size').isHidden(), 'width and height are picked separately');
+    await admin.locator('#editor-float .appearance-slideshow-width').selectOption('4');
     await admin.locator('#editor-float-save').click();
     await admin.waitForFunction(() => document.querySelector('#message').textContent.length > 0);
     let after;
@@ -99,15 +100,15 @@ function slideshow(side, folder, extra) {
     assert.match((await api('settings', { apps: [wide] })).data.error, /スライドショー|5x2/);
 
     // The catalog adds one.
-    // The catalog offers every size that fits the grid shown: 5x3 grid -> 5x3, 4x3, 3x3.
-    assert.deepEqual(await admin.locator('.shortcut-row[data-action^="widget-slideshow-"]').evaluateAll(r => r.map(x => x.dataset.action)),
-      ['widget-slideshow-5x3', 'widget-slideshow-4x3', 'widget-slideshow-3x3']);
-    // A bigger grid offers bigger (and wide) sizes, up to the whole grid.
+    // One catalog entry; width and height are picked beside it, up to the grid in use (5x3 here).
+    assert.equal(await admin.locator('.shortcut-row[data-action^="widget-slideshow-"]').count(), 1);
+    const pickW = admin.locator('.shortcut-row .slideshow-pick-width'), pickH = admin.locator('.shortcut-row .slideshow-pick-height');
+    assert.deepEqual(await pickW.locator('option').allTextContents(), ['3', '4', '5']);
+    assert.deepEqual(await pickH.locator('option').allTextContents(), ['3']);
+    // A bigger grid allows bigger (and wide) sizes, up to the whole grid.
     await admin.locator('#admin-columns').selectOption('6');
     await admin.locator('#admin-rows').selectOption('5');
-    await admin.waitForFunction(() => document.querySelectorAll('.shortcut-row[data-action^="widget-slideshow-"]').length === 12);
-    const offered = await admin.locator('.shortcut-row[data-action^="widget-slideshow-"]').evaluateAll(r => r.map(x => x.dataset.action.replace('widget-slideshow-', '')));
-    assert.deepEqual(offered.slice(0, 3), ['6x5', '6x4', '6x3']);
+    await admin.waitForFunction(() => document.querySelectorAll('.shortcut-row .slideshow-pick-width option').length === 4 && document.querySelectorAll('.shortcut-row .slideshow-pick-height option').length === 3);
     for (let i = 0; i < 30; i++) {
       const g = (await api('settings')).data.landscapeGrid;
       if (g && g.columns === 6 && g.rows === 5) break;
@@ -115,6 +116,8 @@ function slideshow(side, folder, extra) {
     }
     await admin.waitForTimeout(500);
     await admin.locator('details.shortcut-group[data-group="写真"]').evaluate(d => { d.open = true; });
+    await pickW.selectOption('6');
+    await pickH.selectOption('4');
     await admin.locator('.shortcut-row[data-action="widget-slideshow-6x4"] button').click();
     let big;
     for (let i = 0; i < 30 && !big; i++) {
@@ -123,7 +126,7 @@ function slideshow(side, folder, extra) {
     }
     assert(big, '6x4 slideshow saved: ' + await admin.locator('#message').innerText() + ' ' + JSON.stringify((await api('settings')).data.apps.map(a => [a.type, a.width, a.height])));
     assert.deepEqual(errors, []);
-    console.log('PASS slideshow: sizes follow the grid (5x3 grid: 3 sizes, 6x5 grid: 12 incl. 6x4 added), folder pictures as JPEG in name order with wrap-around, timed change in the preview, editor (folder, interval, order, size), server checks');
+    console.log('PASS slideshow: one catalog entry with width/height picked up to the grid (6x4 added on a 6x5 grid), folder pictures as JPEG in name order with wrap-around, timed change in the preview, editor (folder, interval, order, size), server checks');
   } finally {
     if (browser) await browser.close();
     host.kill();

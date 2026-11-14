@@ -3719,3 +3719,20 @@ textarea.name-input {
   opacity: var(--key-alpha);
   pointer-events: none;
 }
+
+/* 3.1: slideshow width and height picked one by one */
+.slideshow-size-pick {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.slideshow-size-pick label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.shortcut-row .slideshow-size-pick select {
+  min-width: 52px;
+}
