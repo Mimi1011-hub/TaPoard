@@ -92,6 +92,23 @@ function zip(files) {
     await admin.locator('.icon-select-button').first().click();
     await admin.locator('.icon-pack-tabs').getByRole('tab', { name: 'テスト用パック' }).click();
     assert.equal(await admin.locator('#icon-preset-groups').isHidden(), true);
+    // Pack pictures are grouped and ordered like the standard icons.
+    await admin.locator('.icon-pack-grid .icon-choice').first().waitFor();
+    assert.deepEqual(await admin.locator('.icon-pack-grid .icon-preset-group h3').allTextContents(), ['音楽・音声', 'PC・ファイル']);
+    // Search finds pictures by what they are for; app names lead to the matching generic icon.
+    await admin.locator('#icon-search').fill('配信');
+    assert.equal(await admin.locator('.icon-pack-grid .icon-choice:visible').count(), 1);
+    await admin.locator('#icon-search').fill('');
+    await admin.locator('.icon-pack-tabs').getByRole('tab', { name: '標準アイコン' }).click();
+    await admin.locator('#icon-search').fill('discord');
+    assert.equal(await admin.locator('.icon-choice[data-icon-key="headset"]').isVisible(), true);
+    assert.equal(await admin.locator('.icon-choice[data-icon-key="heart"]').isVisible(), false);
+    await admin.locator('#icon-search').fill('クリスタ');
+    assert.equal(await admin.locator('.icon-choice[data-icon-key="brush"]').isVisible(), true);
+    await admin.locator('#icon-search').fill('zzzz');
+    assert.equal(await admin.locator('#icon-search-empty').isVisible(), true);
+    await admin.locator('#icon-search').fill('');
+    await admin.locator('.icon-pack-tabs').getByRole('tab', { name: 'テスト用パック' }).click();
     const saved = admin.waitForResponse(r => new URL(r.url()).pathname === '/api/settings' && r.request().method() === 'GET');
     await admin.locator('.icon-pack-grid .icon-choice', { hasText: 'マイク' }).click();
     await saved;

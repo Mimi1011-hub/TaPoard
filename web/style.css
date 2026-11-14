@@ -3537,3 +3537,25 @@ textarea.name-input {
 .editor-float-body > * {
   margin: 0;
 }
+
+/* 3.1: icon search and grouped pack icons */
+.icon-search-row {
+  margin: 0 0 12px;
+}
+.icon-search-row input {
+  width: 100%;
+}
+.icon-search-row span {
+  display: block;
+  margin-top: 8px;
+  color: #9aa2b1;
+  font-size: 13px;
+}
+.icon-search-row span[hidden],
+.icon-choice[hidden],
+.icon-preset-group[hidden] {
+  display: none;
+}
+.icon-pack-grid .icon-preset-group:first-child {
+  margin-top: 4px;
+}

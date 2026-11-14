@@ -3479,6 +3479,7 @@
     $('icon-picker-current').textContent = (fields.name && fields.name.value) || 'ボタン';
     $('custom-icon-file').value = '';
     $('icon-picker-backdrop').hidden = false;
+    $('icon-search').value = '';
     iconPickerPack = fields.iconPack && iconPacks.some(function (p) { return p.id === fields.iconPack; }) ? fields.iconPack : '';
     renderPackChoices();
     renderIconColors();
@@ -3542,6 +3543,45 @@
     };
     reader.readAsDataURL(file);
   }
+  // 3.1: find an icon by its name, its group, or the apps it is often used for. Brand logos are not
+  // bundled (trademarks), so app names lead to the generic icon that fits.
+  var ICON_WORDS = {
+    headset: 'discord ディスコード ボイスチャット vc 通話 teams zoom 会議', headphones: '音楽 spotify', chat: 'discord ディスコード line slack teams メッセージ x twitter ツイッター コメント',
+    microphone: '配信 discord 会議 録音 ミュート', 'usb-mic': '配信 録音', 'studio-mic': '配信 録音 歌', mute: '消音 オフ', speaker: '音量',
+    video: 'youtube ユーチューブ twitch ツイッチ 配信 obs 録画 プレミア premiere 動画編集 netflix ネトフリ', radio: '配信 ライブ obs 開始 streaming', record: '録画 obs 配信', recording: '録画 配信',
+    camera: 'obs シーン webカメラ 撮影 instagram インスタ', monitor: 'シーン 画面 obs ディスプレイ', play: 'youtube 再生 spotify', music: 'spotify スポティファイ apple music 音楽 itunes',
+    brush: 'クリスタ clip studio クリップスタジオ photoshop フォトショ illustrator イラレ adobe アドビ 絵 イラスト', pen: 'クリスタ clip studio illustrator イラレ adobe アドビ 絵 イラスト', pencil: 'クリスタ clip studio 下書き 絵',
+    palette: 'クリスタ clip studio photoshop adobe アドビ 色 カラー', image: 'photoshop フォトショ lightroom adobe アドビ 写真 画像編集', layers: 'photoshop クリスタ adobe アドビ',
+    eraser: 'クリスタ 消す', eyedropper: 'クリスタ photoshop 色', share: 'x twitter ツイッター 投稿 sns', globe: 'chrome edge firefox ブラウザ インターネット web サイト', link: 'url web',
+    gamepad: 'steam スチーム ゲーム xbox game bar epic', windows: 'スタート', keyboard: 'ショートカット キー vscode プログラミング', file: 'word エクセル excel ドキュメント', folder: 'エクスプローラー explorer',
+    mail: 'gmail outlook メール', users: 'discord teams zoom 会議 グループ', person: 'アカウント', screenshot: 'スクショ 画面切り取り', timer: '休憩 タイマー', star: 'お気に入り',
+  };
+  function iconSearchText(button) {
+    var key = button.dataset.iconKey || button.dataset.searchKey || '',
+      group = button.closest('.icon-preset-group'),
+      heading = group && group.querySelector('h3');
+    return [button.title, button.textContent, key, ICON_WORDS[key] || '', heading ? heading.textContent : ''].join(' ').toLowerCase();
+  }
+  function filterIcons() {
+    var input = $('icon-search');
+    if (!input) return;
+    var words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean),
+      visible = 0;
+    var root = iconPickerPack ? $('icon-pack-choices') : $('icon-preset-groups');
+    Array.prototype.forEach.call(root.querySelectorAll('.icon-choice'), function (button) {
+      var show = !words.length || words.every(function (w) {
+        return iconSearchText(button).indexOf(w) >= 0;
+      });
+      if (words.length && button.classList.contains('automatic')) show = false;
+      button.hidden = !show;
+      if (show) visible++;
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('.icon-preset-group'), function (group) {
+      group.hidden = !group.querySelector('.icon-choice:not([hidden])');
+    });
+    $('icon-search-empty').hidden = !words.length || visible > 0;
+  }
+  if ($('icon-search')) $('icon-search').addEventListener('input', filterIcons);
   function renderIconPicker() {
     var root = $('icon-preset-groups');
     root.textContent = '';
@@ -4105,7 +4145,7 @@
     tabs.className = 'icon-pack-tabs';
     tabs.setAttribute('role', 'tablist');
     var grid = document.createElement('div');
-    grid.className = 'icon-preset-grid icon-pack-grid';
+    grid.className = 'icon-pack-grid';
     if (iconPickerPack && !iconPacks.some(function (p) { return p.id === iconPickerPack; })) iconPickerPack = '';
     [{ id: '', name: '標準アイコン' }].concat(iconPacks).forEach(function (pack) {
       var tab = document.createElement('button');
@@ -4121,13 +4161,56 @@
     });
     root.appendChild(tabs);
     $('icon-preset-groups').hidden = !!iconPickerPack;
-    if (!iconPickerPack) return;
+    if (!iconPickerPack) {
+      filterIcons();
+      return;
+    }
     root.appendChild(grid);
     grid.textContent = '読み込んでいます…';
+    var pack = null;
     fetchIconPack(iconPickerPack)
-      .then(function (pack) {
+      .then(function (loaded) {
+        pack = loaded;
         grid.textContent = '';
+        // Same order and headings as the standard icons: by the preset the picture stands for.
+        var keyOf = function (icon) {
+            if (icon.key && presetMap[icon.key]) return icon.key;
+            for (var k in presetMap) if (presetMap[k].name === icon.name) return k;
+            return '';
+          },
+          sections = presetGroups.map(function (group) {
+            return { title: group.title, keys: group.items.map(function (i) { return i[0]; }), icons: [] };
+          }),
+          others = { title: 'その他', keys: [], icons: [] };
         pack.icons.forEach(function (icon) {
+          var key = keyOf(icon),
+            home = sections.filter(function (sec) { return key && sec.keys.indexOf(key) >= 0; })[0] || others;
+          home.icons.push({ icon: icon, key: key });
+        });
+        sections.forEach(function (sec) {
+          sec.icons.sort(function (a, b) { return sec.keys.indexOf(a.key) - sec.keys.indexOf(b.key); });
+        });
+        sections.concat([others]).forEach(function (sec) {
+          if (!sec.icons.length) return;
+          var section = document.createElement('section'),
+            heading = document.createElement('h3'),
+            inner = document.createElement('div');
+          section.className = 'icon-preset-group';
+          heading.textContent = sec.title;
+          inner.className = 'icon-preset-grid';
+          section.appendChild(heading);
+          section.appendChild(inner);
+          grid.appendChild(section);
+          sec.icons.forEach(function (entry) {
+            addPackChoice(inner, entry.icon, entry.key);
+          });
+        });
+        filterIcons();
+      })
+      .catch(function (e) {
+        grid.textContent = e.message;
+      });
+    function addPackChoice(grid, icon, key) {
           var button = document.createElement('button'),
             img = document.createElement('img'),
             name = document.createElement('span');
@@ -4141,15 +4224,12 @@
           name.textContent = icon.name;
           button.appendChild(img);
           button.appendChild(name);
+          if (key) button.dataset.searchKey = key;
           button.onclick = function () {
             choosePackIcon(pack, icon);
           };
           grid.appendChild(button);
-        });
-      })
-      .catch(function (e) {
-        grid.textContent = e.message;
-      });
+    }
   }
   if (admin) {
     $('icon-pack-file').onchange = function () {
