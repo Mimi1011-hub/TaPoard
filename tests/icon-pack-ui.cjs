@@ -241,6 +241,13 @@ function zip(files) {
     await admin.waitForFunction(() => document.querySelector('.icon-pack-grid .pack-icon[src]'));
     const loaded = await admin.evaluate(() => Array.from(document.querySelectorAll('.icon-pack-grid .pack-icon')).filter(i => i.getAttribute('src')).length);
     assert(loaded > 0 && loaded < many, 'only icons near the view get their picture (' + loaded + ')');
+    // The back-to-top button follows the long list.
+    assert(await admin.locator('#icon-picker-top').isHidden());
+    await admin.locator('#icon-picker-backdrop').evaluate(e => e.scrollTo(0, 5000));
+    await admin.locator('#icon-picker-top').waitFor();
+    await admin.locator('#icon-picker-top').click();
+    await admin.waitForFunction(() => document.querySelector('#icon-picker-backdrop').scrollTop === 0);
+    await admin.locator('#icon-picker-top').waitFor({ state: 'hidden' });
     await admin.locator('#icon-search').fill('brand1499');
     await admin.waitForFunction(() => { const img = document.querySelector('.icon-pack-grid .icon-choice:not([hidden]) .pack-icon'); return img && img.getAttribute('src'); });
     await admin.locator('#icon-search').fill('');
@@ -261,7 +268,7 @@ function zip(files) {
     await admin.waitForFunction(() => document.querySelectorAll('.icon-pack-item').length === 3);
     assert.equal((await api('icon-packs')).data.packs.length, 3);
     assert.deepEqual(errors, []);
-    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, bulk change with undo, export round trip, loose images, Stream Deck pack with tags and SVG, 1500-icon pack with lazy pictures, pack headings, search, server checks, delete');
+    console.log('PASS icon packs: .tpicons import (deflate zip, broken picture skipped), picker tab, bulk change with undo, export round trip, loose images, Stream Deck pack with tags and SVG, 1500-icon pack with lazy pictures and back-to-top button, pack headings, search, server checks, delete');
   } finally {
     if (browser) await browser.close();
     host.kill();
