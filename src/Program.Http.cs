@@ -6,14 +6,14 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
+using Request = ApiRequest;
 
 // Minimal HTTP/1.1 server: one request per connection, then close.
 partial class Program
 {
-    const string JsonType = "application/json";
+    const string JsonType = HttpIO.JsonType;
     const string ContentSecurityPolicy =
         "default-src 'self'; style-src 'self'; img-src 'self' data:; media-src data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
-
     // Files under web\ that are served without authentication.
     static readonly HashSet<string> PublicFiles = new HashSet<string>
     {
@@ -31,22 +31,6 @@ partial class Program
         "/icon-192.png",
         "/icon-512.png",
     };
-
-    internal sealed class Request
-    {
-        internal Stream stream;
-        internal string method;
-        internal string target; // path including the query string
-        internal string path;
-        internal Dictionary<string, string> headers;
-        internal IPAddress remote;
-        internal bool local; // from this PC
-        internal string auth;
-        internal bool isAdmin; // the PC settings page
-        internal bool allowed; // any paired phone or the settings page
-        internal Dictionary<string, object> input;
-        internal string json;
-    }
 
     static void Accept(TcpListener listener)
     {
@@ -97,7 +81,7 @@ partial class Program
             {
                 try
                 {
-                    ReplyJson(c.GetStream(), 400, new { error = e.Message });
+                    HttpIO.ReplyJson(c.GetStream(), 400, new { error = e.Message });
                 }
                 catch { }
             }
@@ -161,9 +145,9 @@ partial class Program
             : file.EndsWith("png") ? "image/png"
             : "text/html";
         if (type == "image/png")
-            ReplyBytes(s, 200, type, File.ReadAllBytes(Path.Combine(Root, "web", file)));
+            HttpIO.ReplyBytes(s, 200, type, File.ReadAllBytes(Path.Combine(Root, "web", file)));
         else
-            Reply(s, 200, type, File.ReadAllText(Path.Combine(Root, "web", file)));
+            HttpIO.Reply(s, 200, type, File.ReadAllText(Path.Combine(Root, "web", file)));
     }
 
     static string Line(Stream s)
