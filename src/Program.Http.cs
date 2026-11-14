@@ -32,7 +32,7 @@ partial class Program
         "/icon-512.png",
     };
 
-    sealed class Request
+    internal sealed class Request
     {
         internal Stream stream;
         internal string method;
@@ -44,6 +44,8 @@ partial class Program
         internal string auth;
         internal bool isAdmin; // the PC settings page
         internal bool allowed; // any paired phone or the settings page
+        internal Dictionary<string, object> input;
+        internal string json;
     }
 
     static void Accept(TcpListener listener)
