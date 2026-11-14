@@ -66,7 +66,8 @@ static class SettingsMigration
 
     static PageFadersV3 PageFaders(Settings settings, bool portrait, int page, int pageCount)
     {
-        foreach (var entry in DeckLayout.ControlPages(settings, portrait))
+        var entries = portrait ? settings.portraitControlPages : settings.landscapeControlPages;
+        foreach (var entry in entries ?? new List<ControlPage>())
         {
             if (entry == null || entry.page != page || entry.page >= pageCount)
                 continue;
