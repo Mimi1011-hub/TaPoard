@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#14161B">
+  <title></title>
+  <link rel="stylesheet" href="/v4/style/base.css">
+  <link rel="stylesheet" href="/v4/style/deck.css">
+  <link rel="stylesheet" href="/v4/style/phone.css">
+</head>
+<body>
+  <div id="offline" class="offline-band" data-i18n="connection.offline" hidden></div>
+  <main id="phone-app" class="phone-app" hidden>
+    <header id="topbar" class="topbar"></header>
+    <section class="deck-shell"><div id="deck" class="deck-grid"></div></section>
+    <p id="message" class="message" role="status" hidden></p>
+  </main>
+  <main id="disconnected" class="disconnected" hidden>
+    <div class="disconnected-mark">T</div>
+    <h1 data-i18n="connection.missingTitle"></h1>
+    <p data-i18n="connection.missingMessage"></p>
+  </main>
+  <div id="menu-root"></div>
+  <script src="/nosleep.min.js"></script>
+  <script type="module" src="/v4/app.js"></script>
+</body>
+</html>

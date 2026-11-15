@@ -1,0 +1,130 @@
+.topbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  height: 50px;
+  padding: var(--space-2) var(--space-3) 0;
+}
+.page-controls { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.topbar-button {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+}
+.topbar-button:disabled { color: #606775; opacity: .55; }
+.page-button { font-size: 24px; line-height: 1; }
+.page-label { min-width: 58px; color: var(--color-muted); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.menu-button { font-size: 18px; }
+
+.menu-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: max(var(--space-2), env(safe-area-inset-top)) var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
+  background: rgba(4, 5, 8, .72);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.phone-menu {
+  width: min(520px, 100%);
+  max-height: 100%;
+  padding: var(--space-4);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large) var(--radius-large) var(--radius-medium) var(--radius-medium);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+  animation: menu-up 160ms ease-out;
+}
+.menu-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.menu-header h2 { margin: 0; font-size: 18px; }
+.menu-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-button);
+  font-size: 23px;
+}
+.menu-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: var(--color-button);
+}
+.menu-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.menu-copy strong, .language-row strong { font-size: 13px; }
+.menu-copy small { color: var(--color-muted); font-size: 9px; line-height: 1.35; }
+.menu-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle-visual {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 27px;
+  border-radius: 16px;
+  background: #4A5260;
+  transition: background 140ms ease;
+}
+.toggle-visual::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--color-text);
+  transition: transform 140ms ease;
+}
+.menu-toggle input:checked + .toggle-visual { background: #537FC5; }
+.menu-toggle input:checked + .toggle-visual::after { transform: translateX(19px); }
+.language-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+}
+.language-row select {
+  min-width: 128px;
+  padding: 8px 28px 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-button);
+}
+.menu-guidance { margin: var(--space-3) 4px; color: var(--color-muted); font-size: 10px; line-height: 1.6; }
+.disconnect-button {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #70424A;
+  border-radius: var(--radius-small);
+  color: var(--color-danger);
+  background: #2B1D21;
+}
+@keyframes menu-up { from { transform: translateY(18px); opacity: 0; } }
+
+@media (orientation: landscape) and (max-height: 430px) {
+  .topbar { height: 44px; padding-top: 5px; }
+  .deck-shell { padding-top: 4px; }
+  .phone-menu { width: min(620px, 94%); padding: var(--space-3); }
+  .menu-header { margin-bottom: 4px; }
+  .menu-toggle { margin-top: 5px; padding: 8px 11px; }
+  .language-row { margin-top: 3px; padding: 6px 10px; }
+  .menu-guidance { margin: 7px 4px; }
+}

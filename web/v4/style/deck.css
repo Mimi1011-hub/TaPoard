@@ -1,0 +1,81 @@
+.deck-shell { flex: 1; min-width: 0; min-height: 0; padding: var(--space-2); }
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--deck-columns, 5), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--deck-rows, 3), minmax(0, 1fr));
+  gap: clamp(5px, 1.3vw, 10px);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  touch-action: none;
+}
+
+.deck-tile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: clamp(9px, 2.4vw, var(--radius-medium));
+  color: var(--color-text);
+  background: rgba(30, 34, 43, var(--key-alpha, 1));
+}
+.deck-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  transition: transform 90ms ease, border-color 90ms ease, filter 90ms ease;
+}
+.deck-button.is-pressed { transform: scale(0.96); border-color: var(--color-accent); filter: brightness(1.14); }
+.app-icon, .preset-icon, .shortcut-icon, .icon-fallback {
+  display: grid;
+  place-items: center;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  color: var(--color-text);
+  font-size: clamp(17px, 6vw, 42px);
+}
+.preset-icon svg, .widget-glyph svg { width: 100%; height: 100%; }
+.glyph-wide { font-size: 0.75em; }
+.deck-label {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: -webkit-box;
+  max-height: 48%;
+  padding: 12px 4px 4px;
+  overflow: hidden;
+  background: linear-gradient(transparent, rgba(5, 6, 8, var(--label-opacity-soft, .34)) 42%, rgba(5, 6, 8, var(--label-opacity, .45)));
+  line-height: 1.1;
+  text-align: center;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.fader-placeholder, .widget-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  text-align: center;
+}
+.fader-placeholder { background: linear-gradient(160deg, #242a36, var(--color-surface)); }
+.fader-mark { color: var(--color-accent); font-size: clamp(18px, 5vw, 34px); }
+.fader-name, .widget-name { max-width: 100%; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.widget-placeholder { border-style: dashed; color: var(--color-muted); }
+.widget-glyph { display: block; width: min(38%, 48px); color: var(--color-accent); }
+.widget-note { max-width: 100%; font-size: 8px; line-height: 1.2; }
+.deck-empty { grid-column: 1 / -1; align-self: center; margin: 0; color: var(--color-muted); font-size: 12px; text-align: center; }
