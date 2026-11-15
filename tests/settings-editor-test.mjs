@@ -77,4 +77,49 @@ assert.equal(appearance.item(iconAddress).iconKey, '', 'one undo restores a bulk
 const dirty = appearance.dirty;
 appearance.setBackground({ color: '#000000' });
 assert.equal(appearance.dirty, dirty, 'background does not mark the deck dirty');
+
+// Shortcuts get the same starting icon and category as in 3.x.
+const { catalogItem } = await import('../web/v4/settings/catalog-items.js');
+const { defaultIconForAction, effectiveIconKey } = await import('../web/v4/settings/default-icon.js');
+assert.equal(catalogItem('media-play', 'Play', 'music').iconKey, 'play');
+assert.equal(catalogItem('media-play', 'Play', 'music').category, 'music');
+assert.equal(catalogItem('audio-mic-mute', 'Mic', 'audio').iconKey, 'microphone');
+assert.equal(catalogItem('audio-speaker-mute', 'Mute', 'audio').iconKey, 'mute');
+assert.equal(catalogItem('clip-layer-new', 'Layer', 'clipstudio').iconKey, 'layers');
+assert.equal(catalogItem('discord-deafen', 'Deafen', 'discord').iconKey, 'chat');
+assert.equal(catalogItem('custom-audio-input', 'Input').iconKey, 'audio-input');
+assert.equal(defaultIconForAction('key-custom', 'custom'), 'keyboard');
+assert.equal(effectiveIconKey({ type: 'url', iconKey: '' }), 'globe');
+assert.equal(effectiveIconKey({ type: 'hotkey', iconKey: 'star', action: 'media-play' }), 'star');
+
+// Switching to a pack changes matching buttons as one step and leaves own pictures alone.
+const { IconPacks } = await import('../web/v4/settings/icon-packs.js');
+const bulkEditor = new EditorState(response());
+const bulkHistory = new History(bulkEditor);
+bulkEditor.change((deck) => {
+  const items = deck.landscape.pages[0].items;
+  Object.assign(items[0], { iconKey: 'star', customIcon: '', iconPack: null });
+  if (items[1]) Object.assign(items[1], { iconKey: '', customIcon: 'data:image/png;base64,AAAA', iconPack: null });
+});
+const notices = [];
+const packs = new IconPacks({
+  editor: bulkEditor, i18n: { t: (key, values) => `${key}:${values && values.count !== undefined ? values.count : ''}` },
+  onNotice: (text) => notices.push(text), onError: (text) => notices.push(`error ${text}`),
+});
+packs.cache.set('p1', { id: 'p1', name: 'Pack', icons: [{ id: 'i1', name: 'Star', key: 'star', data: 'data:image/png;base64,BBBB' }] });
+const stepsBefore = bulkHistory.past.length;
+await packs.bulk('p1', 'all', 'landscape', 0);
+const first = bulkEditor.deck.landscape.pages[0].items[0];
+assert.equal(first.customIcon, 'data:image/png;base64,BBBB');
+assert.equal(first.iconPack, 'p1');
+assert.equal(first.iconPackItem, 'i1');
+if (bulkEditor.deck.landscape.pages[0].items[1]) assert.equal(bulkEditor.deck.landscape.pages[0].items[1].customIcon, 'data:image/png;base64,AAAA', 'own pictures stay');
+assert.equal(bulkHistory.past.length, stepsBefore + 1, 'a bulk change is one undo step');
+assert(notices.at(-1).startsWith('bulk.done:1'));
+await packs.bulk('p1', 'all', 'landscape', 0);
+assert.equal(bulkHistory.past.length, stepsBefore + 1, 'nothing to change adds no undo step');
+assert(notices.at(-1).startsWith('bulk.none'));
+await packs.bulk('', 'page', 'landscape', 0);
+assert.equal(bulkEditor.deck.landscape.pages[0].items[0].customIcon, '', 'back to the built-in icon');
+assert.equal(bulkEditor.deck.landscape.pages[0].items[0].iconKey, 'star');
 console.log('PASS settings editor: placement, pages, reflow, undo and redo');

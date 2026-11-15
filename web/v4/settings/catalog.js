@@ -50,7 +50,8 @@ export class Catalog {
 
   create(action) {
     const data = this.value(action);
-    return data ? catalogItem(action, this.i18n.t(data.name)) : null;
+    const group = catalogGroups.find((value) => value.items.indexOf(data) >= 0);
+    return data ? catalogItem(action, this.i18n.t(data.name), group.category || group.id) : null;
   }
 
   add(action, cell) {

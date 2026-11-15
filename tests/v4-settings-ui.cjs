@@ -88,6 +88,29 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` }); res.end(fs.readFileSync(file));
 });
 
+// A valid 2x2 red PNG (strict decoders reject pictures with a wrong checksum).
+function makePng() {
+  const zlib = require('zlib');
+  const crc = (bytes) => {
+    let value = 0xffffffff;
+    for (const byte of bytes) {
+      value ^= byte;
+      for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    }
+    return (value ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type), data]), out = Buffer.alloc(body.length + 8);
+    out.writeUInt32BE(data.length, 0);
+    body.copy(out, 4);
+    out.writeUInt32BE(crc(body), body.length + 4);
+    return out;
+  };
+  const header = Buffer.from([0, 0, 0, 2, 0, 0, 0, 2, 8, 6, 0, 0, 0]);
+  const rows = Buffer.from([0, 255, 0, 0, 255, 255, 0, 0, 255, 0, 255, 0, 0, 255, 255, 0, 0, 255]);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', zlib.deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
+}
+
 async function waitFor(check, message, timeout = 4000) {
   const until = Date.now() + timeout;
   while (Date.now() < until) { if (await check()) return; await new Promise((resolve) => setTimeout(resolve, 30)); }
@@ -171,7 +194,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     appearancePosts = posts.length;
     await page.locator('.preview-hit[data-kind="item"]').first().click();
     await page.getByRole('button', { name: 'アイコンを変える' }).click();
-    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+3MxZ5wAAAABJRU5ErkJggg==', 'base64');
+    const png = makePng();
     await page.locator('.icon-picker input[type="file"]').setInputFiles({ name: 'custom.png', mimeType: 'image/png', buffer: png });
     await waitFor(() => posts.length === appearancePosts + 1, 'custom icon save');
     assert(posts.at(-1).deck.landscape.pages[0].items[0].customIcon.startsWith('data:image/png'));

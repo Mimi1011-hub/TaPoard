@@ -1,3 +1,5 @@
+import { defaultIconForAction } from './default-icon.js';
+
 const base = (name, type, category, width = 1, height = 1) => ({
   id: '', name, type, category, action: null, path: '', args: '', url: '', text: '', hotkey: '',
   deviceId: null, deviceTarget: null, icon: null, iconKey: '', iconColor: '#3569c8', customIcon: '',
@@ -9,7 +11,7 @@ export function controlFromAction(action) {
   return action === 'control-speaker-fader' ? 'speaker' : action === 'control-mic-fader' ? 'mic' : null;
 }
 
-export function catalogItem(action, name) {
+export function catalogItem(action, name, category) {
   const slideshow = /^widget-slideshow-([3-8])x([3-8])$/.exec(action);
   if (slideshow) {
     const value = base(name, 'slideshow', 'widget', Number(slideshow[1]), Number(slideshow[2]));
@@ -43,8 +45,13 @@ export function catalogItem(action, name) {
     const value = base(name, action === 'custom-url' ? 'url' : 'clipboard', 'custom'); value.iconKey = action === 'custom-url' ? 'globe' : 'copy'; return value;
   }
   if (action === 'custom-audio-output' || action === 'custom-audio-input') {
-    const value = base(name, 'audioDevice', 'audio'); value.deviceTarget = action.endsWith('input') ? 'mic' : 'speaker'; return value;
+    const value = base(name, 'audioDevice', 'audio');
+    value.deviceTarget = action.endsWith('input') ? 'mic' : 'speaker';
+    value.iconKey = action.endsWith('input') ? 'audio-input' : 'audio-output';
+    return value;
   }
-  const value = base(name, 'hotkey', action.indexOf('-') < 0 ? 'common' : action.split('-')[0]);
-  value.action = action; return value;
+  const value = base(name, 'hotkey', category || 'common');
+  value.action = action;
+  value.iconKey = defaultIconForAction(action, value.category);
+  return value;
 }
