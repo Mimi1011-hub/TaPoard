@@ -37,7 +37,7 @@ export class PhoneApp {
       if (this.store.get()) this.render(this.store.get());
       else if (this.pairing) this.pairing.build();
     });
-    this.store.subscribe((state) => this.render(state));
+    this.store.subscribe((state) => this.stateChanged(state));
     const orientationChanged = () => { this.signature = ''; this.render(this.store.get()); };
     if (this.media.addEventListener) this.media.addEventListener('change', orientationChanged);
     else this.media.addListener(orientationChanged);
@@ -96,6 +96,12 @@ export class PhoneApp {
   }
 
   orientation() { return this.media.matches ? 'portrait' : 'landscape'; }
+
+  async stateChanged(state) {
+    if (this.pcWindow && state && state.pcLanguage && state.pcLanguage !== this.i18n.language)
+      await this.i18n.setLanguage(state.pcLanguage, false);
+    this.render(state);
+  }
 
   render(state) {
     if (!state || !state.deck || !this.grid) return;

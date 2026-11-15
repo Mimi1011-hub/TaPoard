@@ -771,5 +771,7 @@
   "import.added": "{count} 個追加しました。",
   "import.noneAdded": "追加したものはありません。",
   "import.skipped": "同じものが {count} 個あったので飛ばしました。",
-  "import.full": "空きマスが足りず {count} 個は置けませんでした。"
+  "import.full": "空きマスが足りず {count} 個は置けませんでした。",
+  "general.language": "言語",
+  "general.languageAuto": "自動（Windows に合わせる）"
 }

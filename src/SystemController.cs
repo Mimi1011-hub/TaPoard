@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 sealed class SystemController : ControllerBase
 {
@@ -11,6 +12,7 @@ sealed class SystemController : ControllerBase
     {
         api.Get("/api/pc-window", ApiAccess.Admin, GetPcWindow);
         api.Get("/api/firewall", ApiAccess.Admin, GetFirewall);
+        api.Get("/api/v3/language", ApiAccess.Admin, GetLanguage);
         api.Get("/api/import", ApiAccess.Admin, GetImport);
         api.Get("/api/slideshow", ApiAccess.Paired, GetSlideshow);
         api.Post("/api/import", ApiAccess.Admin, StartImport);
@@ -20,6 +22,38 @@ sealed class SystemController : ControllerBase
         api.Post("/api/pc-window", ApiAccess.Admin, SaveWindow);
         api.Post("/api/pc-window/open", ApiAccess.Admin, OpenWindow);
         api.Post("/api/firewall/repair", ApiAccess.Admin, RepairFirewall);
+        api.Post("/api/v3/language", ApiAccess.Admin, SaveLanguage);
+    }
+
+    object LanguageView()
+    {
+        return new
+        {
+            preference = Text.Preference,
+            language = Text.Language,
+            languages = new[]
+            {
+                new { id = "ja", name = TextJa.Values["language.ja"] },
+                new { id = "en", name = TextEn.Values["language.en"] },
+            },
+        };
+    }
+
+    void GetLanguage(ApiRequest r)
+    {
+        HttpIO.ReplyJson(r.stream, 200, LanguageView());
+    }
+
+    void SaveLanguage(ApiRequest r)
+    {
+        string preference = Convert.ToString(r.input["preference"]);
+        if (preference != "auto" && preference != "ja" && preference != "en")
+            throw new ArgumentException(Text.Get("language.invalid"));
+        Directory.CreateDirectory(state.Data);
+        File.WriteAllText(Path.Combine(state.Data, "language.txt"), preference);
+        Text.Use(preference);
+        state.Signal();
+        HttpIO.ReplyJson(r.stream, 200, LanguageView());
     }
 
     void GetPcWindow(ApiRequest r)

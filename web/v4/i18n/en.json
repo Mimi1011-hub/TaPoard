@@ -771,5 +771,7 @@
   "import.added": "Added {count}.",
   "import.noneAdded": "Nothing was added.",
   "import.skipped": "Skipped {count} already on the deck.",
-  "import.full": "No room for {count}."
+  "import.full": "No room for {count}.",
+  "general.language": "Language",
+  "general.languageAuto": "Automatic (use Windows language)"
 }

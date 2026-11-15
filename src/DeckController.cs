@@ -162,6 +162,7 @@ sealed class DeckController : ControllerBase
             response["phoneConnected"] = runtime.phoneConnected;
             response["pcWindowOpen"] = runtime.pcWindowOpen;
             response["inputSessions"] = runtime.inputSessions;
+            response["pcLanguage"] = Text.Language;
             HttpIO.ReplyJson(r.stream, 200, response);
         }
     }

@@ -6,6 +6,7 @@ static class TextEn
     {
         { "language.ja", "Japanese" },
         { "language.en", "English" },
+        { "language.invalid", "Choose auto, ja or en." },
         { "source.actionsteps.1", "Message 1" },
         { "source.actionsteps.2", "Message 2" },
         { "source.actionsteps.3", "Message 3" },

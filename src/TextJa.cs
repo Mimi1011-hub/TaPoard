@@ -6,6 +6,7 @@ static class TextJa
     {
         { "language.ja", "日本語" },
         { "language.en", "English" },
+        { "language.invalid", "言語は auto、ja、en のいずれかを指定してください。" },
         { "source.actionsteps.1", "操作の並びは20個以内です。" },
         { "source.actionsteps.2", "番目の操作が正しくありません。" },
         { "source.actionsteps.3", "番目の待ち時間は0～10000ミリ秒です。" },

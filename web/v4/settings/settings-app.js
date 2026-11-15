@@ -28,6 +28,9 @@ export class SettingsApp {
   }
 
   async start() {
+    this.languageView = await this.api.get('/api/v3/language', 10000);
+    await this.i18n.setLanguage(this.languageView.language, false);
+    this.i18n.apply(this.documentObject);
     const response = await this.api.get('/api/v3/deck', 10000);
     this.editor = new EditorState(response);
     this.history = new History(this.editor);
@@ -107,6 +110,7 @@ export class SettingsApp {
     this.shell.sections.subscribe((section) => this.pcWindowSettings.active(section === 'pc'));
     this.general = new General({
       root: this.nodes.sections.general, api: this.api, editor: this.editor, i18n: this.i18n,
+      view: this.languageView, documentObject: this.documentObject,
       onError: (message) => this.shell.showNotice(message),
     });
     this.general.start();

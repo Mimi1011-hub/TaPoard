@@ -23,8 +23,8 @@ export class I18n {
     if (!this.dictionaries[language]) this.dictionaries[language] = await this.loadLanguage(language);
   }
 
-  async setLanguage(preference) {
-    this.storage.setItem('tapoard-lang', preference);
+  async setLanguage(preference, persist = true) {
+    if (persist) this.storage.setItem('tapoard-lang', preference);
     this.language = chooseLanguage(preference, this.navigatorLanguage);
     await this.ensure(this.language);
     this.listeners.forEach((listener) => listener(this.language));
