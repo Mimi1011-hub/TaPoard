@@ -20,6 +20,10 @@ foreach ($test in $tests) {
     if ($LASTEXITCODE -ne 0) { $failed += $test }
 }
 if ($UI) {
+    foreach ($script in Get-ChildItem tests\*.mjs) {
+        & node $script.FullName
+        if ($LASTEXITCODE -ne 0) { $failed += $script.Name }
+    }
     foreach ($script in Get-ChildItem tests\*-ui.cjs) {
         & node $script.FullName
         if ($LASTEXITCODE -ne 0) { $failed += $script.Name }

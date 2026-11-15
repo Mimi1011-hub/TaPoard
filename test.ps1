@@ -24,6 +24,11 @@ Assert-Status '/icon-32.png' 200 @{}
 Assert-Status '/icon-180.png' 200 @{}
 Assert-Status '/icon-192.png' 200 @{}
 Assert-Status '/icon-512.png' 200 @{}
+Assert-Status '/v4/' 200 @{}
+Assert-Status '/v4/app.js' 200 @{}
+Assert-Status '/v4/core/api.js' 200 @{}
+Assert-Status '/v4/i18n/ja.json' 200 @{}
+Assert-Status '/v4/style/phone.css' 200 @{}
 $servedScript = (Invoke-WebRequest ($base + '/app.js') -UseBasicParsing).Content
 if ($servedScript -ne [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'web\app.js'))) { throw 'Served JavaScript is stale' }
 $servedQrScript = (Invoke-WebRequest ($base + '/qrcode.js') -UseBasicParsing).Content
@@ -51,9 +56,14 @@ if (Compare-Object $webIconKeys $serverIconKeys) { throw 'Browser and server ico
 Write-Host ('PASS ' + $webIconKeys.Count + ' selectable icon presets match the server allowlist')
 Assert-Status '/api/state' 401 @{}
 Assert-Status '/api/state' 200 $headers
+Assert-Status '/api/v3/state' 401 @{}
+Assert-Status '/api/v3/state' 200 $headers
 Assert-Status '/api/ping' 401 @{ Authorization = 'Bearer ABCDEFGHJKLM' }
 Write-Host 'PASS long key works and removed 12-character key is rejected'
 $state = Invoke-RestMethod ($base + '/api/state') -Headers $headers
+$v3State = Invoke-RestMethod ($base + '/api/v3/state') -Headers $headers
+if ($v3State.schemaVersion -ne 3 -or !$v3State.deck.landscape -or !$v3State.deck.portrait) { throw 'V3 deck state missing or invalid' }
+Write-Host 'PASS v3 deck state is available to paired devices'
 if ([string]::IsNullOrWhiteSpace($state.version)) { throw 'State version missing' }
 if ($state.appVersion -notmatch '^3\.1(?:\+(?:[0-9a-f]{7,40}\.dirty|source|unknown))?$') { throw ('Unexpected app version: ' + $state.appVersion) }
 if (@($state.widgetDefinitions).Count -ne 12) { throw 'Widget definitions missing or duplicated' }
