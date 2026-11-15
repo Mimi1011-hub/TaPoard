@@ -49,6 +49,7 @@ i18n.init().then(() => {
     }),
     documentObject: document,
     confirmFn: (message) => window.confirm(message),
+    promptFn: (message, value) => window.prompt(message, value),
     fetchFn: (path, options) => fetch(path, options),
     onAuthLost: () => {
       keys.clear();

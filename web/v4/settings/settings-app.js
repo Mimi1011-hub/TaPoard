@@ -10,6 +10,7 @@ import { GridSize } from './grid-size.js';
 import { Catalog } from './catalog.js';
 import { Inspector } from './inspector.js';
 import { IconPicker } from './icon-picker.js';
+import { Appearance } from './appearance.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -51,6 +52,11 @@ export class SettingsApp {
       root: this.nodes.catalog, editor: this.editor, preview: this.preview, i18n: this.i18n,
       onError: (message) => this.shell.showNotice(message),
     });
+    this.appearance = new Appearance({
+      root: this.nodes.sections.appearance, api: this.api, editor: this.editor, preview: this.preview, iconPicker: this.iconPicker,
+      i18n: this.i18n, confirmFn: this.confirmFn, promptFn: this.promptFn, onError: (message) => this.shell.showNotice(message),
+    });
+    await this.appearance.start();
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
       this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
       this.preview.setOrientation(button.dataset.orientation);

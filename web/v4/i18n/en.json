@@ -55,6 +55,7 @@
   "icon.name.brush": "Brush", "icon.name.pen": "Pen", "icon.name.pencil": "Pencil", "icon.name.eraser": "Eraser", "icon.name.palette": "Palette", "icon.name.image": "Image", "icon.name.layers": "Layers", "icon.name.eye": "Eye", "icon.name.eyedropper": "Eyedropper", "icon.name.zoom-in": "Zoom in", "icon.name.zoom-out": "Zoom out", "icon.name.rotate": "Rotate",
   "icon.name.arrow-up": "Up", "icon.name.arrow-down": "Down", "icon.name.arrow-left": "Left", "icon.name.arrow-right": "Right", "icon.name.back": "Back", "icon.name.forward": "Forward", "icon.name.refresh": "Refresh", "icon.name.menu": "Menu", "icon.name.grid": "Grid", "icon.name.list": "List", "icon.name.fullscreen": "Fullscreen", "icon.name.target": "Target",
   "packs.title": "Icon packs", "packs.standard": "Built-in icons", "packs.progress": "Converting… {current} / {total}", "packs.rename": "Rename", "packs.export": "Export", "packs.delete": "Delete", "packs.name": "Pack name", "packs.author": "Author", "packs.confirmDelete": "Delete icon pack “{name}”?",
+  "appearance.title": "Appearance", "bulk.title": "Change icons in bulk", "bulk.page": "This page", "bulk.all": "All pages", "bulk.apply": "Apply",
   "inspector.name": "Name", "inspector.action": "Action", "inspector.size": "Size",
   "inspector.fontSize": "Text size", "inspector.iconScale": "Icon size", "inspector.labelOpacity": "Label opacity",
   "inspector.keyClear": "Button transparency", "inspector.hideLabel": "Hide name", "inspector.url": "URL", "inspector.text": "Text to copy",
