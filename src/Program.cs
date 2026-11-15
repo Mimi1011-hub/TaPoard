@@ -171,6 +171,7 @@ partial class Program
             Application.EnableVisualStyles();
             try
             {
+                LoadLanguage();
                 LoadSettings();
                 WeatherService.Initialize(Data, delegate { lock (State.Gate) Signal(); });
                 DisplaySubscriptions.Changed = delegate
@@ -237,6 +238,13 @@ partial class Program
     }
 
     // Loads settings-v3.json, or reads settings-v2.json once when v3 does not exist.
+    static void LoadLanguage()
+    {
+        string file = Path.Combine(Data, "language.txt");
+        string preference = File.Exists(file) ? File.ReadAllText(file).Trim() : "auto";
+        Text.Use(preference);
+    }
+
     static void LoadSettings()
     {
         State.Config = State.Store.Load(
