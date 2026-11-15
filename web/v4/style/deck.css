@@ -19,7 +19,7 @@
   border: 1px solid var(--color-border);
   border-radius: clamp(9px, 2.4vw, var(--radius-medium));
   color: var(--color-text);
-  background: rgba(30, 34, 43, var(--key-alpha, 1));
+  background: rgba(var(--button-rgb), var(--key-alpha, 1));
 }
 .deck-button {
   display: flex;
@@ -54,7 +54,7 @@
   max-height: 48%;
   padding: 12px 4px 4px;
   overflow: hidden;
-  background: linear-gradient(transparent, rgba(5, 6, 8, var(--label-opacity-soft, .34)) 42%, rgba(5, 6, 8, var(--label-opacity, .45)));
+  background: linear-gradient(transparent, rgba(var(--label-rgb), var(--label-opacity-soft, .34)) 42%, rgba(var(--label-rgb), var(--label-opacity, .45)));
   line-height: 1.1;
   text-align: center;
   text-overflow: ellipsis;
@@ -72,7 +72,7 @@
   padding: var(--space-2);
   text-align: center;
 }
-.fader-placeholder { background: linear-gradient(160deg, #242a36, var(--color-surface)); }
+.fader-placeholder { background: linear-gradient(160deg, var(--color-fader-start), var(--color-surface)); }
 .fader-mark { color: var(--color-accent); font-size: clamp(18px, 5vw, 34px); }
 .fader-name, .widget-name { max-width: 100%; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .widget-placeholder { border-style: dashed; color: var(--color-muted); }
