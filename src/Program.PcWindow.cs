@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 
@@ -39,7 +38,7 @@ partial class Program
             lock (State.Gate)
                 return "http://127.0.0.1:" + AppState.Port + "/v4/?view=pc#connect=" + Uri.EscapeDataString(State.Config.token);
         };
-        PcWindowService.OpenSettingsPage = OpenPcWindowSettings;
+        PcWindowService.OpenSettingsPage = OpenSettings;
         PcWindowService.Notify = ShowNotice;
         PcWindowService.Changed = delegate
         {
@@ -75,7 +74,7 @@ partial class Program
     // The PC window's own settings: a small page on this PC only (127.0.0.1 and the per-launch admin key).
     static void OpenPcWindowSettings()
     {
-        Process.Start("http://127.0.0.1:" + AppState.Port + "/pc-window#" + admin);
+        State.Host.Shell.OpenUrl("http://127.0.0.1:" + AppState.Port + "/pc-window#" + admin);
     }
 
     static object PcWindowView()

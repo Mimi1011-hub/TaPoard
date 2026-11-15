@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Net;
@@ -32,6 +31,7 @@ partial class Program
     static LanNetwork lan;
     static Control ui;
     static ImportWindow importWindow;
+    static SettingsWindow settingsWindow;
 
     internal static void UseHost(AppHost value)
     {
@@ -302,20 +302,22 @@ partial class Program
             Visible = true,
         };
         var menu = new ContextMenuStrip();
+        var openSettings = new ToolStripMenuItem("設定を開く", null, delegate { OpenSettings(); });
+        openSettings.Font = new Font(openSettings.Font, FontStyle.Bold);
         var openWindow = new ToolStripMenuItem("PC 用ウィンドウを開く", null, delegate { OpenPcWindowFromTray(); });
-        openWindow.Font = new Font(openWindow.Font, FontStyle.Bold);
         var leaveViewOnly = new ToolStripMenuItem("見るだけモードを解除（Ctrl+Alt+V）", null, delegate { PcWindowService.SetViewOnly(false); });
+        menu.Items.Add(openSettings);
         menu.Items.Add(openWindow);
         menu.Items.Add(leaveViewOnly);
         menu.Items.Add("PC 用ウィンドウの設定", null, delegate { OpenPcWindowSettings(); });
         menu.Items.Add(new ToolStripSeparator());
         menu.Opening += delegate { leaveViewOnly.Visible = PcWindowService.ViewOnly; };
         menu.Items.Add(
-            "設定をブラウザで開く",
+            "古い設定画面をブラウザで開く",
             null,
             delegate
             {
-                OpenSettings();
+                OpenLegacySettings();
             }
         );
         menu.Items.Add(
@@ -335,6 +337,32 @@ partial class Program
 
     static void OpenSettings()
     {
-        Process.Start("http://127.0.0.1:" + AppState.Port + "/settings#" + admin);
+        if (!PcWindowService.RuntimeAvailable)
+        {
+            OpenLegacySettings();
+            return;
+        }
+        ui.BeginInvoke(new MethodInvoker(delegate
+        {
+            if (settingsWindow == null || settingsWindow.IsDisposed)
+            {
+                string url = "http://127.0.0.1:" + AppState.Port + "/v4/settings.html#admin=" + Uri.EscapeDataString(admin);
+                settingsWindow = new SettingsWindow(url, Path.Combine(Data, "webview2-settings"), ShowNotice);
+                settingsWindow.FormClosed += delegate { settingsWindow = null; };
+                settingsWindow.Show();
+            }
+            else
+            {
+                if (settingsWindow.WindowState == FormWindowState.Minimized) settingsWindow.WindowState = FormWindowState.Normal;
+                settingsWindow.Show();
+            }
+            settingsWindow.Activate();
+            settingsWindow.BringToFront();
+        }));
+    }
+
+    static void OpenLegacySettings()
+    {
+        State.Host.Shell.OpenUrl("http://127.0.0.1:" + AppState.Port + "/settings#" + admin);
     }
 }
