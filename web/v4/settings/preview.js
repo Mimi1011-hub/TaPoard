@@ -70,6 +70,14 @@ export class Preview {
     this.deckGrid.update(this.runtimeState);
   }
 
+  cellFromPoint(x, y) {
+    const rect = this.overlay.getBoundingClientRect(), orientation = this.current();
+    return {
+      row: Math.max(0, Math.min(orientation.rows - 1, Math.floor((y - rect.top) * orientation.rows / rect.height))),
+      column: Math.max(0, Math.min(orientation.columns - 1, Math.floor((x - rect.left) * orientation.columns / rect.width))),
+    };
+  }
+
   render() {
     const orientation = this.current(), page = this.page();
     this.pages[this.orientation] = page;

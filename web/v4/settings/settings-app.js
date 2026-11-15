@@ -7,6 +7,7 @@ import { Saver } from './saver.js';
 import { Preview } from './preview.js';
 import { Pages } from './pages.js';
 import { GridSize } from './grid-size.js';
+import { Catalog } from './catalog.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -34,6 +35,10 @@ export class SettingsApp {
     this.gridSize = new GridSize({
       root: this.nodes.gridSize, editor: this.editor, i18n: this.i18n,
       orientation: () => this.preview.orientation, confirmFn: this.confirmFn,
+      onError: (message) => this.shell.showNotice(message),
+    });
+    this.catalog = new Catalog({
+      root: this.nodes.catalog, editor: this.editor, preview: this.preview, i18n: this.i18n,
       onError: (message) => this.shell.showNotice(message),
     });
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {

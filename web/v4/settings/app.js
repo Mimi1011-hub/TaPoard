@@ -39,6 +39,7 @@ i18n.init().then(() => {
       orientation: Array.from(document.querySelectorAll('[data-orientation]')),
       pages: document.querySelector('#settings-pages'),
       gridSize: document.querySelector('#settings-grid-size'),
+      catalog: document.querySelector('#settings-catalog'),
     }),
     documentObject: document,
     confirmFn: (message) => window.confirm(message),
