@@ -1,0 +1,16 @@
+export const iconWords = {
+  headset: 'discord ディスコード ボイスチャット vc 通話 teams zoom 会議', headphones: '音楽 spotify',
+  chat: 'discord line slack teams メッセージ twitter コメント', microphone: '配信 会議 録音 ミュート',
+  'usb-mic': '配信 録音', 'studio-mic': '配信 録音 歌', mute: '消音 オフ', speaker: '音量',
+  video: 'youtube twitch 配信 obs 録画 premiere 動画編集 netflix', radio: '配信 ライブ obs',
+  record: '録画 obs 配信', recording: '録画 配信', camera: 'obs webカメラ 撮影 instagram',
+  monitor: 'シーン 画面 obs ディスプレイ', play: 'youtube 再生 spotify', music: 'spotify apple music itunes',
+  brush: 'クリスタ clip studio photoshop illustrator adobe 絵 イラスト', pen: 'クリスタ illustrator 絵',
+  pencil: 'クリスタ 下書き 絵', palette: 'クリスタ photoshop 色 カラー', image: 'photoshop lightroom 写真 画像編集',
+  layers: 'photoshop クリスタ adobe', eraser: 'クリスタ 消す', eyedropper: 'クリスタ photoshop 色',
+  share: 'twitter 投稿 sns', globe: 'chrome edge firefox ブラウザ web サイト', link: 'url web',
+  gamepad: 'steam ゲーム xbox epic', windows: 'スタート', keyboard: 'ショートカット キー vscode',
+  file: 'word excel ドキュメント', folder: 'エクスプローラー explorer', mail: 'gmail outlook メール',
+  users: 'discord teams zoom 会議 グループ', person: 'アカウント', screenshot: 'スクショ 画面切り取り',
+  timer: '休憩 タイマー', star: 'お気に入り',
+};

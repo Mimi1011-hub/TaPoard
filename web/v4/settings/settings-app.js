@@ -9,6 +9,7 @@ import { Pages } from './pages.js';
 import { GridSize } from './grid-size.js';
 import { Catalog } from './catalog.js';
 import { Inspector } from './inspector.js';
+import { IconPicker } from './icon-picker.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -30,9 +31,11 @@ export class SettingsApp {
       onSelect: (selection) => { if (this.inspector) this.inspector.select(selection); },
       onError: (message) => this.shell.showNotice(message),
     });
+    this.iconPicker = new IconPicker({ editor: this.editor, i18n: this.i18n, documentObject: this.documentObject, onError: (message) => this.shell.showNotice(message) });
     this.inspector = new Inspector({
       root: this.nodes.inspector, editor: this.editor, preview: this.preview, i18n: this.i18n,
       onUnavailable: () => this.shell.showNotice(this.i18n.t('settings.comingSoon')),
+      onIcon: (selection) => this.iconPicker.open(selection),
       onError: (message) => this.shell.showNotice(message),
     });
     this.pages = new Pages({

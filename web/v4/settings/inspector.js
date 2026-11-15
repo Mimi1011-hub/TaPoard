@@ -1,4 +1,5 @@
 import { clear, el } from '../core/dom.js';
+import { iconNode } from '../deck/icons.js';
 
 const sizes = (values) => values.map((value) => {
   const parts = value.split('x'); return { value, width: Number(parts[0]), height: Number(parts[1]) };
@@ -100,7 +101,8 @@ export class Inspector {
 
   futureButtons(item) {
     const group = el('div', 'inspector-buttons');
-    ['icon', 'color'].forEach((key) => { const button = el('button', '', this.i18n.t(`inspector.${key}`)); button.type = 'button'; button.addEventListener('click', this.onUnavailable); group.appendChild(button); });
+    const icon = el('div', 'inspector-icon-row'); icon.appendChild(iconNode(item));
+    const change = el('button', '', this.i18n.t('inspector.icon')); change.type = 'button'; change.addEventListener('click', () => this.onIcon(this.selection)); icon.appendChild(change); group.appendChild(icon);
     if (item.type === 'hotkey' || ['clock', 'weather', 'metrics', 'wheel', 'touchpad', 'keypad', 'slideshow'].includes(item.type)) {
       const details = el('button', '', this.i18n.t('inspector.details')); details.type = 'button'; details.addEventListener('click', this.onUnavailable); group.appendChild(details);
     }

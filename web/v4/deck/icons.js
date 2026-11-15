@@ -1,6 +1,6 @@
 import { safeImageSource } from '../core/image-source.js';
 
-const presetGroups = [
+export const presetGroups = [
   ['media', [
     ['headphones', '∩'], ['headset', '∩'], ['earbuds', '♬'], ['soundbar', '▰'], ['usb-mic', '♩'],
     ['studio-mic', '♩'], ['audio-output', '↗'], ['audio-input', '↙'], ['equalizer', '☷'],
@@ -63,7 +63,7 @@ const widgetGlyphs = {
   keyboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M6 13.5h1M17 13.5h1M9 14.5h6"/></svg>',
 };
 
-function presetIconNode(key, color) {
+export function presetIconNode(key, color) {
   const preset = presetMap[key];
   const node = document.createElement('span');
   node.className = `preset-icon preset-${preset ? preset.className : 'basic'}`;
