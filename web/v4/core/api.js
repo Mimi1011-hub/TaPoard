@@ -28,14 +28,19 @@ export class Api {
     return this.request('POST', path, body, timeoutMs);
   }
 
+  withKey(key) {
+    return new Api(key, this.fetchFn);
+  }
+
   async request(method, path, body, timeoutMs) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs || 5000);
     const options = {
       method,
-      headers: { Authorization: `Bearer ${this.key}` },
+      headers: {},
       signal: controller.signal,
     };
+    if (this.key) options.headers.Authorization = `Bearer ${this.key}`;
     if (body !== undefined) {
       options.headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(body);

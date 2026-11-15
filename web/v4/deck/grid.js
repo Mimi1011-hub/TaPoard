@@ -1,24 +1,37 @@
 import { clear, el } from '../core/dom.js';
 import { iconNode, widgetGlyphNode } from './icons.js';
+import { faderTypes, isDisplayWidget, widgetTypes } from '../widgets/registry.js';
 
 export class DeckGrid {
-  constructor(i18n, onPress) {
-    this.i18n = i18n;
+  constructor(context, onPress) {
+    this.context = context;
+    this.i18n = context.i18n;
     this.onPress = onPress;
+    this.widgets = [];
   }
 
-  render(container, orientationDeck, pageIndex, widgetDefinitions) {
+  render(container, orientationDeck, pageIndex, widgetDefinitions, state) {
+    this.destroy();
     clear(container);
     if (!orientationDeck || !orientationDeck.pages || !orientationDeck.pages.length) return;
     container.style.setProperty('--deck-columns', orientationDeck.columns);
     container.style.setProperty('--deck-rows', orientationDeck.rows);
     const page = orientationDeck.pages[Math.max(0, Math.min(pageIndex, orientationDeck.pages.length - 1))];
-    this.renderFaders(container, orientationDeck.faders, page.faders);
-    const widgets = new Set((widgetDefinitions || []).filter((item) => item.displayOnly).map((item) => item.type));
+    this.renderFaders(container, orientationDeck.faders, page.faders, state);
+    const displayTypes = new Set((widgetDefinitions || []).filter((item) => item.displayOnly).map((item) => item.type));
     (page.items || []).forEach((item) => {
-      container.appendChild(widgets.has(item.type) ? this.widget(item) : this.button(item));
+      if (isDisplayWidget(item.type)) this.mountWidget(container, item, widgetTypes[item.type], state);
+      else if (displayTypes.has(item.type) || ['wheel', 'touchpad', 'keypad'].includes(item.type)) container.appendChild(this.placeholder(item));
+      else container.appendChild(this.button(item));
     });
     if (!container.childNodes.length) container.appendChild(el('p', 'deck-empty', this.i18n.t('deck.empty')));
+  }
+
+  update(state) { this.widgets.forEach((widget) => widget.update(state)); }
+
+  destroy() {
+    this.widgets.forEach((widget) => widget.destroy());
+    this.widgets = [];
   }
 
   place(node, placement) {
@@ -26,21 +39,28 @@ export class DeckGrid {
     node.style.gridRow = `${placement.row + 1} / span ${placement.height || 1}`;
   }
 
-  renderFaders(container, shared, override) {
+  mountWidget(container, item, WidgetClass, state, extraClass) {
+    const node = el('div', `deck-tile widget-tile${extraClass ? ` ${extraClass}` : ''}`);
+    node.dataset.widgetId = item.id || '';
+    if (typeof item.keyClear === 'number') node.style.setProperty('--key-alpha', String(1 - Math.max(0, Math.min(100, item.keyClear)) / 100));
+    this.place(node, item);
+    container.appendChild(node);
+    const widget = new WidgetClass(this.context);
+    widget.mount(node, item, state);
+    this.widgets.push(widget);
+  }
+
+  renderFaders(container, shared, override, state) {
     ['speaker', 'mic'].forEach((kind) => {
       const hidden = override && override[kind === 'speaker' ? 'speakerHidden' : 'micHidden'];
       const placement = override && override[kind] ? override[kind] : shared && shared[kind];
       const sharedOff = shared && shared[kind] && shared[kind].off;
       if (!placement || hidden || sharedOff || placement.off) return;
-      const node = el('div', `deck-tile fader-placeholder ${kind}`);
-      node.appendChild(el('span', 'fader-mark', kind === 'speaker' ? '◖' : '♩'));
-      node.appendChild(el('span', 'fader-name', this.i18n.t(kind === 'speaker' ? 'deck.speaker' : 'deck.microphone')));
-      this.place(node, placement);
-      container.appendChild(node);
+      this.mountWidget(container, Object.assign({}, placement, { target: kind }), faderTypes[kind], state, kind);
     });
   }
 
-  widget(item) {
+  placeholder(item) {
     const node = el('div', 'deck-tile widget-placeholder');
     const glyph = item.type === 'wheel' || item.type === 'touchpad' ? 'mouse' : item.type === 'keypad' ? 'keyboard' : '';
     node.appendChild(widgetGlyphNode(glyph));
@@ -55,19 +75,16 @@ export class DeckGrid {
     node.type = 'button';
     const icon = iconNode(item);
     const scale = Math.max(20, Math.min(140, Number(item.iconScale) || 82));
-    icon.style.width = `${scale}%`;
-    icon.style.height = `${scale}%`;
+    icon.style.width = `${scale}%`; icon.style.height = `${scale}%`;
     node.appendChild(icon);
     if (!item.hideLabel) {
       const label = el('span', 'deck-label', item.name);
       label.style.fontSize = `${Math.max(7, Number(item.fontSize) || 11)}px`;
       const opacity = Math.max(0, Math.min(100, item.labelOpacity == null ? 45 : item.labelOpacity)) / 100;
-      label.style.setProperty('--label-opacity', opacity);
-      label.style.setProperty('--label-opacity-soft', opacity * 0.75);
+      label.style.setProperty('--label-opacity', opacity); label.style.setProperty('--label-opacity-soft', opacity * 0.75);
       node.appendChild(label);
     } else node.appendChild(el('span', 'visually-hidden', item.name));
-    if (typeof item.keyClear === 'number')
-      node.style.setProperty('--key-alpha', String(1 - Math.max(0, Math.min(100, item.keyClear)) / 100));
+    if (typeof item.keyClear === 'number') node.style.setProperty('--key-alpha', String(1 - Math.max(0, Math.min(100, item.keyClear)) / 100));
     this.bindPress(node, item);
     this.place(node, item);
     return node;
@@ -87,8 +104,7 @@ export class DeckGrid {
     const finish = (event) => {
       if (!start) return;
       const shouldPress = event.type === 'pointerup' && !start.moved && Date.now() - start.time < 600;
-      start = null;
-      node.classList.remove('is-pressed');
+      start = null; node.classList.remove('is-pressed');
       if (shouldPress) this.onPress(item);
     };
     node.addEventListener('pointerup', finish);

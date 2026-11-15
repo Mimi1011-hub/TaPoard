@@ -19,4 +19,8 @@ export class KeyStore {
   clear() {
     this.storage.removeItem('tapoard-key');
   }
+
+  save(key) {
+    this.storage.setItem('tapoard-key', key);
+  }
 }
