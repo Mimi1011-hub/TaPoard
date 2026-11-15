@@ -41,7 +41,8 @@ export class SettingsApp {
     this.iconPicker = new IconPicker({ editor: this.editor, i18n: this.i18n, documentObject: this.documentObject, onError: (message) => this.shell.showNotice(message) });
     this.inspector = new Inspector({
       root: this.nodes.inspector, editor: this.editor, preview: this.preview, i18n: this.i18n,
-      onUnavailable: () => this.shell.showNotice(this.i18n.t('settings.comingSoon')),
+      api: this.api,
+      chooseSection: (section) => this.shell.chooseSection(section),
       onIcon: (selection) => this.iconPicker.open(selection),
       onError: (message) => this.shell.showNotice(message),
     });

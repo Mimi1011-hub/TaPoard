@@ -53,6 +53,7 @@ const server = http.createServer(async (req, res) => {
   let body = '';
   for await (const chunk of req) body += chunk;
   const url = new URL(req.url, 'http://127.0.0.1');
+  if (url.pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
   if (url.pathname.startsWith('/api/')) {
     if (req.headers.authorization !== 'Bearer test') return json(res, 401, { error: 'unauthorized' });
     if (url.pathname === '/api/v3/deck' && req.method === 'GET') { deckGets += 1; return json(res, 200, response()); }
@@ -62,6 +63,19 @@ const server = http.createServer(async (req, res) => {
       deck = value.deck; version += 1; revision += 1; return json(res, 200, { ok: true });
     }
     if (url.pathname === '/api/v3/state') return json(res, 200, state());
+    if (url.pathname === '/api/v3/connect') {
+      return json(res, 200, { iphoneUrl: 'http://test/#connect=one', androidUrl: 'http://127.0.0.1/#connect=one', urls: [] });
+    }
+    if (url.pathname === '/api/pair/manage') return json(res, 200, { revision: 1, pending: [], devices: [] });
+    if (url.pathname === '/api/firewall') {
+      return json(res, 200, { profile: 'private', rulesChecked: true, httpRule: true, mdnsRule: true, scriptAvailable: true });
+    }
+    if (url.pathname === '/api/pc-window') {
+      return json(res, 200, { options: {}, open: false, runtimeAvailable: false });
+    }
+    if (url.pathname === '/api/import') return json(res, 200, { id: 'none', result: { cancelled: true } });
+    if (url.pathname === '/api/devices') return json(res, 200, { devices: [] });
+    if (url.pathname === '/api/rotate') return json(res, 200, { ok: true });
     if (url.pathname === '/api/sync') return setTimeout(() => json(res, 200, state()), 30);
     if (url.pathname === '/api/action') { actionRequests.push(body); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/audio') { audioRequests.push(body); return json(res, 200, { ok: true, audio: state().audio }); }
@@ -81,6 +95,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 404, { error: 'not found' });
   }
   let file = url.pathname === '/v4/settings.html' ? 'web/v4/settings.html' : null;
+  if (url.pathname === '/qrcode.js') file = 'web/qrcode.js';
   if (url.pathname.startsWith('/v4/')) file = file || `web/v4/${url.pathname.slice(4)}`;
   if (!file || !fs.existsSync(file)) { res.writeHead(404); return res.end(); }
   const extension = path.extname(file);
@@ -293,7 +308,8 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.equal(await page.locator('.settings-inspector textarea').first().inputValue(), 'Unsaved', 'external version does not overwrite dirty edit');
 
     await page.getByRole('button', { name: '接続' }).click();
-    assert((await page.locator('#settings-notice').innerText()).includes('次の更新'));
+    await page.locator('.connect-qr').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('.connect-url').innerText(), 'http://test/');
     const unexpectedErrors = errors.filter((value) => !value.includes('Failed to load resource'));
     assert.deepEqual(unexpectedErrors, [], `console errors: ${unexpectedErrors.join('\n')}`);
     console.log('PASS v4 settings UI: auth, layout edits, save, conflict, validation, preview safety and 1100px width');

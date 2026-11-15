@@ -122,4 +122,30 @@ assert(notices.at(-1).startsWith('bulk.none'));
 await packs.bulk('', 'page', 'landscape', 0);
 assert.equal(bulkEditor.deck.landscape.pages[0].items[0].customIcon, '', 'back to the built-in icon');
 assert.equal(bulkEditor.deck.landscape.pages[0].items[0].iconKey, 'star');
-console.log('PASS settings editor: placement, pages, reflow, undo and redo');
+
+const settingsEditor = new EditorState(response());
+const settingsHistory = new History(settingsEditor);
+assert(settingsEditor.setKeepAwake(true));
+assert.equal(settingsEditor.deck.keepAwake, true);
+assert(settingsHistory.undo());
+assert.equal(settingsEditor.deck.keepAwake, undefined, 'keep awake is undoable');
+const settingsAddress = { orientation: 'landscape', page: 0, index: 0 };
+assert(settingsEditor.updateItem(settingsAddress, { options: { style: 'analog', showSeconds: true } }));
+assert.equal(settingsEditor.item(settingsAddress).options.style, 'analog', 'widget options are updated');
+
+const { AppImport } = await import('../web/v4/settings/app-import.js');
+const importEditor = new EditorState(response());
+const importHistory = new History(importEditor);
+importEditor.item(settingsAddress).path = 'C:\\Apps\\same.exe';
+const importer = Object.create(AppImport.prototype);
+Object.assign(importer, { editor: importEditor, preview: { orientation: 'landscape', page: () => 0 } });
+const importSteps = importHistory.past.length;
+const imported = importer.add([
+  { type: 'app', name: 'Same', path: 'c:\\apps\\SAME.exe', width: 1, height: 1 },
+  { type: 'app', name: 'New', path: 'C:\\Apps\\new.exe', width: 1, height: 1 },
+]);
+assert.deepEqual(imported, { added: 1, skipped: 1, full: 0 });
+assert.equal(importHistory.past.length, importSteps + 1, 'an import is one undo step');
+assert(importHistory.undo());
+assert(!importEditor.orientation('landscape').pages[0].items.some((value) => value.path === 'C:\\Apps\\new.exe'));
+console.log('PASS settings editor: placement, pages, reflow, undo, deck settings, options and import');

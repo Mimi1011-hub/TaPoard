@@ -1,5 +1,6 @@
 import { clear, el } from '../core/dom.js';
 import { iconNode } from '../deck/icons.js';
+import { detailsFor } from './details/index.js';
 
 const sizes = (values) => values.map((value) => {
   const parts = value.split('x'); return { value, width: Number(parts[0]), height: Number(parts[1]) };
@@ -58,7 +59,12 @@ export class Inspector {
     const hidden = this.input('checkbox', '', (node) => this.changeItem({ hideLabel: node.checked })); hidden.checked = !!item.hideLabel;
     this.root.appendChild(this.field(this.i18n.t('inspector.hideLabel'), hidden));
     this.typeFields(item);
-    this.futureButtons(item);
+    this.iconButton(item);
+    detailsFor({
+      root: this.root, item, address: this.selection, editor: this.editor, api: this.api, i18n: this.i18n,
+      state: this.preview.runtimeState || {}, onError: this.onError,
+      updateItem: (values) => this.changeItem(values), chooseSection: this.chooseSection,
+    });
     const remove = el('button', 'inspector-delete', this.i18n.t('inspector.delete'));
     remove.type = 'button'; remove.addEventListener('click', () => { if (this.preview.removeSelected()) this.select(null); });
     this.root.appendChild(remove);
@@ -99,13 +105,10 @@ export class Inspector {
     if (item.type === 'app') { this.textField('inspector.path', 'path', item.path); this.textField('inspector.args', 'args', item.args); }
   }
 
-  futureButtons(item) {
+  iconButton(item) {
     const group = el('div', 'inspector-buttons');
     const icon = el('div', 'inspector-icon-row'); icon.appendChild(iconNode(item));
     const change = el('button', '', this.i18n.t('inspector.icon')); change.type = 'button'; change.addEventListener('click', () => this.onIcon(this.selection)); icon.appendChild(change); group.appendChild(icon);
-    if (item.type === 'hotkey' || ['clock', 'weather', 'metrics', 'wheel', 'touchpad', 'keypad', 'slideshow'].includes(item.type)) {
-      const details = el('button', '', this.i18n.t('inspector.details')); details.type = 'button'; details.addEventListener('click', this.onUnavailable); group.appendChild(details);
-    }
     this.root.appendChild(group);
   }
 

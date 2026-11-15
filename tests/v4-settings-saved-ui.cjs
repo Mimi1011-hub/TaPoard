@@ -48,6 +48,7 @@ function changed(res, extra) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
+  if (url.pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
   if (url.pathname.startsWith('/api/')) {
     if (req.headers.authorization !== 'Bearer test') return json(res, 401, { error: 'key' });
     let text = '';
@@ -78,7 +79,8 @@ const server = http.createServer(async (req, res) => {
     if (name === 'page/undo') return changed(res);
     return json(res, 404, { error: 'not found' });
   }
-  const file = url.pathname.startsWith('/v4/') ? `web/v4/${url.pathname.slice(4)}` : '';
+  let file = url.pathname.startsWith('/v4/') ? `web/v4/${url.pathname.slice(4)}` : '';
+  if (url.pathname === '/qrcode.js') file = 'web/qrcode.js';
   if (!file || !fs.existsSync(file)) { res.writeHead(404); return res.end(); }
   const types = { '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json' };
   res.writeHead(200, { 'Content-Type': `${types[path.extname(file)] || 'text/html'}; charset=utf-8` });
