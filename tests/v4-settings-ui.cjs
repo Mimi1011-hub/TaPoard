@@ -75,6 +75,9 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/background/image' && req.method === 'POST') { const value = JSON.parse(body); imageRequests.push(value); background = { ...background, image: 'image-1', imageWidth: 2000, imageHeight: 1000 }; return json(res, 200, { background }); }
     if (url.pathname === '/api/background/image' && req.method === 'GET') return json(res, 200, { data: '' });
     if (url.pathname === '/api/background/image/delete') { background = { ...background, image: '' }; return json(res, 200, { background }); }
+    if (url.pathname === '/api/presets') return json(res, 200, { presets: [] });
+    if (url.pathname === '/api/icon-styles') return json(res, 200, { styles: [], maxStyles: 20 });
+    if (url.pathname === '/api/backups') return json(res, 200, { backups: [] });
     return json(res, 404, { error: 'not found' });
   }
   let file = url.pathname === '/v4/settings.html' ? 'web/v4/settings.html' : null;

@@ -12,6 +12,7 @@ import { Inspector } from './inspector.js';
 import { IconPicker } from './icon-picker.js';
 import { Appearance } from './appearance.js';
 import { BackgroundSettings } from './background-settings.js';
+import { Saved } from './saved.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -58,7 +59,21 @@ export class SettingsApp {
       i18n: this.i18n, confirmFn: this.confirmFn, promptFn: this.promptFn, onError: (message) => this.shell.showNotice(message),
     });
     await this.appearance.start();
-    this.backgroundSettings = new BackgroundSettings({ root: this.appearance.backgroundRoot, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n, onError: (message) => this.shell.showNotice(message) });
+    this.backgroundSettings = new BackgroundSettings({
+      root: this.appearance.backgroundRoot, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      onError: (message) => this.shell.showNotice(message),
+    });
+    this.saved = new Saved({
+      root: this.nodes.sections.saved, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      documentObject: this.documentObject, confirmFn: this.confirmFn, promptFn: this.promptFn,
+      settle: async () => (await this.backgroundSettings.flush()) && this.saver.flush(),
+      reload: () => this.reloadDeck(),
+      onError: (message) => this.shell.showNotice(message),
+      onNotice: (message, action) => this.shell.showNotice(message, action),
+    });
+    await this.saved.start();
+    this.preview.onTarget = () => this.saved.targetChanged();
+    this.editor.subscribe((event) => { if (event.source === 'load') this.saved.targetChanged(); });
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
       this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
       this.preview.setOrientation(button.dataset.orientation);

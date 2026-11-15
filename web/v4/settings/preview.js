@@ -56,6 +56,7 @@ export class Preview {
     this.selected = null;
     this.render();
     this.onSelect(null);
+    if (this.onTarget) this.onTarget();
   }
 
   setPage(value) {
@@ -63,6 +64,7 @@ export class Preview {
     this.selected = null;
     this.render();
     this.onSelect(null);
+    if (this.onTarget) this.onTarget();
   }
 
   updateRuntime(state) {

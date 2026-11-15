@@ -28,11 +28,21 @@ export class SettingsShell {
     this.nodes.offline.hidden = !value;
   }
 
-  showNotice(text) {
+  // action: { label, run } adds a button to the notice (used for "undo").
+  showNotice(text, action) {
     clearTimeout(this.noticeTimer);
-    this.nodes.notice.textContent = text;
-    this.nodes.notice.hidden = false;
-    this.noticeTimer = setTimeout(() => { this.nodes.notice.hidden = true; }, 6000);
+    const notice = this.nodes.notice;
+    notice.textContent = text;
+    if (action) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'settings-notice-action';
+      button.textContent = action.label;
+      button.addEventListener('click', () => { notice.hidden = true; action.run(); });
+      notice.appendChild(button);
+    }
+    notice.hidden = false;
+    this.noticeTimer = setTimeout(() => { notice.hidden = true; }, action ? 20000 : 6000);
   }
 
   showConflict(onReload, onKeep) {

@@ -174,6 +174,7 @@ export class BackgroundSettings {
 
   async request(path, body, timeout) {
     clearTimeout(this.timer);
+    this.timer = 0;
     this.pending += 1;
     try {
       const result = await this.api.post(path, body, timeout);
@@ -192,6 +193,13 @@ export class BackgroundSettings {
   }
 
   save() { return this.request('/api/background', this.value, 10000); }
+
+  // Sends a slider change that is still waiting, so a saved look matches the screen.
+  async flush() {
+    if (this.adjusting) await this.endAdjust();
+    if (!this.timer) return true;
+    return this.save();
+  }
 
   async image(file) {
     if (!file) return;

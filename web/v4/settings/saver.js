@@ -23,6 +23,7 @@ export class Saver {
     clearTimeout(this.timer);
     if (this.blocked || this.saving || !this.editor.dirty) return;
     this.saving = true;
+    this.failed = false;
     let failed = false;
     const revision = this.editor.revision;
     const body = { baseVersion: this.editor.version, deck: JSON.parse(JSON.stringify(this.editor.deck)) };
@@ -38,6 +39,7 @@ export class Saver {
         // 400 means the server refused this layout, so go back to the last saved one.
         // Other errors (timeout, server busy) keep the edits; the next edit tries again.
         failed = true;
+        this.failed = true;
         if (error.status === 400) this.editor.restoreSaved();
         this.onStatus('failed', error.serverError || error.message);
       }
@@ -45,6 +47,16 @@ export class Saver {
       this.saving = false;
       if (this.editor.dirty && !this.blocked && !failed) this.schedule(0);
     }
+  }
+
+  // Saves what is still waiting. True when the PC now has everything that is on the screen.
+  async flush() {
+    for (let attempt = 0; attempt < 5 && this.editor.dirty && !this.blocked; attempt += 1) {
+      if (this.saving) await new Promise((resolve) => setTimeout(resolve, 50));
+      else await this.save();
+      if (this.failed) return false;
+    }
+    return !this.editor.dirty && !this.blocked;
   }
 
   pause() { this.blocked = true; clearTimeout(this.timer); }
