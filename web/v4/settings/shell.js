@@ -5,7 +5,7 @@ export class SettingsShell {
     this.nodes = nodes;
     this.i18n = i18n;
     this.noticeTimer = 0;
-    this.sections = new Sections(nodes.nav, nodes.sections, () => this.showNotice(this.i18n.t('settings.comingSoon')));
+    this.sections = new Sections(nodes.nav, nodes.sections);
   }
 
   start() {

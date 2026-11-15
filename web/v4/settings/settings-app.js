@@ -15,6 +15,7 @@ import { BackgroundSettings } from './background-settings.js';
 import { Saved } from './saved.js';
 import { Connect } from './connect.js';
 import { PcWindowSettings } from './pc-window-settings.js';
+import { General } from './general.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -86,6 +87,11 @@ export class SettingsApp {
     });
     this.pcWindowSettings.start();
     this.shell.sections.subscribe((section) => this.pcWindowSettings.active(section === 'pc'));
+    this.general = new General({
+      root: this.nodes.sections.general, api: this.api, editor: this.editor, i18n: this.i18n,
+      onError: (message) => this.shell.showNotice(message),
+    });
+    this.general.start();
     this.preview.onTarget = () => this.saved.targetChanged();
     this.editor.subscribe((event) => { if (event.source === 'load') this.saved.targetChanged(); });
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
@@ -127,6 +133,7 @@ export class SettingsApp {
     this.shell.updateConnection(state);
     if (this.preview) this.preview.updateRuntime(state);
     if (this.backgroundSettings && state.background) this.backgroundSettings.external(state.background);
+    if (this.general) this.general.update(state);
     if (!this.editor || !state.version || state.version === this.editor.version || this.saver.saving) return;
     if (this.editor.dirty) this.externalConflict();
     else this.reloadDeck();

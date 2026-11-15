@@ -1,13 +1,11 @@
 export class Sections {
-  constructor(nav, panels, onUnavailable) {
+  constructor(nav, panels) {
     this.nav = nav;
     this.panels = panels;
-    this.onUnavailable = onUnavailable;
     this.listeners = [];
   }
   choose(section) {
     if (!this.panels[section]) {
-      this.onUnavailable();
       return false;
     }
     this.nav.querySelectorAll('[data-section]').forEach((button) => button.classList.toggle('is-active', button.dataset.section === section));

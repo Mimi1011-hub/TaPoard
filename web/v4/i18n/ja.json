@@ -314,5 +314,13 @@
   "pc.runtimeUnavailable": "この環境では PC 用ウィンドウを開けません。",
   "pc.open": "PC 用ウィンドウを開く",
   "pc.focus": "PC 用ウィンドウを前に出す",
-  "pc.openFull": "全画面で開く"
+  "pc.openFull": "全画面で開く",
+  "general.keepAwake": "画面を消さない",
+  "general.weather": "天気の場所",
+  "general.weatherQuery": "地域名を入力",
+  "general.weatherSearch": "検索",
+  "general.weatherUnset": "地域が未設定です。",
+  "general.weatherShort": "地域名を2文字以上入力してください。",
+  "general.about": "このアプリについて",
+  "general.versionComputer": "バージョン {version}・PC {computer}"
 }

@@ -137,6 +137,10 @@ export class EditorState {
     });
   }
 
+  setKeepAwake(value) {
+    return this.change((deck) => { deck.keepAwake = Boolean(value); });
+  }
+
   canUpdateItem(address, values) {
     const candidate = copy(this.deck), item = this.item(address, candidate);
     if (!item) return false;
