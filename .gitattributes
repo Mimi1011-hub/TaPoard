@@ -1,0 +1,7 @@
+# Keep LF in the repository and the working tree on every PC (editors that save CRLF no longer rewrite whole files in diffs).
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.lnk binary
+*.exe binary
+*.zip binary
