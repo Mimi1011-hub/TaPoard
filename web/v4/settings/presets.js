@@ -39,7 +39,9 @@ export class Presets {
     const preset = this.presets.find((value) => value.id === this.selected);
     const layout = preset[this.preview.orientation];
     const card = el('article', 'preset-card');
-    card.appendChild(el('p', 'saved-note', `${preset.note}（${this.side()} ${layout.columns}×${layout.rows}）`));
+    card.appendChild(el('p', 'saved-note', this.i18n.t('presets.summary', {
+      note: preset.note, side: this.side(), columns: layout.columns, rows: layout.rows,
+    })));
     card.appendChild(this.map(layout));
     const apply = el('button', 'saved-primary', this.i18n.t('presets.apply'));
     apply.type = 'button';

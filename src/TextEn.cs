@@ -366,7 +366,7 @@ static class TextEn
         { "source.iconpacks.11", "Message 11" },
         { "source.iconpacks.12", "Message 12" },
         { "source.iconpacks.13", "Message 13" },
-        { "source.inputsessions.1", "Message 1" },
+        { "source.inputsessions.1", "Another device is in use." },
         { "source.inputsessions.2", "Message 2" },
         { "source.inputsessions.3", "Message 3" },
         { "source.inputsessions.4", "Message 4" },

@@ -34,7 +34,8 @@ export class WeatherPlace {
     const response = await this.api.post('/api/weather/search', { query });
     clear(this.results);
     (response.results || []).forEach((result) => {
-      const name = [result.name, result.region, result.country].filter(Boolean).join('、');
+      const name = [result.name, result.region, result.country]
+        .filter(Boolean).join(this.i18n.t('common.placeSeparator'));
       const button = el('button', 'weather-result', name);
       button.type = 'button';
       button.addEventListener('click', () => this.choose(result).catch((error) => this.onError(error.message)));

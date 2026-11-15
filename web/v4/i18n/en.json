@@ -773,5 +773,12 @@
   "import.skipped": "Skipped {count} already on the deck.",
   "import.full": "No room for {count}.",
   "general.language": "Language",
-  "general.languageAuto": "Automatic (use Windows language)"
+  "general.languageAuto": "Automatic (use Windows language)",
+  "input.busyServer": "Another device is in use.",
+  "settings.connectionSummary": "{phone} · {pc}",
+  "common.listSeparator": " · ",
+  "common.placeSeparator": ", ",
+  "packs.countAuthor": "{count} icons · {author}",
+  "presets.summary": "{note} ({side} {columns}×{rows})",
+  "wheel.ariaLabel": "{name}: {detail}"
 }

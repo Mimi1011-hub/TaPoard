@@ -8,11 +8,9 @@ export class LanguageSetting {
   mount(root) {
     const label = el('label', 'settings-field', this.i18n.t('general.language'));
     this.select = el('select', 'settings-select');
-    [
-      ['auto', this.i18n.t('general.languageAuto')],
-      ['ja', '日本語'],
-      ['en', 'English'],
-    ].forEach(([value, name]) => {
+    [['auto', this.i18n.t('general.languageAuto')]].concat(
+      this.view.languages.map((language) => [language.id, language.name]),
+    ).forEach(([value, name]) => {
       const option = el('option', '', name);
       option.value = value;
       this.select.appendChild(option);

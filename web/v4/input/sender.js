@@ -1,5 +1,3 @@
-const BUSY_MESSAGE = '他の端末が操作中です。';
-
 export class InputSender {
   constructor(widgetId, context) {
     this.widgetId = widgetId;
@@ -75,7 +73,7 @@ export class InputSender {
         this.notify(ack.foregroundBlocked ? 'blocked' : 'ok');
       }, (error) => {
         this.queue = [];
-        if (error && error.serverError === BUSY_MESSAGE) this.notify('busy');
+        if (error && error.serverError === this.context.i18n.t('input.busyServer')) this.notify('busy');
         else {
           this.context.sessions.discard(this.widgetId, session.sessionId);
           this.context.renewView();

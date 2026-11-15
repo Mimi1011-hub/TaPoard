@@ -21,7 +21,7 @@ export class SettingsShell {
   updateConnection(state) {
     const phone = this.i18n.t(state.phoneConnected ? 'settings.phone.connected' : 'settings.phone.none');
     const pc = this.i18n.t(state.pcWindowOpen ? 'settings.pc.connected' : 'settings.pc.none');
-    this.nodes.connection.textContent = `${phone}・${pc}`;
+    this.nodes.connection.textContent = this.i18n.t('settings.connectionSummary', { phone, pc });
   }
 
   setOffline(value) {

@@ -130,7 +130,7 @@ export class Catalog {
       id: `pack:${pack.id}`,
       plain: true,
       title: pack.name,
-      note: [pack.app, pack.author].filter(Boolean).join('・'),
+      note: [pack.app, pack.author].filter(Boolean).join(this.i18n.t('common.listSeparator')),
       pack,
       remove,
       items: (pack.shortcuts || []).map((item, index) => {

@@ -112,7 +112,9 @@ export class IconPacks {
     this.root.appendChild(this.progressNode);
     this.packs.forEach((pack) => {
       const row = el('div', 'pack-row');
-      const note = this.i18n.t('packs.count', { count: pack.count }) + (pack.author ? `・${pack.author}` : '');
+      const note = pack.author
+        ? this.i18n.t('packs.countAuthor', { count: pack.count, author: pack.author })
+        : this.i18n.t('packs.count', { count: pack.count });
       row.append(el('strong', '', pack.name), el('small', '', note));
       row.append(
         this.button('packs.rename', () => this.rename(pack)),

@@ -11,6 +11,9 @@ class MemoryStorage {
 const ja = JSON.parse(await fs.readFile(new URL('../web/v4/i18n/ja.json', import.meta.url), 'utf8'));
 const en = JSON.parse(await fs.readFile(new URL('../web/v4/i18n/en.json', import.meta.url), 'utf8'));
 assert.deepEqual(Object.keys(ja).sort(), Object.keys(en).sort(), 'Japanese and English keys match');
+Object.entries(en).forEach(([key, value]) => {
+  if (key !== 'menu.languageJa') assert.doesNotMatch(value, /[ぁ-んァ-ヶ一-龠]/, `English value: ${key}`);
+});
 assert.equal(chooseLanguage('auto', 'ja-JP'), 'ja');
 assert.equal(chooseLanguage(null, 'en-US'), 'en');
 assert.equal(chooseLanguage('en', 'ja-JP'), 'en');

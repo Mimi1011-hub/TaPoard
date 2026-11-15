@@ -36,7 +36,9 @@ export class WheelWidget {
     const text = caption(this.options, this.context.i18n);
     node.appendChild(el('span', 'wheel-caption', text)); appendWidgetName(node, item);
     node.appendChild(el('span', 'input-notice', this.context.i18n.t('input.busy')));
-    node.setAttribute('aria-label', `${item.name || this.context.i18n.t('wheel.name')}：${text}`);
+    node.setAttribute('aria-label', this.context.i18n.t('wheel.ariaLabel', {
+      name: item.name || this.context.i18n.t('wheel.name'), detail: text,
+    }));
     this.sender = this.context.senders.get(item.id);
     this.sender.listen((state) => showInputNotice(node, state, this.context.i18n));
     const Gesture = this.options.style === 'rotary' ? RotaryWheelGesture : VerticalWheelGesture;
