@@ -1,9 +1,7 @@
-import { Api } from '../core/api.js';
 import { I18n } from '../core/i18n.js';
-import { Store } from '../core/store.js';
-import { SyncLoop } from '../core/sync.js';
 import { AdminKeyStore } from './admin-key.js';
 import { SettingsShell } from './shell.js';
+import { SettingsApp } from './settings-app.js';
 
 const i18n = new I18n(localStorage, navigator.language, async (language) => {
   const response = await fetch(`/v4/i18n/${language}.json`);
@@ -31,22 +29,22 @@ i18n.init().then(() => {
     return;
   }
   nodes.app.hidden = false;
-  const api = new Api(key, (path, options) => fetch(path, options));
-  const store = new Store();
   const shell = new SettingsShell(nodes, i18n);
   shell.start();
-  store.subscribe((state) => shell.updateConnection(state));
-  const sync = new SyncLoop(api, store, {
-    viewId: 'settings-window',
-    onOffline: (offline) => shell.setOffline(offline),
+  const settings = new SettingsApp({
+    key, i18n, shell, nodes: Object.assign(nodes, {
+      undo: document.querySelector('#settings-undo'),
+      saveStatus: document.querySelector('#settings-save-status'),
+    }),
+    documentObject: document,
+    fetchFn: (path, options) => fetch(path, options),
     onAuthLost: () => {
       keys.clear();
       nodes.app.hidden = true;
       nodes.missing.hidden = false;
     },
   });
-  sync.start();
-  document.addEventListener('visibilitychange', () => sync.setHidden(document.hidden));
+  settings.start().catch((error) => shell.showNotice(error.message));
 }).catch(() => {
   nodes.missing.hidden = false;
 });
