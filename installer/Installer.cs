@@ -65,8 +65,8 @@ class Installer
         {
             Log("ERROR " + e);
             MessageBox.Show(
-                e.Message + "\n\nログ: " + LogPath,
-                Product + " セットアップ",
+                e.Message + "\n\n" + InstallerText.Get("log", LogPath),
+                InstallerText.Get("setup"),
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
             );
@@ -114,9 +114,8 @@ class Installer
                 {
                     Log("installed app failed to create network.json; exited=" + app.HasExited);
                     MessageBox.Show(
-                        "TaPoardを起動できなかったため、LAN設定を開始できませんでした。\n\nほかの場所でTaPoardが起動していないか確認し、セットアップをもう一度実行してください。\n\nログ: "
-                            + LogPath,
-                        Product + " セットアップ",
+                        InstallerText.Get("startFailed", LogPath),
+                        InstallerText.Get("setup"),
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning
                     );
@@ -129,8 +128,8 @@ class Installer
             {
                 Log("firewall skipped by user");
                 MessageBox.Show(
-                    "インストールが完了しました。\n\nファイアウォールの許可は追加していないため、スマートフォンからつながらない場合があります。あとから許可するときは、PC の設定画面の QR コードの下にある「設定のしかたを見る」から追加できます。",
-                    Product + " セットアップ",
+                    InstallerText.Get("doneNoFirewall"),
+                    InstallerText.Get("setup"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information
                 );
@@ -140,24 +139,20 @@ class Installer
             Log("firewall result=" + firewall);
             if (firewall == FirewallResult.Success)
             {
-                note =
-                    "インストールが完了しました。\n\nPCのブラウザに表示されたQRコードをスマートフォンで読み取ってください。";
+                note = InstallerText.Get("done");
                 messageIcon = MessageBoxIcon.Information;
             }
             else if (firewall == FirewallResult.Cancelled)
             {
-                note =
-                    "アプリのインストールは完了しました。\n\nWindowsの管理者確認がキャンセルされたため、LAN接続設定は未完了です。セットアップをもう一度実行してください。";
+                note = InstallerText.Get("adminCancelled");
                 messageIcon = MessageBoxIcon.Warning;
             }
             else
             {
-                note =
-                    "アプリのインストールは完了しましたが、LAN接続設定でエラーが発生しました。\n\nログを確認してセットアップをもう一度実行してください。\n\nログ: "
-                    + LogPath;
+                note = InstallerText.Get("lanFailed", LogPath);
                 messageIcon = MessageBoxIcon.Warning;
             }
-            MessageBox.Show(note, Product + " セットアップ", MessageBoxButtons.OK, messageIcon);
+            MessageBox.Show(note, InstallerText.Get("setup"), MessageBoxButtons.OK, messageIcon);
         }
     }
 
@@ -196,7 +191,7 @@ class Installer
             Thread.Sleep(250);
         }
         throw new IOException(
-            "インストール用ファイルを更新できませんでした。TaPoardのセットアップ画面をすべて閉じ、ウイルス対策ソフトの検査が終わってから、もう一度実行してください。",
+            InstallerText.Get("updateFailed"),
             last
         );
     }
@@ -233,13 +228,13 @@ class Installer
         using (Stream resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("TaPoard.Payload.zip"))
         {
             if (resource == null)
-                throw new Exception("インストールデータが見つかりません。");
+                throw new Exception(InstallerText.Get("payloadMissing"));
             using (var archive = new ZipArchive(resource, ZipArchiveMode.Read))
                 foreach (ZipArchiveEntry entry in archive.Entries)
                 {
                     string destination = Path.GetFullPath(Path.Combine(target, entry.FullName));
                     if (!destination.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                        throw new Exception("不正なインストールデータです。");
+                        throw new Exception(InstallerText.Get("payloadInvalid"));
                     if (String.IsNullOrEmpty(entry.Name))
                     {
                         Directory.CreateDirectory(destination);
@@ -364,7 +359,7 @@ class Installer
             if (File.Exists(readme))
                 CreateShortcut(Path.Combine(startFolder, "README.lnk"), readme, "", InstallDirectory, AppPath);
             CreateShortcut(
-                Path.Combine(startFolder, "TaPoardをアンインストール.lnk"),
+                Path.Combine(startFolder, InstallerText.Get("uninstallLink")),
                 installerCopy,
                 "/uninstall",
                 InstallDirectory,
@@ -451,8 +446,8 @@ class Installer
     {
         if (
             MessageBox.Show(
-                "TaPoardをアンインストールします。\n登録したボタンと接続設定も削除されます。",
-                Product + " アンインストール",
+                InstallerText.Get("uninstallConfirm"),
+                InstallerText.Get("uninstall"),
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Warning
             ) != DialogResult.OK
@@ -471,10 +466,10 @@ class Installer
         );
         string actual = Path.GetFullPath(InstallDirectory);
         if (!String.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
-            throw new Exception("削除先を確認できませんでした。");
+            throw new Exception(InstallerText.Get("deleteInvalid"));
         MessageBox.Show(
-            "TaPoardを削除します。",
-            Product + " アンインストール",
+            InstallerText.Get("deleting"),
+            InstallerText.Get("uninstall"),
             MessageBoxButtons.OK,
             MessageBoxIcon.Information
         );
@@ -542,7 +537,7 @@ class InstallOptionsForm : Form
 
     public InstallOptionsForm(string installDirectory)
     {
-        Text = "TaPoard セットアップ";
+        Text = InstallerText.Get("setup");
         ClientSize = new Size(540, 410);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -559,16 +554,16 @@ class InstallOptionsForm : Form
         BuildOptionsPage(installDirectory);
         BuildNetworkPage();
 
-        next.Text = "次へ";
+        next.Text = InstallerText.Get("next");
         next.Bounds = new Rectangle(310, 360, 104, 34);
         next.Click += delegate { ShowPage(true); };
-        back.Text = "戻る";
+        back.Text = InstallerText.Get("back");
         back.Bounds = new Rectangle(198, 360, 104, 34);
         back.Click += delegate { ShowPage(false); };
-        install.Text = "インストール";
+        install.Text = InstallerText.Get("install");
         install.DialogResult = DialogResult.OK;
         install.Bounds = new Rectangle(310, 360, 104, 34);
-        cancel.Text = "キャンセル";
+        cancel.Text = InstallerText.Get("cancel");
         cancel.DialogResult = DialogResult.Cancel;
         cancel.Bounds = new Rectangle(424, 360, 92, 34);
         Controls.AddRange(new Control[] { next, back, install, cancel });
@@ -591,7 +586,7 @@ class InstallOptionsForm : Form
     {
         var title = new Label
         {
-            Text = "TaPoardをインストール",
+            Text = InstallerText.Get("installTitle"),
             Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 16, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(24, 22),
@@ -599,7 +594,7 @@ class InstallOptionsForm : Form
         optionsPage.Controls.Add(title);
         var path = new Label
         {
-            Text = "インストール先: " + installDirectory,
+            Text = InstallerText.Get("destination", installDirectory),
             AutoEllipsis = true,
             Location = new Point(27, 62),
             Size = new Size(486, 35),
@@ -611,17 +606,17 @@ class InstallOptionsForm : Form
                 Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
                 "TaPoard.lnk"
             );
-        desktop.Text = "デスクトップにショートカットを作成";
+        desktop.Text = InstallerText.Get("desktop");
         desktop.AutoSize = true;
         desktop.Location = new Point(30, 108);
         desktop.Checked = File.Exists(desktopLink);
         optionsPage.Controls.Add(desktop);
-        startMenu.Text = "スタートメニューに登録";
+        startMenu.Text = InstallerText.Get("startMenu");
         startMenu.AutoSize = true;
         startMenu.Location = new Point(30, 142);
         startMenu.Checked = Directory.Exists(startFolder) || !Directory.Exists(installDirectory);
         optionsPage.Controls.Add(startMenu);
-        startup.Text = "Windowsログイン時に自動起動";
+        startup.Text = InstallerText.Get("startup");
         startup.AutoSize = true;
         startup.Location = new Point(30, 176);
         using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"))
@@ -631,12 +626,12 @@ class InstallOptionsForm : Form
         optionsPage.Controls.Add(startup);
         optionsPage.Controls.Add(new Label
         {
-            Text = "自動起動ではブラウザを開かず、通知領域に常駐します。",
+            Text = InstallerText.Get("startupNote"),
             AutoSize = true,
             Location = new Point(49, 202),
             ForeColor = Color.DimGray,
         });
-        firewall.Text = "ファイアウォールで通信を許可する（おすすめ）";
+        firewall.Text = InstallerText.Get("firewall");
         firewall.AutoSize = true;
         firewall.Location = new Point(30, 238);
         firewall.Checked = true;
@@ -647,8 +642,8 @@ class InstallOptionsForm : Form
                 return;
             var answer = MessageBox.Show(
                 this,
-                "ファイアウォールで許可しないと、スマートフォンから TaPoard につながりません。\n\nチェックを外してよろしいですか？\n（あとから PC の設定画面で許可を追加することもできます）",
-                "TaPoard セットアップ",
+                InstallerText.Get("firewallConfirm"),
+                InstallerText.Get("setup"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2
@@ -663,7 +658,7 @@ class InstallOptionsForm : Form
         optionsPage.Controls.Add(firewall);
         optionsPage.Controls.Add(new Label
         {
-            Text = "TaPoard だけが、同じルーターにつながったスマートフォンから通信を受け付けるようにします。\nWindows の管理者の確認が表示されます。",
+            Text = InstallerText.Get("firewallNote"),
             Location = new Point(49, 264),
             Size = new Size(470, 60),
             ForeColor = Color.DimGray,
@@ -674,7 +669,7 @@ class InstallOptionsForm : Form
     {
         networkPage.Controls.Add(new Label
         {
-            Text = "ネットワークの種類を確認してください",
+            Text = InstallerText.Get("networkTitle"),
             Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 14, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(24, 22),
@@ -685,24 +680,18 @@ class InstallOptionsForm : Form
             Text = profile,
             Location = new Point(27, 60),
             Size = new Size(486, 40),
-            ForeColor = profile.Contains("パブリック") ? Color.Firebrick : Color.DarkGreen,
+            ForeColor = profile.Contains(InstallerText.Get("publicWord")) ? Color.Firebrick : Color.DarkGreen,
             Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
         });
         networkPage.Controls.Add(new Label
         {
-            Text =
-                "Windows のネットワークが「パブリック」になっていると、ファイアウォールを許可していてもスマートフォンからつながらないことがあります。自宅のルーターでは「プライベート」にしてください。\n\n"
-                + "「プライベート」にする手順\n"
-                + "1. Windows の「設定」→「ネットワークとインターネット」を開く\n"
-                + "2. 使っている「Wi-Fi」または「イーサネット」を選び、つながっているネットワークを開く\n"
-                + "3. 「ネットワーク プロファイルの種類」で「プライベート ネットワーク」を選ぶ\n\n"
-                + "駅やお店などの Wi-Fi は「パブリック」のままにしてください。",
+            Text = InstallerText.Get("networkGuide"),
             Location = new Point(27, 104),
             Size = new Size(490, 196),
         });
         var open = new Button
         {
-            Text = "Windows のネットワーク設定を開く",
+            Text = InstallerText.Get("openNetwork"),
             Bounds = new Rectangle(27, 304, 260, 32),
         };
         open.Click += delegate
@@ -735,19 +724,19 @@ static class NetworkProfile
                 int category = Convert.ToInt32(t.InvokeMember("GetCategory", BindingFlags.InvokeMethod, null, network, null));
                 string name = Convert.ToString(t.InvokeMember("GetName", BindingFlags.InvokeMethod, null, network, null));
                 if (category == 0)
-                    publicNames += (publicNames.Length > 0 ? "、" : "") + name;
+                    publicNames += (publicNames.Length > 0 ? InstallerText.Get("separator") : "") + name;
                 else
-                    otherNames += (otherNames.Length > 0 ? "、" : "") + name;
+                    otherNames += (otherNames.Length > 0 ? InstallerText.Get("separator") : "") + name;
             }
             if (publicNames.Length > 0)
-                return "いまのネットワーク（" + publicNames + "）は「パブリック」です。下の手順で「プライベート」にしてください。";
+                return InstallerText.Get("publicProfile", publicNames);
             if (otherNames.Length > 0)
-                return "いまのネットワーク（" + otherNames + "）は「パブリック」ではありません。このままで使えます。";
-            return "ネットワークにつながっていないか、種類を確認できませんでした。";
+                return InstallerText.Get("otherProfile", otherNames);
+            return InstallerText.Get("noProfile");
         }
         catch
         {
-            return "ネットワークの種類を確認できませんでした。";
+            return InstallerText.Get("profileFailed");
         }
     }
 }

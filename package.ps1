@@ -29,7 +29,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed.' }
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:"$stage\TaPoard.exe" /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll src\*.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Application package build failed.' }
 Copy-Item -LiteralPath web -Destination (Join-Path $stage 'web') -Recurse
-Copy-Item -LiteralPath packaging\setup-lan.ps1,packaging\remove-firewall.ps1,packaging\README.txt -Destination $stage
+Copy-Item -LiteralPath packaging\setup-lan.ps1,packaging\remove-firewall.ps1,packaging\README.txt,packaging\README.en.txt -Destination $stage
 foreach ($scriptName in @('setup-lan.ps1','remove-firewall.ps1')) {
     $scriptPath = Join-Path $stage $scriptName
     $scriptText = [IO.File]::ReadAllText($scriptPath, [Text.Encoding]::UTF8)
@@ -44,12 +44,12 @@ if ($forbidden) { throw 'Private runtime data was included in the installer payl
 
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $payload -CompressionLevel Optimal
 $resourceArgument = '/resource:' + $payload + ',TaPoard.Payload.zip'
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:$installer $resourceArgument /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll installer\Installer.cs $buildInfo.Path
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:$installer $resourceArgument /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll installer\Installer.cs installer\InstallerText.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 
 $extractProcess = Start-Process -FilePath $installer -ArgumentList '/extract-only',('"' + $verify + '"') -Wait -PassThru -WindowStyle Hidden
 if ($extractProcess.ExitCode -ne 0) { throw 'Installer extraction verification failed.' }
-foreach ($relative in @('TaPoard.exe','web\index.html','web\app.js','web\pc-window.html','web\pc-window.js','web\qrcode.js','web\QRCode.LICENSE.txt','web\style.css','web\manifest.webmanifest','web\icon-32.png','web\icon-180.png','web\icon-192.png','web\icon-512.png','setup-lan.ps1','remove-firewall.ps1','README.txt','VERSION.txt')) {
+foreach ($relative in @('TaPoard.exe','web\index.html','web\app.js','web\pc-window.html','web\pc-window.js','web\qrcode.js','web\QRCode.LICENSE.txt','web\style.css','web\manifest.webmanifest','web\icon-32.png','web\icon-180.png','web\icon-192.png','web\icon-512.png','setup-lan.ps1','remove-firewall.ps1','README.txt','README.en.txt','VERSION.txt')) {
     $expected = Join-Path $stage $relative;$actual = Join-Path $verify $relative
     $matches = $false
     for ($attempt=0; $attempt -lt 10 -and !$matches; $attempt++) {

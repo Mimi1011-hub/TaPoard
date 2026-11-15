@@ -19,6 +19,13 @@ foreach ($test in $tests) {
     & tests\bin\$test.exe
     if ($LASTEXITCODE -ne 0) { $failed += $test }
 }
+$installerTests = @('InstallerCopyTests','InstallerTextTests')
+foreach ($test in $installerTests) {
+    & $csc /nologo /target:exe /main:$test /out:tests\bin\$test.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll installer\Installer.cs installer\InstallerText.cs tests\$test.cs
+    if ($LASTEXITCODE -ne 0) { $failed += "$test (compile)"; continue }
+    & tests\bin\$test.exe
+    if ($LASTEXITCODE -ne 0) { $failed += $test }
+}
 if ($UI) {
     foreach ($script in Get-ChildItem tests\*.mjs) {
         & node $script.FullName
