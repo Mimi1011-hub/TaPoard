@@ -24,6 +24,7 @@ public static class ApiRouteTableTests
                 "GET /api/pair/manage Admin",
                 "GET /api/ping Paired",
                 "GET /api/state Paired",
+                "GET /api/v3/state Paired",
                 "GET /api/sync Paired",
                 "GET /api/settings Admin",
                 "GET /api/import Admin",

@@ -74,6 +74,12 @@ partial class Program
                     ServeFile(r.stream, r.path);
                     return;
                 }
+                string v4File = r.method == "GET" ? WebFiles.ResolveV4(Path.Combine(Root, "web"), r.path) : null;
+                if (v4File != null)
+                {
+                    ServeV4File(r.stream, v4File);
+                    return;
+                }
                 Authenticate(r);
                 Route(r);
             }
@@ -147,6 +153,15 @@ partial class Program
             HttpIO.ReplyBytes(s, 200, type, File.ReadAllBytes(Path.Combine(Root, "web", file)));
         else
             HttpIO.Reply(s, 200, type, File.ReadAllText(Path.Combine(Root, "web", file)));
+    }
+
+    static void ServeV4File(Stream s, string file)
+    {
+        string type = WebFiles.ContentType(file);
+        if (type == "image/png")
+            HttpIO.ReplyBytes(s, 200, type, File.ReadAllBytes(file));
+        else
+            HttpIO.Reply(s, 200, type, File.ReadAllText(file, Encoding.UTF8));
     }
 
     static string Line(Stream s)

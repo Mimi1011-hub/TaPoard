@@ -305,8 +305,13 @@ static class WidgetRegistry
 
     internal static Dictionary<string, object> PublicOptions(AppEntry app)
     {
-        if (!IsDisplayWidget(app.type) || app.options == null)
+        return PublicOptions(app.type, app.options);
+    }
+
+    internal static Dictionary<string, object> PublicOptions(string type, Dictionary<string, object> options)
+    {
+        if (!IsDisplayWidget(type) || options == null)
             return null;
-        return new Dictionary<string, object>(app.options);
+        return new Dictionary<string, object>(options);
     }
 }

@@ -74,20 +74,23 @@ public static class ApiStatusTests
     {
         try
         {
-            Set(
-                "config",
-                new Settings
-                {
-                    schemaVersion = 2,
-                    token = "phone-token",
-                    apps = new List<AppEntry>(),
-                    devices = new List<PairedDevice>(),
-                }
-            );
+            var config = new Settings
+            {
+                schemaVersion = 2,
+                token = "phone-token",
+                apps = new List<AppEntry>(),
+                devices = new List<PairedDevice>(),
+            };
+            DeckLayout.Migrate(config);
+            DeckView.NormalizeControlSlots(config);
+            Set("config", config);
             Set("admin", "admin-token");
             Program.UseStore(new FakeSettingsStore());
 
             Check("GET", "/api/state", null, null, 401);
+            Check("GET", "/api/v3/state", null, null, 401);
+            Check("GET", "/api/v3/state", "phone-token", null, 200);
+            Check("GET", "/api/v3/state", "admin-token", null, 200);
             Check("GET", "/api/ping", "phone-token", null, 200);
             Check("GET", "/api/ping", "ABCDEFGHJKLM", null, 401);
             Check("GET", "/api/settings", "phone-token", null, 404);

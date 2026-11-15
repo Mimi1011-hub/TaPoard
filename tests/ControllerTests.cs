@@ -18,7 +18,8 @@ public static class ControllerTests
     }
     static ApiRequest Request(string path, Dictionary<string, object> input)
     {
-        return new ApiRequest { stream = new MemoryStream(), method = path == "/api/state" ? "GET" : "POST", path = path, target = path,
+        string route = path.Split('?')[0];
+        return new ApiRequest { stream = new MemoryStream(), method = route == "/api/state" || route == "/api/v3/state" ? "GET" : "POST", path = route, target = path,
             input = input, json = HttpIO.Json(input), auth = "Bearer token", remote = IPAddress.Loopback, local = true };
     }
     static string Body(ApiRequest request)
@@ -43,6 +44,22 @@ public static class ControllerTests
 
             ApiRequest request = Request("/api/state", null); router.Find("GET", request.path, false)(request);
             Assert(Body(request).Contains("\"revision\":"), "state response includes revision");
+
+            state.Config.apps.Add(new AppEntry { id = "launch", name = "Launch", type = "app", orientation = "landscape", path = @"C:\secret\tool.exe", args = "--secret", landscape = new TilePosition { page = 0, row = 1, column = 0 }, width = 2, height = 2, fontSize = 11, iconScale = 82, labelOpacity = 45 });
+            state.Config.apps.Add(new AppEntry { id = "url", name = "URL", type = "url", orientation = "landscape", url = "https://private.example/secret", landscape = new TilePosition { page = 0, row = 0, column = 2 }, width = 1, height = 1, fontSize = 11, iconScale = 82, labelOpacity = 45 });
+            state.Config.apps.Add(new AppEntry { id = "text", name = "Text", type = "clipboard", orientation = "landscape", text = "private-text", landscape = new TilePosition { page = 0, row = 0, column = 3 }, width = 1, height = 1, fontSize = 11, iconScale = 82, labelOpacity = 45 });
+            state.Config.apps.Add(new AppEntry { id = "keys", name = "Keys", type = "hotkey", orientation = "landscape", hotkey = "Ctrl+X", landscape = new TilePosition { page = 0, row = 0, column = 4 }, width = 1, height = 1, fontSize = 11, iconScale = 82, labelOpacity = 45, options = new Dictionary<string, object> { { "unsafe", true } } });
+            state.Config.apps.Add(new AppEntry { id = "clock", name = "Clock", type = "clock", orientation = "landscape", landscape = new TilePosition { page = 0, row = 1, column = 2 }, width = 2, height = 1, fontSize = 11, iconScale = 82, labelOpacity = 45, options = new Dictionary<string, object> { { "style", "digital" } } });
+            request = Request("/api/v3/state", null); router.Find("GET", request.path, false)(request);
+            string v3 = Body(request);
+            Assert(!v3.Contains("secret") && !v3.Contains("private.example") && !v3.Contains("private-text"), "v3 state hides executable, URL and clipboard values");
+            Assert(!v3.Contains("\"path\":") && !v3.Contains("\"args\":") && !v3.Contains("\"url\":") && !v3.Contains("\"text\":") && !v3.Contains("\"hotkey\":"), "v3 state omits private field names");
+            Assert(v3.Contains("\"id\":\"launch\"") && v3.Contains("\"row\":1") && v3.Contains("\"column\":0") && v3.Contains("\"width\":2") && v3.Contains("\"height\":2"), "v3 state preserves item rectangles");
+            Assert(v3.Contains("\"id\":\"clock\"") && v3.Contains("\"options\":{\"style\":\"digital\"}"), "v3 state exposes display widget options");
+            Assert(v3.Contains("\"id\":\"keys\"") && !v3.Contains("\"unsafe\""), "v3 state hides ordinary button options");
+            request = Request("/api/v3/state?version=" + Uri.EscapeDataString(state.Version), null); router.Find("GET", request.path, false)(request);
+            v3 = Body(request);
+            Assert(!v3.Contains("\"deck\":") && !v3.Contains("\"widgetDefinitions\":"), "unchanged v3 state omits deck and definitions");
 
             request = Request("/api/page/delete", new Dictionary<string, object> { { "orientation", "landscape" }, { "page", 1 } });
             router.Find("POST", request.path, true)(request);

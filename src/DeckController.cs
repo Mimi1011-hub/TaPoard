@@ -2,6 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
 
+sealed class DeckRuntimeState
+{
+    internal long revision;
+    internal string version;
+    internal string appVersion;
+    internal string computer;
+    internal int landscapePage;
+    internal int portraitPage;
+    internal int landscapePages;
+    internal int portraitPages;
+    internal object audio;
+    internal object metrics;
+    internal object weather;
+    internal bool phoneConnected;
+    internal bool pcWindowOpen;
+    internal object background;
+    internal InputSessions.PublicSession[] inputSessions;
+}
+
 sealed class DeckController : ControllerBase
 {
     internal DeckController(AppState state, IDesktop desktop) : base(state, desktop)
@@ -12,6 +31,7 @@ sealed class DeckController : ControllerBase
     {
         api.Get("/api/ping", ApiAccess.Paired, delegate(ApiRequest r) { HttpIO.Reply(r.stream, 200, HttpIO.JsonType, "{\"ok\":true}"); });
         api.Get("/api/state", ApiAccess.Paired, GetState);
+        api.Get("/api/v3/state", ApiAccess.Paired, GetV3State);
         api.Get("/api/sync", ApiAccess.Paired, WaitForSync);
         api.Get("/api/settings", ApiAccess.Admin, GetSettings);
         api.Post("/api/settings", ApiAccess.Admin, SaveRequest);
@@ -26,17 +46,12 @@ sealed class DeckController : ControllerBase
     {
         lock (state.Gate)
         {
-            var inputSessions = UpdateRuntimeSessions(r, true, true);
-            state.TouchPhone(r.local);
+            DeckRuntimeState runtime = CaptureRuntime(r);
             // Skip the app list (with its icons) when the phone already has this version.
             var apps =
                 HttpIO.QueryValue(r.target, "version") == state.Version
                     ? null
                     : state.Config.apps.ConvertAll(a => WidgetRegistry.PublicEntry(a));
-            int landscapePages = DeckLayout.Pages(state.Config, "landscape"),
-                portraitPages = DeckLayout.Pages(state.Config, "portrait");
-            state.LandscapePage = Math.Max(0, Math.Min(state.LandscapePage, landscapePages - 1));
-            state.PortraitPage = Math.Max(0, Math.Min(state.PortraitPage, portraitPages - 1));
             HttpIO.ReplyJson(
                 r.stream,
                 200,
@@ -45,16 +60,16 @@ sealed class DeckController : ControllerBase
                     apps = apps,
                     // Definitions are fixed per build, so they travel only with the app list.
                     widgetDefinitions = apps == null ? null : WidgetRegistry.PublicDefinitions(),
-                    version = state.Version,
-                    appVersion = state.AppVersion,
-                    revision = state.Sync.Revision,
+                    version = runtime.version,
+                    appVersion = runtime.appVersion,
+                    revision = runtime.revision,
                     pairingRevision = Pairing.Revision,
-                    landscapePage = state.LandscapePage,
-                    portraitPage = state.PortraitPage,
-                    landscapePages = landscapePages,
-                    portraitPages = portraitPages,
-                    page = state.LandscapePage,
-                    pages = landscapePages,
+                    landscapePage = runtime.landscapePage,
+                    portraitPage = runtime.portraitPage,
+                    landscapePages = runtime.landscapePages,
+                    portraitPages = runtime.portraitPages,
+                    page = runtime.landscapePage,
+                    pages = runtime.landscapePages,
                     columns = state.Config.columns,
                     rows = state.Config.rows,
                     landscapeGrid = DeckView.Grid(state.Config, false),
@@ -68,17 +83,75 @@ sealed class DeckController : ControllerBase
                     portraitControls = DeckView.Controls(state.Config, true),
                     landscapeControlPages = DeckView.ControlPages(state.Config, false),
                     portraitControlPages = DeckView.ControlPages(state.Config, true),
-                    audio = AudioControl.Read(),
-                    metrics = MetricsSampler.PublicSnapshot(),
-                    weather = WeatherService.PublicSnapshot(state.Config),
-                    phoneConnected = state.PhoneConnected,
-                    pcWindowOpen = PcWindowService.IsOpen,
-                    background = DeckBackgrounds.Public(state.Config.background),
-                    computer = Environment.MachineName,
-                    inputSessions = inputSessions,
+                    audio = runtime.audio,
+                    metrics = runtime.metrics,
+                    weather = runtime.weather,
+                    phoneConnected = runtime.phoneConnected,
+                    pcWindowOpen = runtime.pcWindowOpen,
+                    background = runtime.background,
+                    computer = runtime.computer,
+                    inputSessions = runtime.inputSessions,
                 }
             );
         }
+    }
+
+    internal void GetV3State(ApiRequest r)
+    {
+        lock (state.Gate)
+        {
+            DeckRuntimeState runtime = CaptureRuntime(r);
+            bool unchanged = HttpIO.QueryValue(r.target, "version") == state.Version;
+            var response = new Dictionary<string, object>();
+            response["schemaVersion"] = 3;
+            response["revision"] = runtime.revision;
+            response["version"] = runtime.version;
+            response["appVersion"] = runtime.appVersion;
+            response["computer"] = runtime.computer;
+            if (!unchanged)
+            {
+                SettingsV3 settings = SettingsMigration.ToV3(state.Config);
+                response["deck"] = PublicDeckV3.Create(settings.deck);
+                response["widgetDefinitions"] = WidgetRegistry.PublicDefinitions();
+            }
+            response["current"] = new { landscape = runtime.landscapePage, portrait = runtime.portraitPage };
+            response["background"] = runtime.background;
+            response["audio"] = runtime.audio;
+            response["metrics"] = runtime.metrics;
+            response["weather"] = runtime.weather;
+            response["phoneConnected"] = runtime.phoneConnected;
+            response["pcWindowOpen"] = runtime.pcWindowOpen;
+            response["inputSessions"] = runtime.inputSessions;
+            HttpIO.ReplyJson(r.stream, 200, response);
+        }
+    }
+
+    DeckRuntimeState CaptureRuntime(ApiRequest r)
+    {
+        var inputSessions = UpdateRuntimeSessions(r, true, true);
+        state.TouchPhone(r.local);
+        int landscapePages = DeckLayout.Pages(state.Config, "landscape");
+        int portraitPages = DeckLayout.Pages(state.Config, "portrait");
+        state.LandscapePage = Math.Max(0, Math.Min(state.LandscapePage, landscapePages - 1));
+        state.PortraitPage = Math.Max(0, Math.Min(state.PortraitPage, portraitPages - 1));
+        return new DeckRuntimeState
+        {
+            revision = state.Sync.Revision,
+            version = state.Version,
+            appVersion = state.AppVersion,
+            computer = Environment.MachineName,
+            landscapePage = state.LandscapePage,
+            portraitPage = state.PortraitPage,
+            landscapePages = landscapePages,
+            portraitPages = portraitPages,
+            audio = AudioControl.Read(),
+            metrics = MetricsSampler.PublicSnapshot(),
+            weather = WeatherService.PublicSnapshot(state.Config),
+            phoneConnected = state.PhoneConnected,
+            pcWindowOpen = PcWindowService.IsOpen,
+            background = DeckBackgrounds.Public(state.Config.background),
+            inputSessions = inputSessions,
+        };
     }
 
     internal void WaitForSync(ApiRequest r)
