@@ -16,6 +16,7 @@ import { Saved } from './saved.js';
 import { Connect } from './connect.js';
 import { PcWindowSettings } from './pc-window-settings.js';
 import { General } from './general.js';
+import { AppImport } from './app-import.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -56,6 +57,10 @@ export class SettingsApp {
     this.catalog = new Catalog({
       root: this.nodes.catalog, editor: this.editor, preview: this.preview, i18n: this.i18n,
       onError: (message) => this.shell.showNotice(message),
+    });
+    this.appImport = new AppImport({
+      root: this.nodes.catalog, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      documentObject: this.documentObject, onNotice: (message) => this.shell.showNotice(message),
     });
     this.appearance = new Appearance({
       root: this.nodes.sections.appearance, api: this.api, editor: this.editor, preview: this.preview, iconPicker: this.iconPicker,

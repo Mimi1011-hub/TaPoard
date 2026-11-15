@@ -322,5 +322,10 @@
   "general.weatherUnset": "地域が未設定です。",
   "general.weatherShort": "地域名を2文字以上入力してください。",
   "general.about": "このアプリについて",
-  "general.versionComputer": "バージョン {version}・PC {computer}"
+  "general.versionComputer": "バージョン {version}・PC {computer}",
+  "import.open": "アプリや URL を追加",
+  "import.instructions": "開いたウインドウにアイコンを落とすか、URL を入れてください。",
+  "import.replaced": "ほかの所で追加が始まりました。",
+  "import.cancelled": "追加をキャンセルしました。",
+  "import.result": "{added}個追加・{skipped}個スキップ・{full}個は空き不足でした。"
 }

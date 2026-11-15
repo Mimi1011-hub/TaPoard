@@ -322,5 +322,10 @@
   "general.weatherUnset": "No location is set.",
   "general.weatherShort": "Enter at least two characters.",
   "general.about": "About",
-  "general.versionComputer": "Version {version} · PC {computer}"
+  "general.versionComputer": "Version {version} · PC {computer}",
+  "import.open": "Add apps or URLs",
+  "import.instructions": "Drop an icon into the opened window or enter a URL.",
+  "import.replaced": "Import was started somewhere else.",
+  "import.cancelled": "Import was cancelled.",
+  "import.result": "Added {added}, skipped {skipped}, no room for {full}."
 }
