@@ -12,8 +12,19 @@ sealed class PairingController : ControllerBase
         api.Post("/api/pair/start", ApiAccess.Open, PairStart);
         api.Get("/api/pair/status", ApiAccess.Open, PairStatus);
         api.Get("/api/pair/manage", ApiAccess.Admin, GetManage);
+        api.Get("/api/v3/connect", ApiAccess.Admin, GetConnect);
         api.Post("/api/pair/manage", ApiAccess.Admin, delegate(ApiRequest r) { ManagePairing(r, r.input); });
         api.Post("/api/rotate", ApiAccess.Admin, RotateRequest);
+    }
+
+    void GetConnect(ApiRequest r)
+    {
+        lock (state.Gate)
+            HttpIO.ReplyJson(
+                r.stream,
+                200,
+                ConnectLinks.Create(state.Lan.HostName, state.Lan.Urls(AppState.Port), AppState.Port, state.Config.token)
+            );
     }
     void GetManage(ApiRequest r)
     {
@@ -88,5 +99,25 @@ sealed class PairingController : ControllerBase
             state.Signal();
         }
         PcWindowService.TokenChanged();
+    }
+}
+
+internal sealed class ConnectLinks
+{
+    public string iphoneUrl;
+    public string androidUrl;
+    public string[] urls;
+
+    internal static ConnectLinks Create(string hostName, string[] urls, int port, string token)
+    {
+        string lanUrl = "http://" + hostName + ":" + port + "/";
+        string androidUrl = urls.Length > 0 ? urls[0] : lanUrl;
+        string fragment = "#connect=" + Uri.EscapeDataString(token);
+        return new ConnectLinks
+        {
+            iphoneUrl = lanUrl + fragment,
+            androidUrl = androidUrl + fragment,
+            urls = urls,
+        };
     }
 }

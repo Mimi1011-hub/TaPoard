@@ -250,10 +250,11 @@ sealed class DeckController : ControllerBase
             var inputSessions = UpdateRuntimeSessions(r, true, true);
             int landscapePages = DeckLayout.Pages(state.Config, "landscape"),
                 portraitPages = DeckLayout.Pages(state.Config, "portrait");
-            string lanUrl = "http://" + state.Lan.HostName + ":" + AppState.Port + "/";
             string[] ipUrls = state.Lan.Urls(AppState.Port);
-            string androidUrl = ipUrls.Length > 0 ? ipUrls[0] : lanUrl;
-            string fragment = "#connect=" + Uri.EscapeDataString(state.Config.token);
+            ConnectLinks links = ConnectLinks.Create(state.Lan.HostName, ipUrls, AppState.Port, state.Config.token);
+            string lanUrl = links.iphoneUrl.Substring(0, links.iphoneUrl.IndexOf('#'));
+            string androidUrl = links.androidUrl.Substring(0, links.androidUrl.IndexOf('#'));
+            string fragment = links.iphoneUrl.Substring(links.iphoneUrl.IndexOf('#'));
             HttpIO.ReplyJson(
                 r.stream,
                 200,
