@@ -10,6 +10,7 @@ let weatherConfigured = false;
 let metricValue = 22;
 let pairResult = 'approved';
 let pairPolls = 0;
+const backgroundState = { color: '#123456', image: 'bg-one', imageWidth: 100, imageHeight: 50, portrait: { fit: 'cover', x: 40, y: 60, zoom: 1 }, landscape: { fit: 'cover', x: 50, y: 50, zoom: 1 }, keyClear: 20 };
 const audioRequests = [];
 const viewRequests = [];
 const slideRequests = [];
@@ -27,6 +28,7 @@ function deckState() {
     placement('weather-1', 'weather', 3, 0, 2, 2),
     placement('slides-1', 'slideshow', 3, 2, 2, 2, { folder: 'pictures', interval: 3 }),
     placement('wheel-1', 'wheel', 5, 0, 1, 1),
+    Object.assign(placement('button-1', 'app', 5, 1, 1, 1), { keyClear: 50 }),
   ];
   return {
     schemaVersion: 3, revision, version, computer: 'Widget test', current: { portrait: 0, landscape: 0 },
@@ -40,9 +42,11 @@ function deckState() {
       { type: 'slideshow', displayOnly: true }, { type: 'wheel', displayOnly: true },
     ],
     audio: { speakerVolume: 20, speakerMuted: false, speakerAvailable: true, micAvailable: false },
-    metrics: { active: true, cpuSupported: true, cpuAvailable: true, cpuPercent: metricValue, memoryAvailable: true, memoryPercent: 44, history: [{ cpuPercent: 10, memoryPercent: 40 }, { cpuPercent: metricValue, memoryPercent: 44 }], gpus: [] },
-    weather: weatherConfigured ? { configured: true, available: true, location: 'Tokyo', temperature: 21, code: 1, precipitation: 10, days: [{ date: '2026-11-15', code: 1, maximum: 22, minimum: 12, precipitation: 10 }], attribution: 'Open-Meteo' } : { configured: false },
-    background: { revision: 'bg-one', color: '#123456', image: 'bg-one', portrait: { fit: 'cover', x: 40, y: 60, zoom: 1 }, keyClear: 20 },
+    metrics: { active: true, cpuSupported: true, cpuAvailable: true, cpuPercent: metricValue, memoryAvailable: true, memoryPercent: 44, memoryUsedBytes: 4294967296, memoryTotalBytes: 8589934592,
+      history: [{ cpuPercent: 10, memoryPercent: 40, gpus: [{ id: 'gpu-1', utilizationPercent: 30, memoryPercent: 20 }] }, { cpuPercent: metricValue, memoryPercent: 44, gpus: [{ id: 'gpu-1', utilizationPercent: 50, memoryPercent: 25 }] }],
+      gpus: [{ id: 'gpu-1', name: 'Test GPU', utilizationPercent: 50, utilizationAvailable: true, memoryAvailable: true, memoryUsedBytes: 2147483648, memoryTotalBytes: 4294967296 }] },
+    weather: weatherConfigured ? { configured: true, available: true, location: 'Tokyo', temperature: 21, code: 1, precipitation: 10, days: [{ date: '2026-11-15', code: 1, maximum: 22, minimum: 12, precipitation: 10 }], attribution: 'Open-Meteo', updatedAt: '2026-11-15T10:30:00+09:00', stale: true } : { configured: false },
+    background: backgroundState,
   };
 }
 
@@ -107,10 +111,28 @@ async function prepare(page, errors) {
     assert.equal(await page.locator('.weather-message').innerText(), 'PCの設定画面で場所を決めてください');
     assert.equal(await page.locator('.widget-placeholder').count(), 1, 'future widget remains a placeholder');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal overflow');
-    await page.waitForFunction(() => document.querySelector('.deck-background').style.backgroundImage.includes('data:image'));
+    await page.waitForFunction(() => document.querySelector('.deck-background-picture').style.backgroundImage.includes('data:image'));
     assert.equal(backgroundRequests, 1, 'background image fetched once');
+    assert.match(await page.locator('.deck-shell').evaluate((node) => node.style.getPropertyValue('--key-bg')), /linear-gradient\(145deg/);
+    const sizeAtOne = await page.locator('.deck-background-picture').evaluate((node) => node.style.backgroundSize.split(' ').map(parseFloat));
+    assert(sizeAtOne.every(Number.isFinite), 'background size uses pixels');
+    backgroundState.portrait.zoom = 2; revision += 1;
+    await page.waitForFunction((width) => parseFloat(document.querySelector('.deck-background-picture').style.backgroundSize) === width * 2, sizeAtOne[0]);
+    assert.equal(backgroundRequests, 1, 'zoom does not refetch the image');
+    const iconOpacity = await page.locator('.deck-button .icon-fallback').evaluate((node) => getComputedStyle(node).opacity);
+    assert.equal(iconOpacity, '1', 'key transparency does not fade icon content');
+    backgroundState.keys = 'standard'; revision += 1;
+    await page.waitForFunction(() => !document.querySelector('.deck-shell').classList.contains('keys-tint'));
+    assert.equal(await page.locator('.deck-shell').evaluate((node) => node.style.getPropertyValue('--key-bg')), '');
+    backgroundState.image = ''; backgroundState.color = '#f4e7d3'; backgroundState.keys = ''; revision += 1;
+    await page.waitForFunction(() => document.querySelector('.deck-shell').classList.contains('keys-light'));
+    assert.match(await page.locator('.deck-shell').evaluate((node) => node.style.getPropertyValue('--key-bg')), /linear-gradient\(145deg/);
+    assert.equal(await page.evaluate(async () => (await import('/v4/core/image-source.js')).safeImageSource('//example.com/a.png')), '');
     await page.waitForFunction(() => document.querySelector('.slideshow-picture').getAttribute('src'));
     assert.deepEqual(slideRequests, [0]);
+    assert.equal(await page.locator('.metrics-memory-detail').innerText(), 'Test GPU');
+    assert.equal(await page.locator('.gpu-line').getAttribute('d') !== '', true, 'GPU history line is rendered');
+    assert.equal(await page.locator('.gpu-memory-line').getAttribute('d') !== '', true, 'GPU memory history line is rendered');
     await page.evaluate(() => { window.__metricsNode = document.querySelector('.metrics-widget'); });
     metricValue = 57; revision += 1;
     await page.waitForFunction(() => document.querySelector('.metric-row strong').textContent === '57.0%');
@@ -118,6 +140,7 @@ async function prepare(page, errors) {
     assert.equal(backgroundRequests, 1, 'unchanged background is not fetched again');
     weatherConfigured = true; revision += 1;
     await page.waitForFunction(() => document.querySelector('.weather-heading') && document.querySelector('.weather-heading').textContent === 'Tokyo');
+    assert.match(await page.locator('.weather-updated').innerText(), /^古い予報・更新 /);
     version = 'two'; revision += 1;
     await page.waitForFunction(() => window.__metricsNode !== document.querySelector('.metrics-widget'));
     assert(viewRequests.some((entry) => entry.visibleIds.includes('metrics-1')), 'visible widgets are announced');
