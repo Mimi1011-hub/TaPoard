@@ -13,6 +13,7 @@ import { IconPicker } from './icon-picker.js';
 import { Appearance } from './appearance.js';
 import { BackgroundSettings } from './background-settings.js';
 import { Saved } from './saved.js';
+import { Connect } from './connect.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -72,6 +73,12 @@ export class SettingsApp {
       onNotice: (message, action) => this.shell.showNotice(message, action),
     });
     await this.saved.start();
+    this.connect = new Connect({
+      root: this.nodes.sections.connection, api: this.api, i18n: this.i18n, documentObject: this.documentObject,
+      onError: (message) => this.shell.showNotice(message),
+    });
+    await this.connect.start();
+    this.shell.sections.subscribe((section) => this.connect.active(section === 'connection'));
     this.preview.onTarget = () => this.saved.targetChanged();
     this.editor.subscribe((event) => { if (event.source === 'load') this.saved.targetChanged(); });
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {

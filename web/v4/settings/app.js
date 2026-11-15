@@ -21,6 +21,9 @@ const nodes = {
     layout: document.querySelector('#settings-section-layout'),
     appearance: document.querySelector('#settings-section-appearance'),
     saved: document.querySelector('#settings-section-saved'),
+    connection: document.querySelector('#settings-section-connection'),
+    pc: document.querySelector('#settings-section-pc'),
+    general: document.querySelector('#settings-section-general'),
   },
 };
 

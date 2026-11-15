@@ -3,6 +3,7 @@ export class Sections {
     this.nav = nav;
     this.panels = panels;
     this.onUnavailable = onUnavailable;
+    this.listeners = [];
   }
   choose(section) {
     if (!this.panels[section]) {
@@ -13,6 +14,10 @@ export class Sections {
     Object.keys(this.panels).forEach((name) => {
       this.panels[name].hidden = name !== section;
     });
+    this.listeners.forEach((listener) => listener(section));
     return true;
+  }
+  subscribe(listener) {
+    this.listeners.push(listener);
   }
 }
