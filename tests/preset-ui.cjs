@@ -49,8 +49,9 @@ function button(name, page, row, column, orientation = 'landscape') {
         l.items.forEach(i => mark(i.row, i.column, i.width, i.height, i.name));
         assert.equal(cells.size, l.columns * l.rows, p.id + ' ' + o + ' leaves empty cells');
         const r = await api('presets/apply', { id: p.id, orientation: o, page: 0 });
-        assert.equal(r.status, 200, p.id + ' ' + o + ': ' + JSON.stringify(r.data));
-        assert.equal((await api('page/undo', {})).status, 200);
+        if (r.status !== 200) throw new Error(p.id + ' ' + o + ': ' + JSON.stringify(r.data));
+        const undo = await api('page/undo', {});
+        if (undo.status !== 200) throw new Error(p.id + ' ' + o + ' undo: ' + JSON.stringify(undo.data));
       }
     assert.notEqual((await api('presets/apply', { id: 'nope', orientation: 'landscape', page: 0 })).status, 200);
 
