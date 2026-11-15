@@ -25,6 +25,16 @@
 .settings-catalog-item:hover { background: var(--color-button); }
 .settings-catalog-item strong { font-size: 11px; }
 .settings-catalog-empty { color: var(--color-muted); font-size: 11px; }
+.catalog-card { display: flex; width: 100%; min-width: 0; padding: 11px; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+.catalog-card small, .catalog-count { max-width: 100%; color: var(--color-muted); font-size: 10px; overflow-wrap: anywhere; }
+.catalog-path { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.catalog-path strong { min-width: 0; font-size: 11px; overflow-wrap: anywhere; }
+.catalog-back { padding: 6px 8px; }
+.catalog-recent { display: grid; margin-top: 12px; gap: 7px; }
+.catalog-recent h3 { margin: 0; font-size: 11px; }
+.settings-catalog-item { width: 100%; min-width: 0; text-align: left; border: 0; border-top: 1px solid var(--color-border); }
+.settings-catalog-item strong, .settings-catalog-item small { max-width: 100%; overflow-wrap: anywhere; }
+.catalog-item-group { opacity: .8; }
 .appearance-block { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
 .appearance-block h3 { margin: 0; font-size: 12px; }
 .appearance-block select, .appearance-block button, .appearance-block input[type="file"] { max-width: 100%; padding: 7px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-button); }

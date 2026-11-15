@@ -56,7 +56,7 @@ export class SettingsApp {
       onError: (message) => this.shell.showNotice(message),
     });
     this.catalog = new Catalog({
-      root: this.nodes.catalog, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      root: this.nodes.catalog, editor: this.editor, preview: this.preview, i18n: this.i18n, documentObject: this.documentObject,
       onError: (message) => this.shell.showNotice(message),
     });
     this.appImport = new AppImport({
