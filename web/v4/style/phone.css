@@ -128,3 +128,10 @@
   .language-row { margin-top: 3px; padding: 6px 10px; }
   .menu-guidance { margin: 7px 4px; }
 }
+
+body.pc-window { background: #000; }
+.pc-window .phone-app { align-items: center; justify-content: center; padding: 0; background: #000; }
+.pc-window .deck-shell { flex: none; padding: 0; }
+.pc-window.pc-fill .deck-shell { width: 100% !important; height: 100% !important; }
+.pc-info { position: fixed; z-index: 75; right: 8px; bottom: 8px; padding: 6px 8px; border: 1px solid #ffffff33; border-radius: 7px; color: #dfe7f7; background: #080b10d9; font: 10px/1.45 ui-monospace,monospace; white-space: pre-line; pointer-events: none; }
+.pc-view-only { position: fixed; z-index: 76; top: 8px; left: 50%; padding: 6px 10px; transform: translateX(-50%); border: 1px solid #d7a858; border-radius: 999px; color: #ffe0a0; background: #17120ddd; font-size: 11px; pointer-events: none; }

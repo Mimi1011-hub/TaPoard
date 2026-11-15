@@ -144,3 +144,25 @@
 .weather-days { display: grid; grid-template-columns: repeat(3,1fr); width: 100%; gap: 3px; }.weather-days div { display: flex; min-width: 0; flex-direction: column; gap: 2px; font-size: 8px; }.weather-days b { font-size: 17px; }.weather-days em { color: var(--color-accent); font-style: normal; }.weather-attribution, .weather-updated { color: var(--color-muted); font-size: 6px; }
 .metric-name { color: var(--color-muted); font-size: 10px; }.metric-value { font-size: clamp(17px, 6vw, 36px); }.metric-row { display: flex; justify-content: space-between; width: 100%; font-size: 8px; }.metrics-memory-detail { width: 100%; overflow: hidden; color: var(--color-muted); font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }.metrics-graph { width: 100%; min-height: 24px; flex: 1; }.metrics-graph path { fill: none; stroke-width: 3; vector-effect: non-scaling-stroke; }.cpu-line { stroke: var(--color-accent); }.memory-line { stroke: #d59cff; }.gpu-line { stroke: #f4b64f; }.gpu-memory-line { stroke: #c47aff; }
 .slideshow-widget { padding: 0; }.slideshow-picture { width: 100%; height: 100%; object-fit: cover; }.slideshow-contain .slideshow-picture { object-fit: contain; }.slideshow-note { position: absolute; padding: 6px; color: var(--color-muted); font-size: 9px; text-align: center; }
+
+.wheel-widget { overflow: hidden; cursor: ns-resize; touch-action: none; user-select: none; background: linear-gradient(90deg,#0b0e14,#1b2232 50%,#0b0e14); }
+.wheel-ridges { position: absolute; inset: 8% 30%; border-radius: 999px; background: repeating-linear-gradient(180deg,#7f93c255 0 3px,transparent 3px 12px),linear-gradient(90deg,#2a3348,#46557a 50%,#2a3348); box-shadow: inset 0 6px 8px #000a,inset 0 -6px 8px #000a; }
+.wheel-widget.adjusting .wheel-ridges { box-shadow: inset 0 6px 8px #000a,inset 0 -6px 8px #000a,0 0 0 2px #6f9cff; }
+.wheel-caption { position: absolute; right: 3px; bottom: 3px; left: 3px; font-size: clamp(7px,1.8vw,11px); text-align: center; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.wheel-widget .widget-label,.touchpad-widget .widget-label { top: 3px; bottom: auto; }
+.wheel-rotary { cursor: grab; background: radial-gradient(circle,#1b2232 0,#0b0e14 72%); }
+.wheel-dial { position: absolute; top: 50%; left: 50%; width: 86%; max-height: 86%; aspect-ratio: 1; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle,transparent 0 34%,#0b0e14 34% 36%,transparent 36%),repeating-conic-gradient(#7f93c244 0 2deg,transparent 2deg 15deg),radial-gradient(circle,#2f3a55,#1a2131 70%); box-shadow: inset 0 0 0 2px #46557a,0 4px 12px #0008; }
+.wheel-notch { position: absolute; top: 5%; left: 47%; width: 6%; height: 12%; border-radius: 999px; background: #8fb0ff; }
+.wheel-center { position: absolute; top: 50%; left: 50%; display: grid; width: 36%; aspect-ratio: 1; place-items: center; transform: translate(-50%,-50%); border-radius: 50%; color: #9fb4e6; background: #10141d; font-size: 10px; pointer-events: none; }
+.wheel-rotary.adjusting .wheel-dial { box-shadow: inset 0 0 0 2px #6f9cff,0 4px 12px #0008; }
+.input-notice { position: absolute; z-index: 4; inset: 0; display: none; align-items: center; justify-content: center; padding: 4px; color: #ffd27a; background: #000c; font-size: clamp(8px,2vw,13px); text-align: center; white-space: pre-line; pointer-events: none; }
+.input-busy .input-notice { display: flex; }
+
+.touchpad-widget { overflow: hidden; cursor: crosshair; touch-action: none; user-select: none; color: #8fa3cf; background: linear-gradient(160deg,#1d2433,#10141c); box-shadow: inset 0 0 0 1px #3a4766; }
+.touchpad-widget.adjusting { box-shadow: inset 0 0 0 2px #6f9cff; }.touchpad-widget.dragging { box-shadow: inset 0 0 0 2px #ffcf6f; }
+.touchpad-hint { font-size: clamp(8px,1.9vw,12px); text-align: center; white-space: pre-line; opacity: .7; pointer-events: none; }.touchpad-widget.adjusting .touchpad-hint { opacity: .2; }
+
+.keypad-widget { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); grid-template-rows: repeat(4,minmax(0,1fr)); gap: 5px; padding: 6px; background: linear-gradient(145deg,#171b25,#08090d); }
+.keypad-widget.keypad-tall { grid-template-rows: repeat(5,minmax(0,1fr)); }
+.keypad-key { display: flex; min-width: 0; min-height: 0; align-items: center; justify-content: center; border: 1px solid #4a5267; border-radius: 9px; color: #f3f6ff; background: linear-gradient(160deg,#30384b,#151923); box-shadow: 0 2px 0 #050609,inset 0 1px #ffffff12; font-weight: 650; touch-action: manipulation; user-select: none; }
+.keypad-key.is-pressed { transform: translateY(2px); border-color: #8faaff; background: #26375f; box-shadow: inset 0 0 12px #7196ff44; }

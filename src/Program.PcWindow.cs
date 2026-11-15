@@ -37,7 +37,7 @@ partial class Program
         PcWindowService.DeckUrl = delegate
         {
             lock (State.Gate)
-                return "http://127.0.0.1:" + AppState.Port + "/?view=pc#connect=" + Uri.EscapeDataString(State.Config.token);
+                return "http://127.0.0.1:" + AppState.Port + "/v4/?view=pc#connect=" + Uri.EscapeDataString(State.Config.token);
         };
         PcWindowService.OpenSettingsPage = OpenPcWindowSettings;
         PcWindowService.Notify = ShowNotice;

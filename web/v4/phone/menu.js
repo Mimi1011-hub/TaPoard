@@ -10,6 +10,7 @@ export class PhoneMenu {
     this.wakeLock = dependencies.wakeLock;
     this.NoSleepClass = dependencies.NoSleepClass;
     this.onDisconnect = dependencies.onDisconnect;
+    this.pcWindow = !!dependencies.pcWindow;
     this.wakeSentinel = null;
     this.noSleep = null;
     this.keepAwakeValue = null;
@@ -30,27 +31,25 @@ export class PhoneMenu {
     close.addEventListener('click', () => this.close());
     header.append(close);
     panel.append(header);
-    this.keepAwake = this.toggle(panel, 'menu.keepAwake', 'menu.keepAwakeNote', true, (checked) => {
-      this.storage.setItem('tapoard-keep-awake', checked ? '1' : '0');
-      this.keepAwakeValue = checked;
-      this.applyWake(checked);
-    });
-    this.feedback = this.toggle(panel, 'menu.feedback', 'menu.feedbackNote', this.storage.getItem('tapoard-feedback') !== 'off', (checked) => {
-      this.storage.setItem('tapoard-feedback', checked ? 'on' : 'off');
-    });
+    if (!this.pcWindow) {
+      this.keepAwake = this.toggle(panel, 'menu.keepAwake', 'menu.keepAwakeNote', true, (checked) => {
+        this.storage.setItem('tapoard-keep-awake', checked ? '1' : '0'); this.keepAwakeValue = checked; this.applyWake(checked);
+      });
+      this.feedback = this.toggle(panel, 'menu.feedback', 'menu.feedbackNote', this.storage.getItem('tapoard-feedback') !== 'off', (checked) => {
+        this.storage.setItem('tapoard-feedback', checked ? 'on' : 'off');
+      });
+    }
     this.swipe = this.toggle(panel, 'menu.swipe', 'menu.swipeNote', this.storage.getItem('tapoard-swipe') !== 'off', (checked) => {
       this.storage.setItem('tapoard-swipe', checked ? 'on' : 'off');
     });
     panel.append(this.languageRow());
-    panel.append(markI18n(el('p', 'menu-guidance'), 'menu.guidance'));
-    const disconnect = markI18n(el('button', 'disconnect-button'), 'menu.disconnect');
-    disconnect.type = 'button';
-    disconnect.addEventListener('click', () => {
-      this.keyStore.clear();
-      this.close();
-      this.onDisconnect();
-    });
-    panel.append(disconnect);
+    if (!this.pcWindow) {
+      panel.append(markI18n(el('p', 'menu-guidance'), 'menu.guidance'));
+      const disconnect = markI18n(el('button', 'disconnect-button'), 'menu.disconnect');
+      disconnect.type = 'button';
+      disconnect.addEventListener('click', () => { this.keyStore.clear(); this.close(); this.onDisconnect(); });
+      panel.append(disconnect);
+    }
     this.backdrop.append(panel);
     this.backdrop.addEventListener('pointerdown', (event) => {
       if (event.target === this.backdrop) this.close();
@@ -89,6 +88,7 @@ export class PhoneMenu {
   }
 
   setDeck(deck) {
+    if (this.pcWindow) return;
     const saved = this.storage.getItem('tapoard-keep-awake');
     const next = saved === null ? !!(deck && deck.keepAwake) : saved === '1';
     this.keepAwake.checked = next;
@@ -99,7 +99,7 @@ export class PhoneMenu {
   }
 
   feedbackEnabled() {
-    return this.feedback.checked;
+    return this.feedback ? this.feedback.checked : false;
   }
 
   open() {
@@ -112,6 +112,7 @@ export class PhoneMenu {
   }
 
   visibilityChanged(hidden) {
+    if (this.pcWindow) return;
     if (hidden) this.releaseWake();
     else this.applyWake(this.keepAwake.checked);
   }
