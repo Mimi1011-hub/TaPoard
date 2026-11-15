@@ -9,6 +9,7 @@ let version = 'one';
 let weatherConfigured = false;
 let metricValue = 22;
 let pairResult = 'approved';
+let pairPolls = 0;
 const audioRequests = [];
 const viewRequests = [];
 const slideRequests = [];
@@ -55,10 +56,10 @@ const server = http.createServer(async (req, res) => {
   let body = '';
   for await (const chunk of req) body += chunk;
   const url = new URL(req.url, 'http://127.0.0.1');
-  if (url.pathname === '/api/pair/start') { json(res, 200, { id: 'pair-id', secret: 'pair-secret', code: '123456', expires: new Date(Date.now() + 180000).toISOString() }); return; }
+  if (url.pathname === '/api/pair/start') { pairPolls = 0; json(res, 200, { id: 'pair-id', secret: 'pair-secret', code: '123456', expires: new Date(Date.now() + 180000).toISOString() }); return; }
   if (url.pathname === '/api/pair/status') {
     if (req.headers.authorization !== 'Bearer pair-secret') { json(res, 401, { error: 'unauthorized' }); return; }
-    json(res, 200, pairResult === 'approved' ? { status: 'approved', token: 'test' } : { status: 'denied' }); return;
+    json(res, 200, pairResult === 'approved' ? (++pairPolls === 1 ? { status: 'pending' } : { status: 'approved', token: 'test' }) : { status: 'denied' }); return;
   }
   if (url.pathname.startsWith('/api/')) {
     if (req.headers.authorization !== 'Bearer test') { json(res, 401, { error: 'unauthorized' }); return; }
