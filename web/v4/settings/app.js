@@ -35,6 +35,8 @@ i18n.init().then(() => {
     key, i18n, shell, nodes: Object.assign(nodes, {
       undo: document.querySelector('#settings-undo'),
       saveStatus: document.querySelector('#settings-save-status'),
+      preview: document.querySelector('#settings-preview'),
+      orientation: Array.from(document.querySelectorAll('[data-orientation]')),
     }),
     documentObject: document,
     fetchFn: (path, options) => fetch(path, options),

@@ -95,6 +95,15 @@ export class EditorState {
     });
   }
 
+  canMoveItem(address, page, row, column) {
+    const candidate = copy(this.deck), orientation = this.orientation(address.orientation, candidate);
+    const source = orientation.pages[address.page];
+    if (!source || !orientation.pages[page] || !source.items[address.index]) return false;
+    const item = source.items.splice(address.index, 1)[0];
+    item.row = row; item.column = column; orientation.pages[page].items.push(item);
+    return this.validateDeck(candidate);
+  }
+
   addItem(orientationName, pageIndex, item, row, column) {
     return this.change((deck) => {
       const orientation = this.orientation(orientationName, deck);
@@ -179,6 +188,16 @@ export class EditorState {
       pageValue.faders[target] = Object.assign({}, effective || orientation.faders[target], { row, column, off: undefined });
       pageValue.faders[`${target}Hidden`] = false;
     });
+  }
+
+  canMoveFader(orientationName, page, target, row, column) {
+    const candidate = copy(this.deck), orientation = this.orientation(orientationName, candidate), pageValue = orientation.pages[page];
+    if (!pageValue || (target !== 'speaker' && target !== 'mic')) return false;
+    const effective = this.effectiveFader(orientation, page, target);
+    pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
+    pageValue.faders[target] = Object.assign({}, effective || orientation.faders[target], { row, column, off: undefined });
+    pageValue.faders[`${target}Hidden`] = false;
+    return this.validateDeck(candidate);
   }
 
   updateFader(orientationName, page, target, values) {

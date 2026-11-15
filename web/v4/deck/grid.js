@@ -8,6 +8,7 @@ export class DeckGrid {
     this.i18n = context.i18n;
     this.onPress = onPress;
     this.widgets = [];
+    this.preview = !!context.preview;
   }
 
   render(container, orientationDeck, pageIndex, widgetDefinitions, state) {
@@ -20,11 +21,12 @@ export class DeckGrid {
     this.renderFaders(container, orientationDeck.faders, page.faders, state);
     const displayTypes = new Set((widgetDefinitions || []).filter((item) => item.displayOnly).map((item) => item.type));
     (page.items || []).forEach((item) => {
-      if (isDisplayWidget(item.type)) this.mountWidget(container, item, widgetTypes[item.type], state);
+      if (this.preview && ['wheel', 'touchpad', 'keypad'].includes(item.type)) container.appendChild(this.placeholder(item));
+      else if (isDisplayWidget(item.type)) this.mountWidget(container, item, widgetTypes[item.type], state);
       else if (displayTypes.has(item.type) || ['wheel', 'touchpad', 'keypad'].includes(item.type)) container.appendChild(this.placeholder(item));
       else container.appendChild(this.button(item));
     });
-    if (!container.childNodes.length) container.appendChild(el('p', 'deck-empty', this.i18n.t('deck.empty')));
+    if (!this.preview && !container.childNodes.length) container.appendChild(el('p', 'deck-empty', this.i18n.t('deck.empty')));
   }
 
   update(state) { this.widgets.forEach((widget) => widget.update(state)); }
@@ -85,7 +87,7 @@ export class DeckGrid {
       node.appendChild(label);
     } else node.appendChild(el('span', 'visually-hidden', item.name));
     if (typeof item.keyClear === 'number') node.dataset.keyClear = item.keyClear;
-    this.bindPress(node, item);
+    if (!this.preview) this.bindPress(node, item);
     this.place(node, item);
     return node;
   }

@@ -4,6 +4,7 @@ import { SyncLoop } from '../core/sync.js';
 import { EditorState } from './editor-state.js';
 import { History } from './history.js';
 import { Saver } from './saver.js';
+import { Preview } from './preview.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -20,6 +21,14 @@ export class SettingsApp {
       onStatus: (status, error) => this.setSaveStatus(status, error),
       onConflict: () => this.externalConflict(),
     });
+    this.preview = new Preview({
+      root: this.nodes.preview, editor: this.editor, api: this.api, i18n: this.i18n,
+      onSelect: () => {}, onError: (message) => this.shell.showNotice(message),
+    });
+    this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
+      this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
+      this.preview.setOrientation(button.dataset.orientation);
+    }));
     this.history.subscribe((history) => { this.nodes.undo.disabled = !history.past.length; });
     this.nodes.undo.addEventListener('click', () => this.history.undo());
     this.documentObject.addEventListener('keydown', (event) => this.keydown(event));
@@ -35,6 +44,10 @@ export class SettingsApp {
   }
 
   keydown(event) {
+    if (event.key === 'Delete' && !/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) {
+      if (this.preview.removeSelected()) event.preventDefault();
+      return;
+    }
     if (!event.ctrlKey || event.altKey) return;
     const key = event.key.toLowerCase();
     if (key === 'z' && !event.shiftKey) { if (this.history.undo()) event.preventDefault(); }
@@ -48,6 +61,7 @@ export class SettingsApp {
 
   stateChanged(state) {
     this.shell.updateConnection(state);
+    if (this.preview) this.preview.updateRuntime(state);
     if (!this.editor || !state.version || state.version === this.editor.version || this.saver.saving) return;
     if (this.editor.dirty) this.externalConflict();
     else this.reloadDeck();
