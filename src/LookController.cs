@@ -156,7 +156,6 @@ sealed class LookController : ControllerBase
             string before = IconPacks.Serializer().Serialize(state.Config);
             restored.schemaVersion = state.Config.schemaVersion;
             restored.token = state.Config.token;
-            restored.pairingKey = state.Config.pairingKey;
             restored.devices = state.Config.devices;
             restored.pcWindow = state.Config.pcWindow;
             if (restored.apps == null) restored.apps = new List<AppEntry>();

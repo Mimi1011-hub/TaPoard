@@ -14,7 +14,6 @@ public static class PageUndoTests
         {
             schemaVersion = 2,
             token = "token",
-            pairingKey = "pairing",
             apps = new List<AppEntry> { new AppEntry { id = "one", name = name, type = "app" } },
             devices = new List<PairedDevice>(),
         };

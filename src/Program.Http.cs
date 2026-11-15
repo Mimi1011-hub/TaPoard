@@ -128,7 +128,6 @@ partial class Program
             r.allowed =
                 r.isAdmin
                 || r.auth == "Bearer " + State.Config.token
-                || r.auth == "Bearer " + State.Config.pairingKey
                 || Pairing.Authorized(State.Config, r.auth);
     }
 

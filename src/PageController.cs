@@ -18,7 +18,7 @@ sealed class PageController : ControllerBase
         api.Post("/api/page/undo", ApiAccess.Admin, UndoDeletePage);
         api.Post("/api/fader/remove", ApiAccess.Admin, delegate(ApiRequest r) { RemoveFader(r, r.input); });
         api.Post("/api/presets/apply", ApiAccess.Admin, delegate(ApiRequest r) { ApplyPreset(r, r.input); });
-        api.Post("/api/layout", ApiAccess.Paired, delegate(ApiRequest r) { SetLayout(r, r.input); });
+        api.Post("/api/layout", ApiAccess.Admin, delegate(ApiRequest r) { SetLayout(r, r.input); });
     }
 
     internal string ReadOrientation(Dictionary<string, object> input)
@@ -196,7 +196,6 @@ sealed class PageController : ControllerBase
             if (!state.Undo.TryTake(state.Config, out restored, out orientation, out page))
                 throw new Exception("その後に設定が変わったため、元に戻せません。");
             restored.token = state.Config.token;
-            restored.pairingKey = state.Config.pairingKey;
             restored.devices = state.Config.devices;
             state.Config = restored;
             if (orientation == "portrait")

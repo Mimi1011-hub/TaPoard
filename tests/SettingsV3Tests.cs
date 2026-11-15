@@ -64,7 +64,6 @@ class SettingsV3Tests
         {
             schemaVersion = 2,
             token = "012345678901234567890123456789012345678901234567",
-            pairingKey = "23456789ABCD",
             devices = new List<PairedDevice>
             {
                 new PairedDevice { id = "phone", name = "Test phone", credentialHash = "hash", created = "2026-11-14T00:00:00Z" },
@@ -181,6 +180,8 @@ class SettingsV3Tests
         Check(Comparable(roundTrip) == Comparable(source), "normalized v2 settings survive a v3 round trip");
         DeckLayout.Validate(roundTrip);
         Check(roundTrip.apps[1].size == 2, "v3 restores the legacy size field used by the web UI");
+        source.apps.Add(Item("broken-orientation", "app", "sideways", 0, 0, 0, 1, 1));
+        Reject(delegate { SettingsMigration.ToV3(source); }, "向きが正しくありません", "v3 conversion rejects an invalid item orientation");
     }
 
     static void FileTests(string root)
@@ -197,6 +198,13 @@ class SettingsV3Tests
         Check(Convert.ToBase64String(File.ReadAllBytes(v2Path)) == Convert.ToBase64String(original), "saving v3 leaves settings-v2.json byte-identical");
 
         SettingsV3 preferred = SettingsMigration.ToV3(source);
+        string legacyKeyJson = Serializer.Serialize(preferred).Replace("\"token\":", "\"pairingKey\":\"ABCDEFGHJKLM\",\"token\":");
+        File.WriteAllText(v3Path, legacyKeyJson, new UTF8Encoding(false));
+        Settings legacyKeyLoaded = SettingsFile.Load(root, delegate { return null; });
+        Check(legacyKeyLoaded.token == source.token, "v3 containing the removed pairingKey still loads");
+        SettingsFile.Save(root, legacyKeyLoaded);
+        Check(!File.ReadAllText(v3Path).Contains("pairingKey"), "the next v3 save removes the legacy pairingKey");
+
         preferred.security.token = "v3-token";
         Write(v3Path, preferred);
         Check(SettingsFile.Load(root, delegate { return null; }).token == "v3-token", "v3 wins when v3 and v2 both exist");

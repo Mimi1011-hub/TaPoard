@@ -47,7 +47,7 @@ public static class ApiRouteTableTests
                 "POST /api/fader/remove Admin",
                 "POST /api/slideshow/pick-folder Admin",
                 "POST /api/presets/apply Admin",
-                "POST /api/layout Paired",
+                "POST /api/layout Admin",
                 "POST /api/audio Paired",
                 "POST /api/weather/search Admin",
                 "POST /api/weather/location Admin",

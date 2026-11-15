@@ -386,7 +386,6 @@ sealed class DeckController : ControllerBase
     {
         next.schemaVersion = state.Config.schemaVersion;
         next.token = state.Config.token;
-        next.pairingKey = state.Config.pairingKey;
         next.columns = state.Config.columns;
         next.rows = state.Config.rows;
         next.landscapeColumns = state.Config.landscapeColumns;

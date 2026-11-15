@@ -8,13 +8,15 @@ static class SettingsMigration
     {
         if (settings == null)
             throw new Exception("設定を変換できません。");
+        foreach (var app in settings.apps ?? new List<AppEntry>())
+            if (app.orientation != "landscape" && app.orientation != "portrait")
+                throw new Exception("部品の画面の向きが正しくありません。");
         return new SettingsV3
         {
             schemaVersion = 3,
             security = new SecurityV3
             {
                 token = settings.token,
-                pairingKey = settings.pairingKey,
                 devices = Copy(settings.devices) ?? new List<PairedDevice>(),
             },
             deck = new DeckV3
@@ -140,7 +142,6 @@ static class SettingsMigration
         {
             schemaVersion = 2,
             token = settings.security.token,
-            pairingKey = settings.security.pairingKey,
             devices = Copy(settings.security.devices) ?? new List<PairedDevice>(),
             apps = new List<AppEntry>(),
             keepAwake = settings.deck.keepAwake,

@@ -9,7 +9,7 @@ public static class ControllerTests
     static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
     static Settings Settings()
     {
-        var settings = new Settings { schemaVersion = 2, token = "token", pairingKey = "short", apps = new List<AppEntry>(), devices = new List<PairedDevice>(),
+        var settings = new Settings { schemaVersion = 2, token = "token", apps = new List<AppEntry>(), devices = new List<PairedDevice>(),
             columns = 5, rows = 3, landscapeColumns = 5, landscapeRows = 3, portraitColumns = 3, portraitRows = 5,
             landscapePageCount = 2, portraitPageCount = 1, speakerSlot = 0, micSlot = 1, speakerSize = 1, micSize = 1,
             landscapeSpeakerSlot = 0, landscapeMicSlot = 1, landscapeSpeakerSize = 1, landscapeMicSize = 1,

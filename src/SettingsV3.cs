@@ -13,7 +13,6 @@ class SettingsV3
 class SecurityV3
 {
     public string token { get; set; }
-    public string pairingKey { get; set; }
     public List<PairedDevice> devices { get; set; }
 }
 

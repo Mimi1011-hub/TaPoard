@@ -116,7 +116,6 @@ static class IconStyles
     {
         var copy = IconPacks.Serializer().Deserialize<Settings>(IconPacks.Serializer().Serialize(s));
         copy.token = null;
-        copy.pairingKey = null;
         copy.devices = null;
         copy.weatherName = null;
         copy.weatherTimezone = null;

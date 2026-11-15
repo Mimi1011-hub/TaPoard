@@ -80,7 +80,6 @@ public static class ApiStatusTests
                 {
                     schemaVersion = 2,
                     token = "phone-token",
-                    pairingKey = "short-token",
                     apps = new List<AppEntry>(),
                     devices = new List<PairedDevice>(),
                 }
@@ -90,8 +89,10 @@ public static class ApiStatusTests
 
             Check("GET", "/api/state", null, null, 401);
             Check("GET", "/api/ping", "phone-token", null, 200);
+            Check("GET", "/api/ping", "ABCDEFGHJKLM", null, 401);
             Check("GET", "/api/settings", "phone-token", null, 404);
             Check("POST", "/api/rotate", "phone-token", "{}", 403);
+            Check("POST", "/api/layout", "phone-token", "{}", 403);
             Check("PUT", "/api/ping", "phone-token", null, 404);
             Check("GET", "/api/nothing", "phone-token", null, 404);
             Check("POST", "/api/nothing", "phone-token", "{}", 403);

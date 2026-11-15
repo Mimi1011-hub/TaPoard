@@ -34,7 +34,6 @@ class SettingsV2Tests
         {
             schemaVersion = 2,
             token = token,
-            pairingKey = "23456789ABCD",
             apps = new List<AppEntry>(),
             devices = new List<PairedDevice>(),
             columns = 5,

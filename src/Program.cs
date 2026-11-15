@@ -48,11 +48,6 @@ partial class Program
         return SecureKeys.Hex();
     }
 
-    static string ShortKey()
-    {
-        return SecureKeys.Short();
-    }
-
     static string NewId()
     {
         return Guid.NewGuid().ToString("N");
@@ -249,15 +244,12 @@ partial class Program
                 return new Settings
                 {
                     token = RandomKey(),
-                    pairingKey = ShortKey(),
                     apps = new List<AppEntry>(),
                 };
             }
         );
         if (String.IsNullOrWhiteSpace(State.Config.token))
             State.Config.token = RandomKey();
-        if (String.IsNullOrWhiteSpace(State.Config.pairingKey))
-            State.Config.pairingKey = ShortKey();
         if (State.Config.apps == null)
             State.Config.apps = new List<AppEntry>();
         if (State.Config.columns < 3 || State.Config.columns > 8 || State.Config.rows < 2 || State.Config.rows > 5)

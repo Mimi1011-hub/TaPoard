@@ -12,11 +12,6 @@ static class DeckView
         return SecureKeys.Hex();
     }
 
-    internal static string ShortKey()
-    {
-        return SecureKeys.Short();
-    }
-
     internal static bool IsType(AppEntry app, string type)
     {
         return System.String.Equals(app.type, type, System.StringComparison.OrdinalIgnoreCase);

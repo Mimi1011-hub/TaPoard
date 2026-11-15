@@ -42,7 +42,6 @@ class Settings
 {
     public int schemaVersion { get; set; }
     public string token { get; set; }
-    public string pairingKey { get; set; }
     public List<AppEntry> apps { get; set; }
     public int columns { get; set; }
     public int rows { get; set; }

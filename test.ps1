@@ -3,8 +3,6 @@ $base = 'http://127.0.0.1:18781'
 $config = [IO.File]::ReadAllText("$PSScriptRoot\dist\data\settings-v3.json", [Text.Encoding]::UTF8) | ConvertFrom-Json
 if ($config.schemaVersion -ne 3) { throw 'Unexpected settings schema version' }
 $headers = @{ Authorization = 'Bearer ' + $config.security.token }
-$shortHeaders = @{ Authorization = 'Bearer ' + $config.security.pairingKey }
-if ($config.security.pairingKey -notmatch '^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$') { throw 'Short pairing key missing or invalid' }
 function Assert-Status($Path, $Expected, $Auth, $Method = 'GET', $Body = $null) {
     try {
         $r = Invoke-WebRequest ($base + $Path) -UseBasicParsing -Headers $Auth -Method $Method -Body $Body -ContentType 'application/json'
@@ -52,8 +50,8 @@ if (Compare-Object $webIconKeys $serverIconKeys) { throw 'Browser and server ico
 Write-Host ('PASS ' + $webIconKeys.Count + ' selectable icon presets match the server allowlist')
 Assert-Status '/api/state' 401 @{}
 Assert-Status '/api/state' 200 $headers
-Assert-Status '/api/state' 200 $shortHeaders
-Write-Host 'PASS existing long key and 12-character pairing key'
+Assert-Status '/api/ping' 401 @{ Authorization = 'Bearer ABCDEFGHJKLM' }
+Write-Host 'PASS long key works and removed 12-character key is rejected'
 $state = Invoke-RestMethod ($base + '/api/state') -Headers $headers
 if ([string]::IsNullOrWhiteSpace($state.version)) { throw 'State version missing' }
 if ($state.appVersion -notmatch '^3\.1(?:\+(?:[0-9a-f]{7,40}\.dirty|source|unknown))?$') { throw ('Unexpected app version: ' + $state.appVersion) }

@@ -79,7 +79,6 @@ sealed class PairingController : ControllerBase
         lock (state.Gate)
         {
             state.Config.token = DeckView.RandomKey();
-            state.Config.pairingKey = DeckView.ShortKey();
             state.Config.devices.Clear();
             DisplaySubscriptions.ClearAll();
             InputSessions.ClearAll();

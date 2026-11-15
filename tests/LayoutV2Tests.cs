@@ -19,7 +19,7 @@ class LayoutV2Tests
     {
         return new Settings
         {
-            schemaVersion = 2, token = "test", pairingKey = "pair", columns = 5, rows = 3,
+            schemaVersion = 2, token = "test", columns = 5, rows = 3,
             speakerSlot = 0, micSlot = 1, speakerSize = 1, micSize = 1,
             pageCount = 1, landscapePageCount = 1, portraitPageCount = 1,
             apps = new List<AppEntry>(), devices = new List<PairedDevice>(),
@@ -40,7 +40,7 @@ class LayoutV2Tests
     static void Main()
     {
         // Program.LoadSettings creates this for a new installation: both legacy fader slots are 0.
-        var fresh = new Settings { schemaVersion = 2, token = "test", pairingKey = "pair", apps = new List<AppEntry>(), devices = new List<PairedDevice>(), columns = 5, rows = 3, keepAwake = true };
+        var fresh = new Settings { schemaVersion = 2, token = "test", apps = new List<AppEntry>(), devices = new List<PairedDevice>(), columns = 5, rows = 3, keepAwake = true };
         DeckLayout.Migrate(fresh);
         DeckLayout.Validate(fresh);
         Check(fresh.landscapeSpeaker.column == 0 && fresh.landscapeMic.column == 1 && fresh.portraitMic.column == 1, "new installation separates the default speaker and mic faders");
