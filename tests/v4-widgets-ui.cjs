@@ -29,6 +29,7 @@ function deckState() {
     placement('slides-1', 'slideshow', 3, 2, 2, 2, { folder: 'pictures', interval: 3 }),
     placement('wheel-1', 'wheel', 5, 0, 1, 1),
     Object.assign(placement('button-1', 'app', 5, 1, 1, 1), { keyClear: 50 }),
+    placement('future-1', 'future', 5, 2, 1, 1),
   ];
   return {
     schemaVersion: 3, revision, version, computer: 'Widget test', current: { portrait: 0, landscape: 0 },
@@ -40,6 +41,7 @@ function deckState() {
     widgetDefinitions: [
       { type: 'clock', displayOnly: true }, { type: 'metrics', displayOnly: true }, { type: 'weather', displayOnly: true },
       { type: 'slideshow', displayOnly: true }, { type: 'wheel', displayOnly: true },
+      { type: 'future', displayOnly: true },
     ],
     audio: { speakerVolume: 20, speakerMuted: false, speakerAvailable: true, micAvailable: false },
     metrics: { active: true, cpuSupported: true, cpuAvailable: true, cpuPercent: metricValue, memoryAvailable: true, memoryPercent: 44, memoryUsedBytes: 4294967296, memoryTotalBytes: 8589934592,
