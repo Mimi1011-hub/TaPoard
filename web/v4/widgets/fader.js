@@ -30,6 +30,7 @@ export class FaderWidget {
     this.track.append(this.level, this.thumb);
     this.label = el('span', 'fader-value');
     node.append(this.mute, this.track, this.label);
+    if (this.context.preview) { this.update(state); return; }
     this.onMute = (event) => { event.stopPropagation(); this.context.feedback.tap(true); this.sendMute(); };
     this.down = (event) => this.start(event);
     this.move = (event) => this.drag(event);
@@ -130,6 +131,7 @@ export class FaderWidget {
 
   destroy() {
     clearTimeout(this.timer);
+    if (this.context.preview) return;
     this.mute.removeEventListener('click', this.onMute);
     this.track.removeEventListener('pointerdown', this.down);
     this.track.removeEventListener('pointermove', this.move);

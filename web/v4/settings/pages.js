@@ -38,7 +38,7 @@ export class Pages {
   choose(index) {
     this.closeMenu();
     this.preview.setPage(index);
-    this.render();
+    Array.from(this.root.querySelectorAll('.settings-page-tab')).forEach((node, page) => node.classList.toggle('is-active', page === index));
   }
 
   add() {
