@@ -73,7 +73,7 @@ export class InputSender {
         this.notify(ack.foregroundBlocked ? 'blocked' : 'ok');
       }, (error) => {
         this.queue = [];
-        if (error && error.serverError === this.context.i18n.t('input.busyServer')) this.notify('busy');
+        if (error && error.status === 409) this.notify('busy');
         else {
           this.context.sessions.discard(this.widgetId, session.sessionId);
           this.context.renewView();

@@ -774,7 +774,6 @@
   "import.full": "空きマスが足りず {count} 個は置けませんでした。",
   "general.language": "言語",
   "general.languageAuto": "自動（Windows に合わせる）",
-  "input.busyServer": "他の端末が操作中です。",
   "settings.connectionSummary": "{phone}・{pc}",
   "common.listSeparator": "・",
   "common.placeSeparator": "、",

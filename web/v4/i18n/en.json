@@ -774,7 +774,6 @@
   "import.full": "No room for {count}.",
   "general.language": "Language",
   "general.languageAuto": "Automatic (use Windows language)",
-  "input.busyServer": "Another device is in use.",
   "settings.connectionSummary": "{phone} · {pc}",
   "common.listSeparator": " · ",
   "common.placeSeparator": ", ",
