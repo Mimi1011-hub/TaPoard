@@ -21,25 +21,25 @@ static class SettingsFile
         string v2Path = Path.Combine(dataDirectory, V2FileName);
         Settings settings = File.Exists(v2Path) ? ReadV2(v2Path) : createDefaults();
         if (settings == null)
-            throw new Exception("設定を作成できませんでした。");
+            throw new Exception(Text.Get("source.settingsfile.1"));
         settings.schemaVersion = V2SchemaVersion;
         return settings;
     }
 
     static Settings ReadV3(string path)
     {
-        SettingsV3 settings = Deserialize<SettingsV3>(path, "3.0設定");
+        SettingsV3 settings = Deserialize<SettingsV3>(path, Text.Get("source.settingsfile.2"));
         if (settings == null)
             throw new Exception(
-                "settings-v3.json の形式を確認できません。v2設定へ自動では戻しません。ファイルを復元するか名前を変更してください。"
+                Text.Get("source.settingsfile.3")
             );
         if (settings.schemaVersion > CurrentSchemaVersion)
             throw new Exception(
-                "settings-v3.json は新しいTaPoard用です。このファイルを変更せず、対応する版を使用してください。"
+                Text.Get("source.settingsfile.4")
             );
         if (settings.schemaVersion != CurrentSchemaVersion)
             throw new Exception(
-                "settings-v3.json の形式を確認できません。v2設定へ自動では戻しません。ファイルを復元するか名前を変更してください。"
+                Text.Get("source.settingsfile.5")
             );
         try
         {
@@ -47,15 +47,15 @@ static class SettingsFile
         }
         catch (Exception e)
         {
-            throw new Exception("settings-v3.json の形式を確認できません。v2設定へ自動では戻しません。ファイルを復元するか名前を変更してください。", e);
+            throw new Exception(Text.Get("source.settingsfile.6"), e);
         }
     }
 
     static Settings ReadV2(string path)
     {
-        Settings settings = Deserialize<Settings>(path, "2.0設定");
+        Settings settings = Deserialize<Settings>(path, Text.Get("source.settingsfile.7"));
         if (settings == null || settings.schemaVersion != V2SchemaVersion)
-            throw new Exception("settings-v2.json の形式を確認できません。ファイルは変更していません。");
+            throw new Exception(Text.Get("source.settingsfile.8"));
         return settings;
     }
 
@@ -67,14 +67,14 @@ static class SettingsFile
         }
         catch (Exception e)
         {
-            throw new Exception(label + "を読み込めません。元のファイルは変更していません。", e);
+            throw new Exception(label + Text.Get("source.settingsfile.9"), e);
         }
     }
 
     internal static void Save(string dataDirectory, Settings settings)
     {
         if (settings == null || settings.schemaVersion != V2SchemaVersion)
-            throw new Exception("未対応の設定形式は保存できません。");
+            throw new Exception(Text.Get("source.settingsfile.10"));
         Directory.CreateDirectory(dataDirectory);
         string path = Path.Combine(dataDirectory, FileName);
         string temporary = path + ".tmp";

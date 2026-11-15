@@ -42,15 +42,15 @@ static class ShortcutPacks
 
     static string FileOf(string data, string id)
     {
-        if (!ValidId(id)) throw new Exception("ショートカットパックが見つかりません。");
+        if (!ValidId(id)) throw new Exception(global::Text.Get("source.shortcutpacks.1"));
         return Path.Combine(Folder(data), id + ".json");
     }
 
     static string Text(string value, int limit, bool required, string label)
     {
         value = (value ?? "").Trim();
-        if (required && value.Length == 0) throw new Exception(label + "を入力してください。");
-        if (value.Length > limit) throw new Exception(label + "は" + limit + "文字までです。");
+        if (required && value.Length == 0) throw new Exception(label + global::Text.Get("source.shortcutpacks.2"));
+        if (value.Length > limit) throw new Exception(label + global::Text.Get("source.shortcutpacks.3") + limit + global::Text.Get("source.shortcutpacks.4"));
         return value;
     }
 
@@ -58,7 +58,7 @@ static class ShortcutPacks
     {
         string file = FileOf(data, id);
         var pack = IconPacks.Serializer().Deserialize<ShortcutPack>(File.ReadAllText(file, Encoding.UTF8));
-        if (pack == null || pack.id != id) throw new Exception("ショートカットパックのファイルが壊れています。");
+        if (pack == null || pack.id != id) throw new Exception(global::Text.Get("source.shortcutpacks.5"));
         if (pack.shortcuts == null) pack.shortcuts = new List<ShortcutPackItem>();
         return pack;
     }
@@ -96,37 +96,37 @@ static class ShortcutPacks
 
     internal static string Save(string data, ShortcutPack input)
     {
-        if (input == null) throw new Exception("ショートカットパックを読めませんでした。");
+        if (input == null) throw new Exception(global::Text.Get("source.shortcutpacks.6"));
         lock (Gate)
         {
             if (List(data).Count >= MaxPacks)
-                throw new Exception("ショートカットパックは" + MaxPacks + "個までです。使わないものを削除してください。");
+                throw new Exception(global::Text.Get("source.shortcutpacks.7") + MaxPacks + global::Text.Get("source.shortcutpacks.8"));
             if (input.shortcuts == null || input.shortcuts.Count == 0)
-                throw new Exception("ショートカットを1つ以上入れてください。");
+                throw new Exception(global::Text.Get("source.shortcutpacks.9"));
             if (input.shortcuts.Count > MaxShortcuts)
-                throw new Exception("ショートカットは1パック" + MaxShortcuts + "個までです。");
+                throw new Exception(global::Text.Get("source.shortcutpacks.10") + MaxShortcuts + global::Text.Get("source.shortcutpacks.11"));
             var clean = new ShortcutPack
             {
                 id = Guid.NewGuid().ToString("N"),
-                name = Text(input.name, 60, true, "パック名"),
-                author = Text(input.author, 60, false, "作者名"),
-                app = Text(input.app, 60, false, "アプリ名"),
+                name = Text(input.name, 60, true, global::Text.Get("source.shortcutpacks.12")),
+                author = Text(input.author, 60, false, global::Text.Get("source.shortcutpacks.13")),
+                app = Text(input.app, 60, false, global::Text.Get("source.shortcutpacks.14")),
                 iconPack = IconPacks.ValidId(input.iconPack) ? input.iconPack : "",
                 created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                 shortcuts = new List<ShortcutPackItem>(),
             };
             foreach (ShortcutPackItem item in input.shortcuts)
             {
-                string name = Text(item == null ? null : item.name, 80, true, "ショートカット名");
-                string keys = Text(item.keys, 80, true, name + "のキー");
+                string name = Text(item == null ? null : item.name, 80, true, global::Text.Get("source.shortcutpacks.15"));
+                string keys = Text(item.keys, 80, true, name + global::Text.Get("source.shortcutpacks.16"));
                 try { ShortcutKeys.ParseCombo(keys); }
-                catch { throw new Exception(name + "のキーが正しくありません。"); }
+                catch { throw new Exception(name + global::Text.Get("source.shortcutpacks.17")); }
                 clean.shortcuts.Add(new ShortcutPackItem
                 {
                     name = name,
                     keys = keys,
-                    description = Text(item.description, 80, false, "説明"),
-                    icon = Text(item.icon, 80, false, "アイコン名"),
+                    description = Text(item.description, 80, false, global::Text.Get("source.shortcutpacks.18")),
+                    icon = Text(item.icon, 80, false, global::Text.Get("source.shortcutpacks.19")),
                 });
             }
             Write(data, clean);

@@ -62,9 +62,9 @@ static class DeckBackgrounds
     internal static DeckBackground Clean(DeckBackground next, DeckBackground current)
     {
         if (next == null) next = new DeckBackground();
-        if (!IconPresets.ValidColor(next.color) || !IconPresets.ValidColor(next.color2)) throw new Exception("背景色が正しくありません。");
-        if (next.dim < 0 || next.dim > 80 || next.blur < 0 || next.blur > 20) throw new Exception("背景の暗さ・ぼかしが範囲外です。");
-        if (next.keyClear < 0 || next.keyClear > 100) throw new Exception("ボタンの透過度が範囲外です。");
+        if (!IconPresets.ValidColor(next.color) || !IconPresets.ValidColor(next.color2)) throw new Exception(Text.Get("source.deckbackground.1"));
+        if (next.dim < 0 || next.dim > 80 || next.blur < 0 || next.blur > 20) throw new Exception(Text.Get("source.deckbackground.2"));
+        if (next.keyClear < 0 || next.keyClear > 100) throw new Exception(Text.Get("source.deckbackground.3"));
         return new DeckBackground
         {
             color = next.color ?? "",
@@ -110,17 +110,17 @@ static class DeckBackgrounds
         string[] prefixes = { "data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64," };
         string prefix = null;
         foreach (string candidate in prefixes) if (value != null && value.StartsWith(candidate, StringComparison.Ordinal)) prefix = candidate;
-        if (prefix == null) throw new Exception("背景画像は PNG・JPEG・WebP を選んでください。");
+        if (prefix == null) throw new Exception(Text.Get("source.deckbackground.4"));
         byte[] bytes;
         try { bytes = Convert.FromBase64String(value.Substring(prefix.Length)); }
-        catch { throw new Exception("背景画像を読み取れません。"); }
+        catch { throw new Exception(Text.Get("source.deckbackground.5")); }
         string type = prefix.Substring(5, prefix.IndexOf(';') - 5);
-        if (bytes.Length == 0 || bytes.Length > MaxImageBytes) throw new Exception("背景画像が大きすぎます。");
+        if (bytes.Length == 0 || bytes.Length > MaxImageBytes) throw new Exception(Text.Get("source.deckbackground.6"));
         bool valid = type == "image/png" ? bytes.Length > 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e && bytes[3] == 0x47
             : type == "image/jpeg" ? bytes.Length > 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff
             : bytes.Length > 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50;
-        if (!valid) throw new Exception("背景画像の形式が正しくありません。");
-        if (width < 1 || height < 1 || width > 4096 || height > 4096) throw new Exception("背景画像の大きさが正しくありません。");
+        if (!valid) throw new Exception(Text.Get("source.deckbackground.7"));
+        if (width < 1 || height < 1 || width > 4096 || height > 4096) throw new Exception(Text.Get("source.deckbackground.8"));
         string version = Guid.NewGuid().ToString("N");
         Directory.CreateDirectory(Folder(data));
         string file = Path.Combine(Folder(data), version + Extension(type)), temp = file + ".tmp";

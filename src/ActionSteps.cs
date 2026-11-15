@@ -21,13 +21,13 @@ static class ActionSteps
     internal static void Validate(List<ActionStep> steps)
     {
         if (steps == null) return;
-        if (steps.Count > 20) throw new Exception("操作の並びは20個以内です。");
+        if (steps.Count > 20) throw new Exception(Text.Get("source.actionsteps.1"));
         for (int i = 0; i < steps.Count; i++)
         {
             ActionStep step = steps[i];
-            if (step == null) throw new Exception((i + 1) + "番目の操作が正しくありません。");
+            if (step == null) throw new Exception((i + 1) + Text.Get("source.actionsteps.2"));
             if (step.delayMs < 0 || step.delayMs > 10000)
-                throw new Exception((i + 1) + "番目の待ち時間は0～10000ミリ秒です。");
+                throw new Exception((i + 1) + Text.Get("source.actionsteps.3"));
             var entry = new AppEntry
             {
                 type = step.type, action = step.action, category = step.category,
@@ -35,7 +35,7 @@ static class ActionSteps
                 hotkey = step.hotkey, deviceId = step.deviceId, deviceTarget = step.deviceTarget,
             };
             try { ValidateEntryAction(entry, ResolveAudio, false); }
-            catch (Exception error) { throw new Exception((i + 1) + "番目の操作: " + error.Message); }
+            catch (Exception error) { throw new Exception((i + 1) + Text.Get("source.actionsteps.4") + error.Message); }
         }
     }
 
@@ -63,7 +63,7 @@ static class ActionSteps
         }
         else if (DeckView.IsType(entry, "hotkey"))
         {
-            if (!ShortcutKeys.Exists(entry.action)) throw new Exception("登録されていないショートカットです");
+            if (!ShortcutKeys.Exists(entry.action)) throw new Exception(Text.Get("source.actionsteps.5"));
             ShortcutKeys.ValidateOverride(entry.action, entry.hotkey);
             entry.type = "hotkey"; entry.path = ""; entry.args = ""; entry.url = ""; entry.text = ""; entry.icon = null;
         }
@@ -80,9 +80,9 @@ static class ActionSteps
         else if (DeckView.IsType(entry, "app"))
         {
             entry.type = "app"; entry.action = null; entry.category = "app"; entry.url = ""; entry.text = "";
-            if (!AppImporter.ValidPath(entry.path)) throw new Exception("実在するexe・ショートカットの絶対パスを指定してください");
+            if (!AppImporter.ValidPath(entry.path)) throw new Exception(Text.Get("source.actionsteps.6"));
             if (refreshIcon) entry.icon = StartApps.IsStartApp(entry.path) ? StartApps.Icon(entry.path) : AppIcons.Read(entry.path);
         }
-        else throw new Exception("登録されていない操作種類です。");
+        else throw new Exception(Text.Get("source.actionsteps.7"));
     }
 }

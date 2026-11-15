@@ -43,7 +43,7 @@ static class AudioDevices
                             uint state;
                             Marshal.ThrowExceptionForHR(device.GetId(out id));
                             Marshal.ThrowExceptionForHR(device.GetState(out state));
-                            string name = "音声デバイス";
+                            string name = Text.Get("source.audiodevices.1");
                             Marshal.ThrowExceptionForHR(device.OpenPropertyStore(0, out properties));
                             var key = new PropertyKey
                             {
@@ -98,12 +98,12 @@ static class AudioDevices
     internal static AudioDeviceInfo Validate(string target, string id)
     {
         if (target != "speaker" && target != "mic")
-            throw new Exception("出力先または入力先を選んでください。");
+            throw new Exception(Text.Get("source.audiodevices.2"));
         if (String.IsNullOrWhiteSpace(id) || id.Length > 1024)
-            throw new Exception("切り替える機器を選んでください。");
+            throw new Exception(Text.Get("source.audiodevices.3"));
         AudioDeviceInfo device = List().Find(d => d.id == id && d.target == target);
         if (device == null)
-            throw new Exception("機器が見つかりません。PC設定画面で機器一覧を更新し、選び直してください。");
+            throw new Exception(Text.Get("source.audiodevices.4"));
         return device;
     }
 
@@ -113,7 +113,7 @@ static class AudioDevices
         {
             var device = Validate(target, id);
             if (!device.available)
-                throw new Exception("指定した機器は未接続または無効です。接続してからもう一度押してください。");
+                throw new Exception(Text.Get("source.audiodevices.5"));
             Enumerator enumerator = null;
             object instance = null;
             try
@@ -132,7 +132,7 @@ static class AudioDevices
                         Marshal.ThrowExceptionForHR(policy.SetDefaultEndpoint(id, role));
                     for (int role = 0; role < 3; role++)
                         if (DefaultId(enumerator, flow, role) != id)
-                            throw new Exception("切り替え結果を確認できませんでした。");
+                            throw new Exception(Text.Get("source.audiodevices.6"));
                 }
                 catch
                 {
@@ -151,20 +151,20 @@ static class AudioDevices
                         }
                     throw new Exception(
                         restored
-                            ? "機器を切り替えられませんでした。元の設定に戻しました。"
-                            : "機器の切り替えが完了しませんでした。Windowsのサウンド設定を確認してください。"
+                            ? Text.Get("source.audiodevices.7")
+                            : Text.Get("source.audiodevices.8")
                     );
                 }
             }
             catch (COMException)
             {
                 throw new Exception(
-                    "このWindowsでは音声機器を切り替えられませんでした。Windowsのサウンド設定から変更してください。"
+                    Text.Get("source.audiodevices.9")
                 );
             }
             catch (InvalidCastException)
             {
-                throw new Exception("このWindowsでは音声機器の切り替えに対応していません。");
+                throw new Exception(Text.Get("source.audiodevices.10"));
             }
             finally
             {

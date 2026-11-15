@@ -16,7 +16,7 @@ sealed class SettingsWindow : Form
         this.url = url;
         this.userDataFolder = userDataFolder;
         this.notify = notify;
-        Text = "TaPoard 設定";
+        Text = global::Text.Get("source.settingswindow.1");
         FormBorderStyle = FormBorderStyle.Sizable;
         MinimumSize = new Size(1100, 640);
         StartPosition = FormStartPosition.Manual;
@@ -38,7 +38,7 @@ sealed class SettingsWindow : Form
         webStarted = true;
         web.ProcessFailed = delegate
         {
-            if (notify != null) notify("設定ウインドウの表示が停止しました。閉じて開き直してください。");
+            if (notify != null) notify(global::Text.Get("source.settingswindow.2"));
         };
         web.Create(
             Handle,
@@ -47,7 +47,7 @@ sealed class SettingsWindow : Form
             {
                 if (error != null)
                 {
-                    if (notify != null) notify("設定ウインドウを開けませんでした：" + error);
+                    if (notify != null) notify(global::Text.Get("source.settingswindow.3") + error);
                     return;
                 }
                 web.SetBounds(ClientRectangle);

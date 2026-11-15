@@ -53,13 +53,13 @@ static class FirewallCheck
     {
         string script = Path.Combine(root, "setup-lan.ps1");
         if (!File.Exists(script))
-            throw new Exception("許可を追加するスクリプトがありません。インストール版の TaPoard で実行してください。");
+            throw new Exception(Text.Get("source.firewallcheck.1"));
         lock (Sync)
         {
             if (repairState == "running")
                 return;
             repairState = "running";
-            repairMessage = "Windows の確認画面で「はい」を押してください。";
+            repairMessage = Text.Get("source.firewallcheck.2");
         }
         var t = new Thread(
             delegate()
@@ -84,24 +84,24 @@ static class FirewallCheck
                         if (p.ExitCode == 0)
                         {
                             state = "done";
-                            message = "TaPoard の通信を許可し直しました。";
+                            message = Text.Get("source.firewallcheck.3");
                         }
                         else
                         {
                             state = "failed";
-                            message = "許可を追加できませんでした。詳しくは %TEMP%\\TaPoard-install.log を確認してください。";
+                            message = Text.Get("source.firewallcheck.4");
                         }
                     }
                 }
                 catch (System.ComponentModel.Win32Exception e)
                 {
                     state = e.NativeErrorCode == 1223 ? "cancelled" : "failed";
-                    message = e.NativeErrorCode == 1223 ? "管理者の確認がキャンセルされました。" : "許可を追加できませんでした：" + e.Message;
+                    message = e.NativeErrorCode == 1223 ? Text.Get("source.firewallcheck.5") : Text.Get("source.firewallcheck.6") + e.Message;
                 }
                 catch (Exception e)
                 {
                     state = "failed";
-                    message = "許可を追加できませんでした：" + e.Message;
+                    message = Text.Get("source.firewallcheck.7") + e.Message;
                 }
                 lock (Sync)
                 {

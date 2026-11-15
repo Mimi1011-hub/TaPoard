@@ -17,15 +17,15 @@ static class CustomActions
             || !Uri.TryCreate(value, UriKind.Absolute, out uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
         )
-            throw new Exception("URLはhttp://またはhttps://から入力してください。");
+            throw new Exception(Text.Get("source.customactions.url"));
     }
 
     internal static void ValidateText(string value)
     {
         if (String.IsNullOrEmpty(value))
-            throw new Exception("コピーするテキストを入力してください。");
+            throw new Exception(Text.Get("source.customactions.1"));
         if (value.Length > MaxTextLength)
-            throw new Exception("コピーするテキストは32768文字以内です。");
+            throw new Exception(Text.Get("source.customactions.2"));
     }
 
     internal static void OpenUrl(string value)
@@ -68,8 +68,8 @@ static class CustomActions
         thread.IsBackground = true;
         thread.Start();
         if (!thread.Join(2000))
-            throw new Exception("クリップボードへのコピーがタイムアウトしました。");
+            throw new Exception(Text.Get("source.customactions.3"));
         if (error != null)
-            throw new Exception("Windowsのクリップボードを使用できませんでした。もう一度押してください。");
+            throw new Exception(Text.Get("source.customactions.4"));
     }
 }

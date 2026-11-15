@@ -166,7 +166,7 @@ static class ShortcutKeys
             }
             byte[] combo;
             if (!keys.TryGetValue(action, out combo))
-                throw new Exception("登録されていないショートカットです。");
+                throw new Exception(Text.Get("source.shortcutkeys.1"));
             if (!String.IsNullOrEmpty(custom))
                 combo = ParseCombo(custom);
             if (String.Equals(action, "discord-soundboard-overlay", StringComparison.OrdinalIgnoreCase))
@@ -183,14 +183,14 @@ static class ShortcutKeys
         if (String.IsNullOrEmpty(value))
             return;
         if (IsAudio(action))
-            throw new Exception("この操作はキー変更に対応していません。");
+            throw new Exception(Text.Get("source.shortcutkeys.2"));
         ParseCombo(value);
     }
 
     internal static byte[] ParseCombo(string value)
     {
         if (value == null || value.Length > 80)
-            throw new Exception("キーの指定が正しくありません。");
+            throw new Exception(Text.Get("source.shortcutkeys.3"));
         var result = new List<byte>();
         var seen = new HashSet<byte>();
         bool main = false;
@@ -219,15 +219,15 @@ static class ShortcutKeys
                     break;
             }
             if (!seen.Add(code) || main)
-                throw new Exception("修飾キーの後にキーを1つ指定してください。");
+                throw new Exception(Text.Get("source.shortcutkeys.4"));
             if (!modifier)
                 main = true;
             result.Add(code);
         }
         if (!main)
-            throw new Exception("通常キーを1つ選んでください。");
+            throw new Exception(Text.Get("source.shortcutkeys.5"));
         if (seen.Contains(0x11) && seen.Contains(0x12) && seen.Contains(0x2E))
-            throw new Exception("Ctrl+Alt+Deleteは送信できません。");
+            throw new Exception(Text.Get("source.shortcutkeys.6"));
         return result.ToArray();
     }
 
@@ -307,7 +307,7 @@ static class ShortcutKeys
             case "MediaStop":
                 return 0xB2;
             default:
-                throw new Exception("対応していないキーです。");
+                throw new Exception(Text.Get("source.shortcutkeys.7"));
         }
     }
 
@@ -334,7 +334,7 @@ static class ShortcutKeys
         try
         {
             if (processes.Length == 0)
-                throw new Exception("Discordデスクトップ版を起動してください。");
+                throw new Exception(Text.Get("source.shortcutkeys.8"));
         }
         finally
         {
@@ -348,7 +348,7 @@ static class ShortcutKeys
     {
         IntPtr discord = FindDiscordWindow();
         if (discord == IntPtr.Zero)
-            throw new Exception("Discordデスクトップ版を起動してください。");
+            throw new Exception(Text.Get("source.shortcutkeys.9"));
         IntPtr previous = GetForegroundWindow();
         if (previous == discord)
         {
@@ -365,7 +365,7 @@ static class ShortcutKeys
                 ShowWindowAsync(discord, 6);
             else if (wasHidden)
                 ShowWindowAsync(discord, 0);
-            throw new Exception("Discordを一時的に操作対象へ切り替えられませんでした。");
+            throw new Exception(Text.Get("source.shortcutkeys.10"));
         }
         Thread.Sleep(70);
         SendCombo(combo);

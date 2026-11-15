@@ -17,18 +17,18 @@ static class WidgetRegistry
     static Dictionary<string, WidgetDefinition> CreateDefinitions()
     {
         var result = new Dictionary<string, WidgetDefinition>(StringComparer.OrdinalIgnoreCase);
-        Add(result, "app", "アプリ", new[] { "1x1", "2x2" }, false);
-        Add(result, "hotkey", "ショートカット", new[] { "1x1", "2x2" }, false);
+        Add(result, "app", Text.Get("source.widgetregistry.1"), new[] { "1x1", "2x2" }, false);
+        Add(result, "hotkey", Text.Get("source.widgetregistry.2"), new[] { "1x1", "2x2" }, false);
         Add(result, "url", "URL", new[] { "1x1", "2x2" }, false);
-        Add(result, "clipboard", "テキストコピー", new[] { "1x1", "2x2" }, false);
-        Add(result, "audioDevice", "音声機器", new[] { "1x1", "2x2" }, false);
-        Add(result, "clock", "時計", new[] { "2x1", "2x2" }, true);
-        Add(result, "weather", "天気", new[] { "1x1", "2x2" }, true);
-        Add(result, "metrics", "PC情報", new[] { "1x1", "2x2" }, true);
-        Add(result, "wheel", "マウスホイール", new[] { "1x1", "1x2", "2x2" }, true);
-        Add(result, "touchpad", "タッチパッド", new[] { "3x2", "2x3" }, true);
-        Add(result, "keypad", "テンキー", new[] { "4x4", "4x5" }, true);
-        Add(result, "slideshow", "スライドショー", SlideshowSizes(), true);
+        Add(result, "clipboard", Text.Get("source.widgetregistry.3"), new[] { "1x1", "2x2" }, false);
+        Add(result, "audioDevice", Text.Get("source.widgetregistry.4"), new[] { "1x1", "2x2" }, false);
+        Add(result, "clock", Text.Get("source.widgetregistry.5"), new[] { "2x1", "2x2" }, true);
+        Add(result, "weather", Text.Get("source.widgetregistry.6"), new[] { "1x1", "2x2" }, true);
+        Add(result, "metrics", Text.Get("source.widgetregistry.7"), new[] { "1x1", "2x2" }, true);
+        Add(result, "wheel", Text.Get("source.widgetregistry.8"), new[] { "1x1", "1x2", "2x2" }, true);
+        Add(result, "touchpad", Text.Get("source.widgetregistry.9"), new[] { "3x2", "2x3" }, true);
+        Add(result, "keypad", Text.Get("source.widgetregistry.10"), new[] { "4x4", "4x5" }, true);
+        Add(result, "slideshow", Text.Get("source.widgetregistry.11"), SlideshowSizes(), true);
         return result;
     }
 
@@ -67,7 +67,7 @@ static class WidgetRegistry
     {
         WidgetDefinition definition;
         if (String.IsNullOrWhiteSpace(type) || !Definitions.TryGetValue(type, out definition))
-            throw new Exception("登録されていない部品種類です。");
+            throw new Exception(Text.Get("source.widgetregistry.12"));
         return definition;
     }
 
@@ -102,7 +102,7 @@ static class WidgetRegistry
         if (!definition.displayOnly)
         {
             if (app.options != null && app.options.Count != 0)
-                throw new Exception("この部品には追加設定を保存できません。");
+                throw new Exception(Text.Get("source.widgetregistry.13"));
             app.options = null;
             return;
         }
@@ -117,7 +117,7 @@ static class WidgetRegistry
                 ? clockWidth == 2 && clockHeight == 2
                 : clockWidth == 2 && (clockHeight == 1 || clockHeight == 2);
             if (!validClockSize)
-                throw new Exception(clockStyle == "analog" ? "アナログ時計は2×2です。" : "デジタル時計は2×1または2×2です。");
+                throw new Exception(clockStyle == "analog" ? Text.Get("source.widgetregistry.14") : Text.Get("source.widgetregistry.15"));
             normalized["style"] = clockStyle;
             normalized["showSeconds"] = BooleanValue(source, "showSeconds", true);
             normalized["showDate"] = BooleanValue(source, "showDate", true);
@@ -127,13 +127,13 @@ static class WidgetRegistry
         }
         else if (definition.type == "weather")
         {
-            RequireSquareDimensions(app, "天気は1×1または2×2です。");
+            RequireSquareDimensions(app, Text.Get("source.widgetregistry.16"));
             normalized["forecastMode"] = EnumValue(source, "forecastMode", "hours", new[] { "hours", "days" });
             RejectUnknown(source, normalized);
         }
         else if (definition.type == "metrics")
         {
-            RequireSquareDimensions(app, "PC情報は1×1または2×2です。");
+            RequireSquareDimensions(app, Text.Get("source.widgetregistry.17"));
             normalized["primary"] = EnumValue(
                 source,
                 "primary",
@@ -151,7 +151,7 @@ static class WidgetRegistry
             string style = EnumValue(source, "style", "vertical", new[] { "vertical", "rotary" });
             int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
             bool fits = style == "vertical" ? width == 1 && (height == 1 || height == 2) : width == 2 && height == 2;
-            if (!fits) throw new Exception("縦型ホイールは1×1か1×2、円形ホイールは2×2です。");
+            if (!fits) throw new Exception(Text.Get("source.widgetregistry.18"));
             normalized["style"] = style;
             normalized["sensitivity"] = IntegerValue(source, "sensitivity", style == "vertical" ? 24 : 18, 1, 200);
             normalized["multiplier"] = IntegerValue(source, "multiplier", 1, 1, 10);
@@ -166,7 +166,7 @@ static class WidgetRegistry
         {
             int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
             if (!((width == 3 && height == 2) || (width == 2 && height == 3)))
-                throw new Exception("タッチパッドは3×2または2×3です。");
+                throw new Exception(Text.Get("source.widgetregistry.19"));
             normalized["speed"] = IntegerValue(source, "speed", 5, 1, 10);
             normalized["acceleration"] = BooleanValue(source, "acceleration", true);
             normalized["tapToClick"] = BooleanValue(source, "tapToClick", true);
@@ -179,10 +179,10 @@ static class WidgetRegistry
         {
             string shape = DeckLayout.Width(app) + "x" + DeckLayout.Height(app);
             if (Array.IndexOf(SlideshowSizes(), shape) < 0)
-                throw new Exception("スライドショーは横・縦とも3〜8マスです。");
+                throw new Exception(Text.Get("source.widgetregistry.20"));
             string folder = ShortText(source, "folder", "", 260).Trim();
             if (!Slideshow.ValidFolder(folder))
-                throw new Exception("スライドショーのフォルダは「C:\\写真」のような場所で指定してください。");
+                throw new Exception(Text.Get("source.widgetregistry.21"));
             normalized["folder"] = folder;
             normalized["interval"] = IntegerValue(source, "interval", 10, 3, 3600);
             normalized["order"] = EnumValue(source, "order", "name", new[] { "name", "random" });
@@ -192,7 +192,7 @@ static class WidgetRegistry
         else if (definition.type == "keypad")
         {
             if (DeckLayout.Width(app) != 4 || (DeckLayout.Height(app) != 4 && DeckLayout.Height(app) != 5))
-                throw new Exception("テンキーは4×4または4×5です。");
+                throw new Exception(Text.Get("source.widgetregistry.22"));
             RejectUnknown(source, normalized);
         }
         app.options = normalized;
@@ -217,7 +217,7 @@ static class WidgetRegistry
         int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
         string key = width + "x" + height;
         if (Array.IndexOf(definition.sizes, key) < 0)
-            throw new Exception(definition.label + "では" + key + "を使用できません。");
+            throw new Exception(definition.label + Text.Get("source.widgetregistry.23") + key + Text.Get("source.widgetregistry.24"));
     }
 
     static string EnumValue(Dictionary<string, object> source, string name, string fallback, string[] allowed)
@@ -225,7 +225,7 @@ static class WidgetRegistry
         object raw;
         string value = source.TryGetValue(name, out raw) ? raw as string : fallback;
         if (value == null || Array.IndexOf(allowed, value) < 0)
-            throw new Exception(name + " の設定が正しくありません。");
+            throw new Exception(name + Text.Get("source.widgetregistry.25"));
         return value;
     }
 
@@ -235,7 +235,7 @@ static class WidgetRegistry
         if (!source.TryGetValue(name, out raw))
             return fallback;
         if (!(raw is bool))
-            throw new Exception(name + " の設定が正しくありません。");
+            throw new Exception(name + Text.Get("source.widgetregistry.26"));
         return (bool)raw;
     }
 
@@ -246,13 +246,13 @@ static class WidgetRegistry
             return fallback;
         // Same strictness as BooleanValue: JSON integers only, never true or "50".
         if (!(raw is int || raw is long))
-            throw new Exception(name + " の設定が正しくありません。");
+            throw new Exception(name + Text.Get("source.widgetregistry.27"));
         long number = Convert.ToInt64(raw);
         if (number < Int32.MinValue || number > Int32.MaxValue)
-            throw new Exception(name + " の設定が正しくありません。");
+            throw new Exception(name + Text.Get("source.widgetregistry.28"));
         int value = (int)number;
         if (value < minimum || value > maximum)
-            throw new Exception(name + " の設定が正しくありません。");
+            throw new Exception(name + Text.Get("source.widgetregistry.29"));
         return value;
     }
 
@@ -263,7 +263,7 @@ static class WidgetRegistry
             return fallback;
         string value = raw as string;
         if (value == null || value.Length > maximum)
-            throw new Exception(name + " の設定が正しくありません。");
+            throw new Exception(name + Text.Get("source.widgetregistry.30"));
         return value;
     }
 
@@ -271,7 +271,7 @@ static class WidgetRegistry
     {
         foreach (string key in source.Keys)
             if (!normalized.ContainsKey(key))
-                throw new Exception("未対応の部品設定です: " + key);
+                throw new Exception(Text.Get("source.widgetregistry.31") + key);
     }
 
     internal static Dictionary<string, object> PublicEntry(AppEntry app)

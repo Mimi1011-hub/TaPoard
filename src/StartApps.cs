@@ -51,7 +51,7 @@ static class StartApps
                 string id = Convert.ToString(item.GetType().InvokeMember("Path", BindingFlags.GetProperty, null, item, null));
                 if (String.IsNullOrWhiteSpace(name) || !IsStartApp(Prefix + id) || !seen.Add(id)) continue;
                 // Uninstallers and help files clutter the list.
-                if (name.IndexOf("uninstall", StringComparison.OrdinalIgnoreCase) >= 0 || name.Contains("アンインストール")) continue;
+                if (name.IndexOf("uninstall", StringComparison.OrdinalIgnoreCase) >= 0 || name.Contains(Text.Get("source.startapps.1"))) continue;
                 result.Add(new StartApp { name = name.Length > 80 ? name.Substring(0, 80) : name, id = id });
             }
         }
@@ -75,7 +75,7 @@ static class StartApps
 
     internal static void Start(string path)
     {
-        if (!IsStartApp(path)) throw new Exception("アプリが見つかりません。");
+        if (!IsStartApp(path)) throw new Exception(Text.Get("source.startapps.2"));
         Process.Start(new ProcessStartInfo("explorer.exe", "\"" + path + "\"") { UseShellExecute = false });
     }
 

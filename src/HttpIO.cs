@@ -59,16 +59,16 @@ static class HttpIO
         string type, origin, host, length;
         int count;
         if (!headers.TryGetValue("Content-Type", out type) || !type.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
-            throw new Exception("JSONで送信してください。");
+            throw new Exception(Text.Get("source.httpio.1"));
         if (headers.TryGetValue("Origin", out origin))
         {
             Uri uri;
             if (!Uri.TryCreate(origin, UriKind.Absolute, out uri) || !headers.TryGetValue("Host", out host)
                 || uri.Authority != host || uri.Scheme != "http")
-                throw new Exception("別サイトからのリクエストは許可されていません。");
+                throw new Exception(Text.Get("source.httpio.2"));
         }
         if (!headers.TryGetValue("Content-Length", out length) || !int.TryParse(length, out count) || count < 0 || count > 2097152)
-            throw new Exception("データが大きすぎます。");
+            throw new Exception(Text.Get("source.httpio.3"));
         byte[] body = new byte[count];
         int read = 0;
         while (read < count)

@@ -131,7 +131,7 @@ static class DeckLayout
     // Stores one page's faders; a page that matches the shared placement is dropped again.
     internal static void SetPageControls(Settings s, bool portrait, int page, ControlLayout c, bool speakerHidden, bool micHidden)
     {
-        if (page < 0 || page >= MaxPages) throw new Exception("ページ番号が正しくありません。");
+        if (page < 0 || page >= MaxPages) throw new Exception(Text.Get("source.decklayoutv2.1"));
         int columns = Math.Max(1, Columns(s, portrait));
         var speaker = FromLayout(c.speakerRow, c.speakerColumn, c.speakerSlot, c.speakerWidth, c.speakerHeight, c.speakerSize, columns);
         var mic = FromLayout(c.micRow, c.micColumn, c.micSlot, c.micWidth, c.micHeight, c.micSize, columns);
@@ -286,7 +286,7 @@ static class DeckLayout
 
     static void Mark(HashSet<string> occupied, TilePosition p, int width, int height, int columns, int rows, Settings s, bool portrait)
     {
-        if (!Fits(occupied, p, width, height, columns, rows, s, portrait)) throw new Exception("ボタンが重なるか枠からはみ出します。縦・横の配置を確認し、空き枠へ移動してください。");
+        if (!Fits(occupied, p, width, height, columns, rows, s, portrait)) throw new Exception(Text.Get("source.decklayoutv2.2"));
         MarkArea(occupied, p.page, p.row, p.column, width, height);
     }
 
@@ -300,7 +300,7 @@ static class DeckLayout
             int value = wanted == null ? page * 1000 + row * 10 + column : Math.Abs(page - wanted.page) * 1000 + Math.Abs(row - wanted.row) * 10 + Math.Abs(column - wanted.column);
             if (value < score) { score = value; best = candidate; }
         }
-        if (best == null) throw new Exception("配置する空き枠がありません。"); return best;
+        if (best == null) throw new Exception(Text.Get("source.decklayoutv2.3")); return best;
     }
 
     static void PlaceUnpositioned(Settings s, bool portrait)
@@ -318,7 +318,7 @@ static class DeckLayout
             if (!AreaFree(occupied, 0, row, column, wanted.width, wanted.height)) continue; int value = Math.Abs(row - wanted.row) * 10 + Math.Abs(column - wanted.column);
             if (value < score) { score = value; best = new ControlPlacement { row = row, column = column, width = wanted.width, height = wanted.height }; }
         }
-        if (best == null) throw new Exception("フェーダーを配置できる空き枠がありません。"); return best;
+        if (best == null) throw new Exception(Text.Get("source.decklayoutv2.4")); return best;
     }
 
     internal static void Reflow(Settings s, string orientation, int oldColumns)
@@ -350,8 +350,8 @@ static class DeckLayout
     {
         bool portrait = orientation == "portrait";
         int pages = Pages(s, orientation);
-        if (pages <= 1) throw new Exception("最後の1ページは削除できません。");
-        if (page < 0 || page >= pages) throw new Exception("ページ番号が正しくありません。");
+        if (pages <= 1) throw new Exception(Text.Get("source.decklayoutv2.5"));
+        if (page < 0 || page >= pages) throw new Exception(Text.Get("source.decklayoutv2.6"));
         PageNames.Delete(s, portrait, page);
         int removed = s.apps.RemoveAll(app => app.orientation == orientation && Position(app, portrait) != null && Position(app, portrait).page == page);
         foreach (var app in s.apps)
@@ -378,7 +378,7 @@ static class DeckLayout
     {
         bool portrait = orientation == "portrait";
         int pages = Pages(s, orientation);
-        if (page < 0 || page >= pages || to < 0 || to >= pages || Math.Abs(page - to) != 1) throw new Exception("ページを移動できません。");
+        if (page < 0 || page >= pages || to < 0 || to >= pages || Math.Abs(page - to) != 1) throw new Exception(Text.Get("source.decklayoutv2.7"));
         PageNames.Move(s, portrait, page, to);
         foreach (var app in s.apps)
         {
@@ -410,7 +410,7 @@ static class DeckLayout
                 var candidate = new TilePosition { page = page, row = row, column = column };
                 if (Fits(occupied, candidate, Width(app), Height(app), columns, rows, s, portrait)) found = candidate;
             }
-            if (found == null) throw new Exception("配置する空き枠がありません。");
+            if (found == null) throw new Exception(Text.Get("source.decklayoutv2.8"));
             SetPosition(app, portrait, found); MarkArea(occupied, found.page, found.row, found.column, Width(app), Height(app));
         }
         int pages = RequiredPages(s, orientation);
@@ -451,13 +451,13 @@ static class DeckLayout
 
     internal static void Validate(Settings s)
     {
-        if (s.pageCount < 1 || s.pageCount > MaxPages || s.landscapePageCount < 1 || s.landscapePageCount > MaxPages || s.portraitPageCount < 1 || s.portraitPageCount > MaxPages) throw new Exception("縦・横のページ数はそれぞれ1～40です。");
-        if (!GridCountValid(s.landscapeColumns) || !GridCountValid(s.landscapeRows) || !GridCountValid(s.portraitColumns) || !GridCountValid(s.portraitRows)) throw new Exception("縦・横の枠数は2～8です。");
-        foreach (bool portrait in new[] { false, true }) if (!ControlsValid(s, portrait)) throw new Exception((portrait ? "縦" : "横") + "配置でフェーダー同士が重なるか枠からはみ出します。先に空き枠へ移動してください。");
+        if (s.pageCount < 1 || s.pageCount > MaxPages || s.landscapePageCount < 1 || s.landscapePageCount > MaxPages || s.portraitPageCount < 1 || s.portraitPageCount > MaxPages) throw new Exception(Text.Get("source.decklayoutv2.9"));
+        if (!GridCountValid(s.landscapeColumns) || !GridCountValid(s.landscapeRows) || !GridCountValid(s.portraitColumns) || !GridCountValid(s.portraitRows)) throw new Exception(Text.Get("source.decklayoutv2.10"));
+        foreach (bool portrait in new[] { false, true }) if (!ControlsValid(s, portrait)) throw new Exception((portrait ? Text.Get("source.decklayoutv2.11") : Text.Get("source.decklayoutv2.12")) + Text.Get("source.decklayoutv2.13"));
         foreach (var app in s.apps)
         {
             WidgetRegistry.ValidateDimensions(app);
-            if (app.fontSize < 8 || app.fontSize > 28 || app.iconScale < 20 || app.iconScale > 100 || !app.labelOpacity.HasValue || app.labelOpacity.Value < 0 || app.labelOpacity.Value > 100 || (app.keyClear.HasValue && (app.keyClear.Value < 0 || app.keyClear.Value > 100))) throw new Exception("文字・アイコンの表示設定が範囲外です。");
+            if (app.fontSize < 8 || app.fontSize > 28 || app.iconScale < 20 || app.iconScale > 100 || !app.labelOpacity.HasValue || app.labelOpacity.Value < 0 || app.labelOpacity.Value > 100 || (app.keyClear.HasValue && (app.keyClear.Value < 0 || app.keyClear.Value > 100))) throw new Exception(Text.Get("source.decklayoutv2.14"));
         }
         foreach (bool portrait in new[] { false, true })
         {

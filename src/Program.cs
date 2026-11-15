@@ -193,6 +193,7 @@ partial class Program
                 ui = new Control();
                 var handle = ui.Handle;
                 CreateTrayIcon();
+                Text.Changed += RefreshTrayText;
                 InitPcWindow();
                 string startup = StartupMode();
                 if (startup != "none")
@@ -309,19 +310,28 @@ partial class Program
             Text = "TaPoard",
             Visible = true,
         };
+        tray.ContextMenuStrip = CreateTrayMenu();
+        tray.DoubleClick += delegate
+        {
+            OpenSettings();
+        };
+    }
+
+    static ContextMenuStrip CreateTrayMenu()
+    {
         var menu = new ContextMenuStrip();
-        var openSettings = new ToolStripMenuItem("設定を開く", null, delegate { OpenSettings(); });
+        var openSettings = new ToolStripMenuItem(Text.Get("source.program.1"), null, delegate { OpenSettings(); });
         openSettings.Font = new Font(openSettings.Font, FontStyle.Bold);
-        var openWindow = new ToolStripMenuItem("PC 用ウィンドウを開く", null, delegate { OpenPcWindowFromTray(); });
-        var leaveViewOnly = new ToolStripMenuItem("見るだけモードを解除（Ctrl+Alt+V）", null, delegate { PcWindowService.SetViewOnly(false); });
+        var openWindow = new ToolStripMenuItem(Text.Get("source.program.2"), null, delegate { OpenPcWindowFromTray(); });
+        var leaveViewOnly = new ToolStripMenuItem(Text.Get("source.program.3"), null, delegate { PcWindowService.SetViewOnly(false); });
         menu.Items.Add(openSettings);
         menu.Items.Add(openWindow);
         menu.Items.Add(leaveViewOnly);
-        menu.Items.Add("PC 用ウィンドウの設定", null, delegate { OpenPcWindowSettings(); });
+        menu.Items.Add(Text.Get("source.program.4"), null, delegate { OpenPcWindowSettings(); });
         menu.Items.Add(new ToolStripSeparator());
         menu.Opening += delegate { leaveViewOnly.Visible = PcWindowService.ViewOnly; };
         menu.Items.Add(
-            "古い設定画面をブラウザで開く",
+            Text.Get("source.program.5"),
             null,
             delegate
             {
@@ -329,18 +339,25 @@ partial class Program
             }
         );
         menu.Items.Add(
-            "終了",
+            Text.Get("source.program.6"),
             null,
             delegate
             {
                 Application.Exit();
             }
         );
-        tray.ContextMenuStrip = menu;
-        tray.DoubleClick += delegate
+        return menu;
+    }
+
+    static void RefreshTrayText()
+    {
+        if (ui == null || ui.IsDisposed) return;
+        ui.BeginInvoke(new MethodInvoker(delegate
         {
-            OpenSettings();
-        };
+            ContextMenuStrip old = tray.ContextMenuStrip;
+            tray.ContextMenuStrip = CreateTrayMenu();
+            if (old != null) old.Dispose();
+        }));
     }
 
     static void OpenSettings()

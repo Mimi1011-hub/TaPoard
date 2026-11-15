@@ -7,10 +7,10 @@ static class SettingsMigration
     internal static SettingsV3 ToV3(Settings settings)
     {
         if (settings == null)
-            throw new Exception("設定を変換できません。");
+            throw new Exception(Text.Get("source.settingsmigration.1"));
         foreach (var app in settings.apps ?? new List<AppEntry>())
             if (app.orientation != "landscape" && app.orientation != "portrait")
-                throw new Exception("部品の画面の向きが正しくありません。");
+                throw new Exception(Text.Get("source.settingsmigration.2"));
         return new SettingsV3
         {
             schemaVersion = 3,
@@ -50,7 +50,7 @@ static class SettingsMigration
                 continue;
             TilePosition position = DeckLayout.Position(app, portrait);
             if (position == null || position.page < 0 || position.page >= pageCount)
-                throw new Exception("部品のページ位置が正しくありません。");
+                throw new Exception(Text.Get("source.settingsmigration.3"));
             pages[position.page].items.Add(ToItem(app, position));
         }
         return new OrientationV3
@@ -87,7 +87,7 @@ static class SettingsMigration
     static FaderV3 ToFader(ControlPlacement placement, bool off)
     {
         if (placement == null)
-            throw new Exception("フェーダー位置が正しくありません。");
+            throw new Exception(Text.Get("source.settingsmigration.4"));
         return new FaderV3
         {
             row = placement.row,
@@ -138,7 +138,7 @@ static class SettingsMigration
     internal static Settings ToV2(SettingsV3 settings)
     {
         if (settings == null || settings.schemaVersion != 3 || settings.security == null || settings.deck == null || settings.deck.landscape == null || settings.deck.portrait == null)
-            throw new Exception("settings-v3.json の形式を確認できません。");
+            throw new Exception(Text.Get("source.settingsmigration.5"));
         var result = new Settings
         {
             schemaVersion = 2,
@@ -163,7 +163,7 @@ static class SettingsMigration
     static void ApplyOrientation(Settings target, OrientationV3 source, bool portrait)
     {
         if (source == null || source.faders == null || source.faders.speaker == null || source.faders.mic == null || source.pages == null || source.pages.Count < 1)
-            throw new Exception("settings-v3.json の向き別設定が正しくありません。");
+            throw new Exception(Text.Get("source.settingsmigration.6"));
         if (portrait)
         {
             target.portraitColumns = source.columns;
@@ -193,7 +193,7 @@ static class SettingsMigration
         {
             PageV3 sourcePage = source.pages[page];
             if (sourcePage == null)
-                throw new Exception("settings-v3.json のページ設定が正しくありません。");
+                throw new Exception(Text.Get("source.settingsmigration.7"));
             PageNames.List(target, portrait).Add(PageNames.Normalize(sourcePage.name));
             if (sourcePage.faders != null)
                 Controls(target, portrait).Add(new ControlPage
@@ -222,7 +222,7 @@ static class SettingsMigration
     internal static AppEntry ToApp(DeckItem item, bool portrait, int page)
     {
         if (item == null)
-            throw new Exception("settings-v3.json の部品設定が正しくありません。");
+            throw new Exception(Text.Get("source.settingsmigration.8"));
         var position = new TilePosition { page = page, row = item.row, column = item.column };
         return new AppEntry
         {

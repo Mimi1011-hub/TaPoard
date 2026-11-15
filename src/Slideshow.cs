@@ -60,7 +60,7 @@ static class Slideshow
     {
         var files = Files(folder);
         if (files.Length == 0)
-            return new { count = 0, index = 0, name = "", data = (string)null, error = String.IsNullOrEmpty(folder) ? "フォルダが設定されていません。PC設定画面で選んでください。" : Directory.Exists(folder) ? "フォルダに画像（JPEG・PNG・BMP・GIF）がありません。" : "フォルダが見つかりません。" };
+            return new { count = 0, index = 0, name = "", data = (string)null, error = String.IsNullOrEmpty(folder) ? Text.Get("source.slideshow.1") : Directory.Exists(folder) ? Text.Get("source.slideshow.2") : Text.Get("source.slideshow.3") };
         index = ((index % files.Length) + files.Length) % files.Length;
         string file = files[index], data = null;
         for (int tries = 0; tries < Math.Min(5, files.Length) && data == null; tries++)
@@ -69,7 +69,7 @@ static class Slideshow
             data = Read(file);
             if (data != null) index = (index + tries) % files.Length;
         }
-        return new { count = files.Length, index = index, name = Path.GetFileNameWithoutExtension(file), data = data, error = data == null ? "画像を読み込めませんでした。" : "" };
+        return new { count = files.Length, index = index, name = Path.GetFileNameWithoutExtension(file), data = data, error = data == null ? Text.Get("source.slideshow.4") : "" };
     }
 
     static string Read(string file)
@@ -148,7 +148,7 @@ static class Slideshow
             try
             {
                 using (var owner = new Form { TopMost = true, ShowInTaskbar = false, Width = 0, Height = 0, StartPosition = FormStartPosition.CenterScreen })
-                using (var dialog = new FolderBrowserDialog { Description = "スライドショーに使う画像のフォルダを選んでください", ShowNewFolderButton = false })
+                using (var dialog = new FolderBrowserDialog { Description = Text.Get("source.slideshow.5"), ShowNewFolderButton = false })
                 {
                     if (ValidFolder(start) && Directory.Exists(start)) dialog.SelectedPath = start;
                     owner.Show();
@@ -164,7 +164,7 @@ static class Slideshow
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         thread.Join();
-        if (error != null) throw new Exception("フォルダを選ぶ画面を開けませんでした：" + error.Message);
+        if (error != null) throw new Exception(Text.Get("source.slideshow.6") + error.Message);
         return result;
     }
 }

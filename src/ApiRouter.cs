@@ -41,7 +41,7 @@ sealed class ApiRouter<T>
     {
         for (int i = 0; i < routes.Count; i++)
             if (routes[i].method == method && routes[i].path == path)
-                throw new Exception("同じAPIルートが重複しています。");
+                throw new Exception(Text.Get("source.apirouter.1"));
         routes.Add(new Route { method = method, path = path, access = access, handler = handler, prefix = prefix });
     }
 

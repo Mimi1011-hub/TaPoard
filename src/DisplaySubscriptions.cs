@@ -43,9 +43,9 @@ static class DisplaySubscriptions
         bool renewWeather
     )
     {
-        if (String.IsNullOrEmpty(key) || key.Length > 160) throw new Exception("表示セッションが正しくありません。");
+        if (String.IsNullOrEmpty(key) || key.Length > 160) throw new Exception(Text.Get("source.displaysubscriptions.1"));
         var requested = new HashSet<string>(visibleIds ?? new string[0], StringComparer.Ordinal);
-        if (requested.Count > 40) throw new Exception("表示部品が多すぎます。");
+        if (requested.Count > 40) throw new Exception(Text.Get("source.displaysubscriptions.2"));
         var metrics = new HashSet<string>(StringComparer.Ordinal);
         var weather = new HashSet<string>(StringComparer.Ordinal);
         foreach (var app in configured)
@@ -61,7 +61,7 @@ static class DisplaySubscriptions
             Lease lease;
             if (!Leases.TryGetValue(key, out lease))
             {
-                if (Leases.Count >= 32) throw new Exception("表示セッションが多すぎます。");
+                if (Leases.Count >= 32) throw new Exception(Text.Get("source.displaysubscriptions.3"));
                 lease = new Lease { key = key }; Leases.Add(key, lease);
             }
             if (renewMetrics)

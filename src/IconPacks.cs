@@ -51,7 +51,7 @@ static class IconPacks
 
     static string FileOf(string data, string id)
     {
-        if (!ValidId(id)) throw new Exception("アイコンパックが見つかりません。");
+        if (!ValidId(id)) throw new Exception(Text.Get("source.iconpacks.1"));
         return Path.Combine(Folder(data), id + ".json");
     }
 
@@ -66,9 +66,9 @@ static class IconPacks
     static IconPack Read(string data, string id)
     {
         string file = FileOf(data, id);
-        if (!File.Exists(file)) throw new Exception("アイコンパックが見つかりません。");
+        if (!File.Exists(file)) throw new Exception(Text.Get("source.iconpacks.2"));
         var pack = Serializer().Deserialize<IconPack>(File.ReadAllText(file, Encoding.UTF8));
-        if (pack == null || pack.id != id) throw new Exception("アイコンパックのファイルが壊れています。");
+        if (pack == null || pack.id != id) throw new Exception(Text.Get("source.iconpacks.3"));
         if (pack.icons == null) pack.icons = new List<IconPackItem>();
         return pack;
     }
@@ -120,11 +120,11 @@ static class IconPacks
     {
         lock (Gate)
         {
-            if (List(data).Count >= MaxPacks) throw new Exception("アイコンパックは" + MaxPacks + "個までです。使わないパックを削除してください。");
+            if (List(data).Count >= MaxPacks) throw new Exception(Text.Get("source.iconpacks.4") + MaxPacks + Text.Get("source.iconpacks.5"));
             var pack = new IconPack
             {
                 id = Guid.NewGuid().ToString("N"),
-                name = CleanText(name, "アイコンパック"),
+                name = CleanText(name, Text.Get("source.iconpacks.6")),
                 author = CleanText(author, ""),
                 created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                 icons = new List<IconPackItem>(),
@@ -137,23 +137,23 @@ static class IconPacks
     // Appends checked icons; the settings page sends a large pack in several requests.
     internal static int Add(string data, string id, List<IconPackItem> icons)
     {
-        if (icons == null || icons.Count == 0) throw new Exception("追加するアイコンがありません。");
+        if (icons == null || icons.Count == 0) throw new Exception(Text.Get("source.iconpacks.7"));
         lock (Gate)
         {
             var pack = Read(data, id);
-            if (pack.icons.Count + icons.Count > MaxIcons) throw new Exception("1つのパックに入れられるアイコンは" + MaxIcons + "個までです。");
+            if (pack.icons.Count + icons.Count > MaxIcons) throw new Exception(Text.Get("source.iconpacks.8") + MaxIcons + Text.Get("source.iconpacks.9"));
             long chars = 0;
             foreach (var icon in pack.icons) chars += (icon.data ?? "").Length;
             foreach (var icon in icons) if (icon != null) chars += (icon.data ?? "").Length;
-            if (chars > MaxPackChars) throw new Exception("アイコンパックが大きすぎます（画像の合計が64MBまで）。パックを分けて読み込んでください。");
+            if (chars > MaxPackChars) throw new Exception(Text.Get("source.iconpacks.10"));
             var used = new HashSet<string>();
             foreach (var icon in pack.icons) used.Add(icon.id);
             foreach (var icon in icons)
             {
                 if (icon == null || !IconPresets.ValidCustomIcon(icon.data) || String.IsNullOrEmpty(icon.data))
-                    throw new Exception("アイコン画像の形式またはサイズが正しくありません。");
+                    throw new Exception(Text.Get("source.iconpacks.11"));
                 if (!IconPresets.Exists(icon.key)) icon.key = "";
-                icon.name = CleanText(icon.name, "アイコン");
+                icon.name = CleanText(icon.name, Text.Get("source.iconpacks.12"));
                 string itemId = ValidItemId(icon.id) ? icon.id : "i" + (pack.icons.Count + 1);
                 int n = 2;
                 string baseId = itemId;
@@ -174,7 +174,7 @@ static class IconPacks
         lock (Gate)
         {
             string file = FileOf(data, id);
-            if (!File.Exists(file)) throw new Exception("アイコンパックが見つかりません。");
+            if (!File.Exists(file)) throw new Exception(Text.Get("source.iconpacks.13"));
             File.Delete(file);
         }
     }

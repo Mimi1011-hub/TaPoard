@@ -55,7 +55,7 @@ static class InputSessions
     const int MaxWheelSteps = 20;
     const int LifetimeSeconds = 30;
     internal const int OwnershipSeconds = 2;
-    internal const string BusyMessage = "他の端末が操作中です。";
+    internal static string BusyMessage { get { return Text.Get("source.inputsessions.1"); } }
     static readonly object Sync = new object();
     static readonly Dictionary<string, Session> Sessions = new Dictionary<string, Session>(StringComparer.Ordinal);
     static readonly Timer ExpiryTimer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
@@ -69,7 +69,7 @@ static class InputSessions
     {
         ValidateOwner(owner);
         var requested = new HashSet<string>(visibleIds ?? new string[0], StringComparer.Ordinal);
-        if (requested.Count > 40) throw new Exception("表示部品が多すぎます。");
+        if (requested.Count > 40) throw new Exception(Text.Get("source.inputsessions.2"));
         var allowed = new Dictionary<string, AppEntry>(StringComparer.Ordinal);
         foreach (var app in configured)
             if (requested.Contains(app.id) && (IsType(app, "wheel") || IsType(app, "touchpad") || IsType(app, "keypad"))) allowed[app.id] = app;
@@ -85,7 +85,7 @@ static class InputSessions
 
             int missing = 0;
             foreach (string widgetId in allowed.Keys) if (FindLocked(owner, widgetId) == null) missing++;
-            if (Sessions.Count + missing > MaxSessions) throw new Exception("入力セッションが多すぎます。");
+            if (Sessions.Count + missing > MaxSessions) throw new Exception(Text.Get("source.inputsessions.3"));
 
             var result = new List<PublicSession>();
             foreach (var pair in allowed)
@@ -100,7 +100,7 @@ static class InputSessions
                     do { id = IdFactory(); attempts++; }
                     while (Sessions.ContainsKey(id) && attempts < 8);
                     if (String.IsNullOrEmpty(id) || id.Length > 64 || Sessions.ContainsKey(id))
-                        throw new Exception("入力セッションを発行できませんでした。");
+                        throw new Exception(Text.Get("source.inputsessions.4"));
                     session = new Session { id = id, owner = owner, widgetId = widgetId };
                     Sessions.Add(session.id, session);
                 }
@@ -120,8 +120,8 @@ static class InputSessions
     internal static Ack Execute(string owner, string sessionId, int sequence, NativeInputEvent[] events)
     {
         ValidateOwner(owner);
-        if (String.IsNullOrEmpty(sessionId) || sessionId.Length > 64) throw new Exception("入力セッションが正しくありません。");
-        if (sequence < 1) throw new Exception("入力の連番が正しくありません。");
+        if (String.IsNullOrEmpty(sessionId) || sessionId.Length > 64) throw new Exception(Text.Get("source.inputsessions.5"));
+        if (sequence < 1) throw new Exception(Text.Get("source.inputsessions.6"));
         ValidateEvents(events);
         string digest = Digest(events);
         var watch = Stopwatch.StartNew();
@@ -131,18 +131,18 @@ static class InputSessions
             PruneLocked(now);
             Session session;
             if (!Sessions.TryGetValue(sessionId, out session) || session.owner != owner)
-                throw new Exception("入力セッションの有効期限が切れています。");
+                throw new Exception(Text.Get("source.inputsessions.7"));
             ValidateForSession(session, events);
             if (sequence == session.lastSequence)
             {
-                if (session.lastDigest != digest) { RemoveLocked(session, true); ArmLocked(now); throw new Exception("同じ連番の内容が一致しません。"); }
+                if (session.lastDigest != digest) { RemoveLocked(session, true); ArmLocked(now); throw new Exception(Text.Get("source.inputsessions.8")); }
                 ArmLocked(now);
                 return new Ack { ok = true, acknowledged = sequence, duplicate = true, serverElapsedMs = watch.ElapsedMilliseconds };
             }
             if (sequence != session.lastSequence + 1)
             {
                 RemoveLocked(session, true); ArmLocked(now);
-                throw new Exception("入力の連番が前後しています。新しいセッションを準備してください。");
+                throw new Exception(Text.Get("source.inputsessions.9"));
             }
 
             if (activeSessionId != null && activeSessionId != session.id)
@@ -193,8 +193,8 @@ static class InputSessions
             PruneLocked(now);
             Session session;
             if (sessionId == null || !Sessions.TryGetValue(sessionId, out session) || session.owner != owner)
-                throw new Exception("入力セッションの有効期限が切れています。");
-            if (activeSessionId != session.id) { ArmLocked(now); throw new Exception("操作権がありません。"); }
+                throw new Exception(Text.Get("source.inputsessions.10"));
+            if (activeSessionId != session.id) { ArmLocked(now); throw new Exception(Text.Get("source.inputsessions.11")); }
             activeUntil = now.AddSeconds(OwnershipSeconds);
             session.expires = now.AddSeconds(LifetimeSeconds);
             ArmLocked(now);
@@ -236,13 +236,13 @@ static class InputSessions
     {
         var enumerable = raw as IEnumerable;
         if (enumerable == null || raw is string || raw is Dictionary<string, object>)
-            throw new Exception("入力イベントが正しくありません。");
+            throw new Exception(Text.Get("source.inputsessions.12"));
         var result = new List<NativeInputEvent>();
         foreach (object value in enumerable)
         {
             var item = value as Dictionary<string, object>;
-            if (item == null) throw new Exception("入力イベントが正しくありません。");
-            object rawType; if (!item.TryGetValue("type", out rawType)) throw new Exception("入力種類がありません。");
+            if (item == null) throw new Exception(Text.Get("source.inputsessions.13"));
+            object rawType; if (!item.TryGetValue("type", out rawType)) throw new Exception(Text.Get("source.inputsessions.14"));
             var e = new NativeInputEvent { type = Convert.ToString(rawType) };
             object field;
             if (item.TryGetValue("dx", out field)) e.dx = Convert.ToInt32(field);
@@ -312,44 +312,44 @@ static class InputSessions
 
     static void ValidateOwner(string owner)
     {
-        if (String.IsNullOrEmpty(owner) || owner.Length > 200) throw new Exception("表示セッションが正しくありません。");
+        if (String.IsNullOrEmpty(owner) || owner.Length > 200) throw new Exception(Text.Get("source.inputsessions.15"));
     }
 
     static void ValidateEvents(NativeInputEvent[] events)
     {
         if (events == null || events.Length == 0 || events.Length > MaxEvents)
-            throw new Exception("入力イベント数が正しくありません。");
+            throw new Exception(Text.Get("source.inputsessions.16"));
         foreach (NativeInputEvent e in events)
         {
-            if (e == null) throw new Exception("入力イベントが正しくありません。");
+            if (e == null) throw new Exception(Text.Get("source.inputsessions.17"));
             if (e.type == "move")
             {
                 if (Math.Abs(e.dx) > 4096 || Math.Abs(e.dy) > 4096 || (e.dx == 0 && e.dy == 0))
-                    throw new Exception("マウス移動量が範囲外です。");
+                    throw new Exception(Text.Get("source.inputsessions.18"));
             }
             else if (e.type == "wheel")
             {
-                if (e.delta == 0 || Math.Abs(e.delta) > 1200) throw new Exception("ホイール量が範囲外です。");
+                if (e.delta == 0 || Math.Abs(e.delta) > 1200) throw new Exception(Text.Get("source.inputsessions.19"));
             }
             else if (e.type == "steps")
             {
-                if (e.delta == 0 || Math.Abs(e.delta) > MaxWheelSteps) throw new Exception("ホイール量が範囲外です。");
+                if (e.delta == 0 || Math.Abs(e.delta) > MaxWheelSteps) throw new Exception(Text.Get("source.inputsessions.20"));
             }
             else if (e.type == "buttonDown" || e.type == "buttonUp")
             {
                 if (e.control != "left" && e.control != "right" && e.control != "middle")
-                    throw new Exception("マウスボタンが正しくありません。");
+                    throw new Exception(Text.Get("source.inputsessions.21"));
             }
             else if (e.type == "keyDown" || e.type == "keyUp")
             {
                 if (e.control != "ctrl" && e.control != "shift" && e.control != "alt")
-                    throw new Exception("修飾キーが正しくありません。");
+                    throw new Exception(Text.Get("source.inputsessions.22"));
             }
             else if (e.type == "keyTap")
             {
-                if (!IsKeypadControl(e.control)) throw new Exception("テンキーが正しくありません。");
+                if (!IsKeypadControl(e.control)) throw new Exception(Text.Get("source.inputsessions.23"));
             }
-            else throw new Exception("入力種類が正しくありません。");
+            else throw new Exception(Text.Get("source.inputsessions.24"));
         }
     }
 
@@ -362,7 +362,7 @@ static class InputSessions
                 // Wheel amount and modifiers come from the saved options; the device sends only steps.
                 if (e.type == "steps") continue;
                 if ((e.type == "buttonDown" || e.type == "buttonUp") && e.control == "middle" && Option(session, "middleClick", false)) continue;
-                throw new Exception("このホイール設定では許可されていない入力です。");
+                throw new Exception(Text.Get("source.inputsessions.25"));
             }
             if (String.Equals(session.widgetType, "touchpad", StringComparison.OrdinalIgnoreCase))
             {
@@ -373,15 +373,15 @@ static class InputSessions
                 // Two-finger tap is a right click when tapping is enabled.
                 if ((e.type == "buttonDown" || e.type == "buttonUp") && e.control == "right"
                     && (Option(session, "tapToClick", true) || OptionText(session, "longPress", "none") == "rightClick")) continue;
-                throw new Exception("このタッチパッド設定では許可されていない入力です。");
+                throw new Exception(Text.Get("source.inputsessions.26"));
             }
             if (String.Equals(session.widgetType, "keypad", StringComparison.OrdinalIgnoreCase))
             {
                 // NumLock exists only on the 4x5 keypad; each layout accepts just its own keys.
                 if (e.type == "keyTap" && IsKeypadControl(e.control) && (e.control != "numpad-numlock" || session.widgetHeight == 5)) continue;
-                throw new Exception("このテンキーでは許可されていない入力です。");
+                throw new Exception(Text.Get("source.inputsessions.27"));
             }
-            throw new Exception("入力部品の種類が正しくありません。");
+            throw new Exception(Text.Get("source.inputsessions.28"));
         }
     }
 
@@ -444,10 +444,10 @@ static class InputSessions
     {
         foreach (NativeInputEvent e in events)
         {
-            if (e.type == "keyDown") { if (!keys.Add(e.control)) throw new Exception("同じキーを二重に押しています。"); }
-            else if (e.type == "keyUp") { if (!keys.Remove(e.control)) throw new Exception("押されていないキーを離そうとしました。"); }
-            else if (e.type == "buttonDown") { if (!buttons.Add(e.control)) throw new Exception("同じボタンを二重に押しています。"); }
-            else if (e.type == "buttonUp") { if (!buttons.Remove(e.control)) throw new Exception("押されていないボタンを離そうとしました。"); }
+            if (e.type == "keyDown") { if (!keys.Add(e.control)) throw new Exception(Text.Get("source.inputsessions.29")); }
+            else if (e.type == "keyUp") { if (!keys.Remove(e.control)) throw new Exception(Text.Get("source.inputsessions.30")); }
+            else if (e.type == "buttonDown") { if (!buttons.Add(e.control)) throw new Exception(Text.Get("source.inputsessions.31")); }
+            else if (e.type == "buttonUp") { if (!buttons.Remove(e.control)) throw new Exception(Text.Get("source.inputsessions.32")); }
         }
     }
 

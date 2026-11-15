@@ -167,7 +167,7 @@ sealed class LookController : ControllerBase
             else if (path == "/api/background/image/delete")
                 state.Config.background = DeckBackgrounds.ClearImage(state.Data, state.Config.background);
             else
-                throw new Exception("不明な操作です。");
+                throw new Exception(Text.Get("source.lookcontroller.1"));
             state.Save();
             state.Signal();
             HttpIO.ReplyJson(r.stream, 200, new { ok = true, background = DeckBackgrounds.Public(state.Config.background), revision = state.Sync.Revision });

@@ -29,7 +29,7 @@ sealed class PageController : ControllerBase
     internal void RequireOrientation(string orientation)
     {
         if (orientation != "landscape" && orientation != "portrait")
-            throw new Exception("画面の向きが正しくありません。");
+            throw new Exception(Text.Get("source.pagecontroller.1"));
     }
 
     internal void ShrinkCurrentPages(int landscapePages, int portraitPages)
@@ -138,7 +138,7 @@ sealed class PageController : ControllerBase
         string orientation = ReadOrientation(input);
         RequireOrientation(orientation);
         string target = Convert.ToString(input["target"]);
-        if (target != "speaker" && target != "mic") throw new Exception("フェーダーの指定が正しくありません。");
+        if (target != "speaker" && target != "mic") throw new Exception(Text.Get("source.pagecontroller.2"));
         bool removed = !input.ContainsKey("removed") || Convert.ToBoolean(input["removed"]);
         lock (state.Gate)
         {
@@ -195,7 +195,7 @@ sealed class PageController : ControllerBase
             string orientation;
             int page;
             if (!state.Undo.TryTake(state.Config, out restored, out orientation, out page))
-                throw new Exception("その後に設定が変わったため、元に戻せません。");
+                throw new Exception(Text.Get("source.pagecontroller.3"));
             restored.token = state.Config.token;
             restored.devices = state.Config.devices;
             state.Config = restored;
@@ -217,7 +217,7 @@ sealed class PageController : ControllerBase
         bool keepAwake = Convert.ToBoolean(input["keepAwake"]);
         string orientation = ReadOrientation(input);
         if (columns < 2 || columns > 8 || rows < 2 || rows > 8)
-            throw new Exception("枠数の設定が範囲外です。");
+            throw new Exception(Text.Get("source.pagecontroller.4"));
         RequireOrientation(orientation);
         lock (state.Gate)
         {

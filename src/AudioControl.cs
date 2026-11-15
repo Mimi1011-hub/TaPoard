@@ -66,7 +66,7 @@ static class AudioControl
     internal static AudioState SetVolume(string target, int value)
     {
         if (value < 0 || value > 100)
-            throw new Exception("音量は0から100で指定してください。");
+            throw new Exception(Text.Get("source.audiocontrol.1"));
         lock (SyncFor(target))
         {
             WithEndpoint(
@@ -104,7 +104,7 @@ static class AudioControl
     internal static int AdjustedValue(int current, int delta)
     {
         if (delta == 0 || delta < -20 || delta > 20)
-            throw new Exception("音量の変更幅は-20から20で指定してください。");
+            throw new Exception(Text.Get("source.audiocontrol.2"));
         return Math.Max(0, Math.Min(100, current + delta));
     }
 
@@ -155,7 +155,7 @@ static class AudioControl
             return DataFlow.Render;
         if (String.Equals(target, "mic", StringComparison.OrdinalIgnoreCase))
             return DataFlow.Capture;
-        throw new Exception("不明な音量操作です。");
+        throw new Exception(Text.Get("source.audiocontrol.3"));
     }
 
     static void ReadEndpoint(DataFlow flow, out int volume, out bool muted)

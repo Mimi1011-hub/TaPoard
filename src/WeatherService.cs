@@ -134,12 +134,12 @@ static class WeatherService
     }
 
     // Open-Meteo only matches official Japanese names, so "札幌" finds nothing but "札幌市" does.
-    static readonly string[] JapaneseSuffixes = { "市", "都", "府", "県" };
+    static readonly string[] JapaneseSuffixes = { global::Text.Get("source.weatherservice.1"), global::Text.Get("source.weatherservice.2"), global::Text.Get("source.weatherservice.3"), global::Text.Get("source.weatherservice.4") };
 
     internal static WeatherLocationResult[] Search(string query)
     {
         query = (query ?? "").Trim();
-        if (query.Length < 2 || query.Length > 80) throw new Exception("地域名は2～80文字で入力してください。");
+        if (query.Length < 2 || query.Length > 80) throw new Exception(global::Text.Get("source.weatherservice.5"));
         var result = SearchOnce(query);
         if (result.Count == 0 && NeedsJapaneseSuffix(query))
             foreach (string suffix in JapaneseSuffixes)
@@ -162,7 +162,7 @@ static class WeatherService
         foreach (char c in query) if (c >= 0x3040 && c <= 0x9FFF) { japanese = true; break; }
         if (!japanese) return false;
         string last = query.Substring(query.Length - 1);
-        return System.Array.IndexOf(JapaneseSuffixes, last) < 0 && last != "区" && last != "町" && last != "村";
+        return System.Array.IndexOf(JapaneseSuffixes, last) < 0 && last != global::Text.Get("source.weatherservice.6") && last != global::Text.Get("source.weatherservice.7") && last != global::Text.Get("source.weatherservice.8");
     }
 
     static List<WeatherLocationResult> SearchOnce(string query)
@@ -202,12 +202,12 @@ static class WeatherService
 
     internal static void ValidateLocation(string name, double latitude, double longitude, string timezone)
     {
-        if (String.IsNullOrWhiteSpace(name) || name.Length > 100) throw new Exception("地域名が正しくありません。");
+        if (String.IsNullOrWhiteSpace(name) || name.Length > 100) throw new Exception(global::Text.Get("source.weatherservice.9"));
         if (Double.IsNaN(latitude) || Double.IsInfinity(latitude) || latitude < -90 || latitude > 90
             || Double.IsNaN(longitude) || Double.IsInfinity(longitude) || longitude < -180 || longitude > 180)
-            throw new Exception("地域の座標が正しくありません。");
+            throw new Exception(global::Text.Get("source.weatherservice.10"));
         if (String.IsNullOrWhiteSpace(timezone) || timezone.Length > 80 || !TimezonePattern.IsMatch(timezone))
-            throw new Exception("地域のタイムゾーンが正しくありません。");
+            throw new Exception(global::Text.Get("source.weatherservice.11"));
     }
 
     static void ConfigureLocked(Settings settings)
@@ -243,7 +243,7 @@ static class WeatherService
             {
                 fetching = false;
                 if (key != locationKey) return;
-                snapshot.error = "天気を更新できませんでした。";
+                snapshot.error = global::Text.Get("source.weatherservice.12");
                 snapshot.stale = snapshot.available;
             }
             Notify();
@@ -274,7 +274,7 @@ static class WeatherService
         int count = Math.Min(3, dates.Length);
         for (int i = 0; i < count; i++)
             days.Add(new WeatherDay { date = Convert.ToString(dates[i]), code = Integer(codes, i), maximum = Rounded(maximums, i), minimum = Rounded(minimums, i), precipitation = Integer(precipitation, i) });
-        if (current == null || days.Count == 0) throw new Exception("予報データが不足しています。");
+        if (current == null || days.Count == 0) throw new Exception(global::Text.Get("source.weatherservice.13"));
         return new WeatherSnapshot
         {
             configured = true,
@@ -329,7 +329,7 @@ static class WeatherService
     static Dictionary<string, object> Object(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value) ? value as Dictionary<string, object> : null; }
     static object[] Array(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value) ? value as object[] ?? new object[0] : new object[0]; }
     static string Text(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value) ? Convert.ToString(value) : ""; }
-    static double Number(Dictionary<string, object> source, string key) { object value; if (source == null || !source.TryGetValue(key, out value)) throw new Exception("数値がありません。"); return Convert.ToDouble(value, CultureInfo.InvariantCulture); }
+    static double Number(Dictionary<string, object> source, string key) { object value; if (source == null || !source.TryGetValue(key, out value)) throw new Exception(global::Text.Get("source.weatherservice.14")); return Convert.ToDouble(value, CultureInfo.InvariantCulture); }
     static int Integer(object[] source, int index) { return source != null && index < source.Length && source[index] != null ? Convert.ToInt32(source[index], CultureInfo.InvariantCulture) : 0; }
     static double Rounded(object[] source, int index) { return source != null && index < source.Length && source[index] != null ? Math.Round(Convert.ToDouble(source[index], CultureInfo.InvariantCulture), 1) : 0; }
 

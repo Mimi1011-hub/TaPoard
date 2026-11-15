@@ -40,7 +40,7 @@ static class IconStyles
 
     static string FileOf(string data, string id)
     {
-        if (!IconPacks.ValidId(id)) throw new Exception("保存した見た目が見つかりません。");
+        if (!IconPacks.ValidId(id)) throw new Exception(Text.Get("source.iconstyles.1"));
         return Path.Combine(Folder(data), id + ".json");
     }
 
@@ -60,9 +60,9 @@ static class IconStyles
     static IconStyle Read(string data, string id)
     {
         string file = FileOf(data, id);
-        if (!File.Exists(file)) throw new Exception("保存した見た目が見つかりません。");
+        if (!File.Exists(file)) throw new Exception(Text.Get("source.iconstyles.2"));
         var style = IconPacks.Serializer().Deserialize<IconStyle>(File.ReadAllText(file, Encoding.UTF8));
-        if (style == null || style.id != id) throw new Exception("保存した見た目のファイルが壊れています。");
+        if (style == null || style.id != id) throw new Exception(Text.Get("source.iconstyles.3"));
         if (style.buttons == null) style.buttons = new List<IconStyleButton>();
         return style;
     }
@@ -157,11 +157,11 @@ static class IconStyles
     {
         lock (Gate)
         {
-            if (ReadAll(data).Count >= MaxStyles) throw new Exception("保存できる見た目は" + MaxStyles + "個までです。使わないものを削除してください。");
+            if (ReadAll(data).Count >= MaxStyles) throw new Exception(Text.Get("source.iconstyles.4") + MaxStyles + Text.Get("source.iconstyles.5"));
             var style = new IconStyle
             {
                 id = Guid.NewGuid().ToString("N"),
-                name = CleanName(name, DateTime.Now.ToString("M/d H:mm") + " の見た目"),
+                name = CleanName(name, DateTime.Now.ToString("M/d H:mm") + Text.Get("source.iconstyles.6")),
                 created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                 buttons = new List<IconStyleButton>(),
             };
@@ -279,7 +279,7 @@ static class IconStyles
         lock (Gate)
         {
             string file = FileOf(data, id);
-            if (!File.Exists(file)) throw new Exception("保存した見た目が見つかりません。");
+            if (!File.Exists(file)) throw new Exception(Text.Get("source.iconstyles.7"));
             foreach (string type in new[] { "image/jpeg", "image/png", "image/webp" })
                 try { File.Delete(PictureOf(data, id, type)); } catch { }
             File.Delete(file);

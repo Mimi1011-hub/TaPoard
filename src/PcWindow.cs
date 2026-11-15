@@ -65,7 +65,7 @@ static class PcWindowService
                 return;
             }
             if (!RuntimeAvailable)
-                throw new Exception("この PC には Microsoft Edge WebView2 ランタイムがありません。Windows Update を実行するか、ブラウザで操作画面を開いてください。");
+                throw new Exception(global::Text.Get("source.pcwindow.1"));
             var ready = new ManualResetEvent(false);
             var thread = new Thread(
                 delegate()
@@ -85,7 +85,7 @@ static class PcWindowService
                     catch (Exception e)
                     {
                         if (Notify != null)
-                            Notify("PC 用ウィンドウを開けませんでした：" + e.Message);
+                            Notify(global::Text.Get("source.pcwindow.2") + e.Message);
                     }
                     finally
                     {
@@ -851,7 +851,7 @@ sealed class PcWindow : Form
         {
             var answer = MessageBox.Show(
                 this,
-                "PC 用ウィンドウを閉じますか？\nTaPoard は通知領域で動き続け、スマートフォンからの操作も使えます。",
+                global::Text.Get("source.pcwindow.3"),
                 "TaPoard",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question,
@@ -1024,8 +1024,8 @@ sealed class PcWindow : Form
         if (value && PcWindowService.Notify != null)
             PcWindowService.Notify(
                 hotkeyRegistered
-                    ? "見るだけモードにしました。Ctrl+Alt+V で元に戻せます。"
-                    : "見るだけモードにしました。通知領域の TaPoard メニューから元に戻せます。"
+                    ? global::Text.Get("source.pcwindow.4")
+                    : global::Text.Get("source.pcwindow.5")
             );
     }
 
@@ -1225,7 +1225,7 @@ sealed class PcWindow : Form
             using (var brush = new SolidBrush(Color.FromArgb(220, 222, 228)))
             {
                 var area = new Rectangle(Border + 16, BarHidden ? 16 : BarHeight + 16, ClientSize.Width - 32, ClientSize.Height - BarHeight - 32);
-                e.Graphics.DrawString(webError + "\n\n通知領域の TaPoard から「設定をブラウザで開く」を選ぶと、ブラウザで操作できます。", font, brush, area);
+                e.Graphics.DrawString(webError + global::Text.Get("source.pcwindow.6"), font, brush, area);
             }
         }
     }
@@ -1547,16 +1547,16 @@ sealed class PcBar : Control
         this.owner = owner;
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
         BackColor = Color.FromArgb(22, 23, 27);
-        AddNav("prev", "", "前のページ");
-        AddNav("next", "", "次のページ");
-        AddNav("menu", "", "画面と接続のメニュー");
-        Add("info", "", null, "情報表示（Ctrl+I）");
-        Add("viewonly", "", "", "見るだけモード（Ctrl+Alt+V で戻す）");
-        Add("topmost", "", "", "常に最前面（Ctrl+T）");
-        Add("fullscreen", "", "", "全画面（F11 / Alt+Enter）");
-        Add("settings", "", null, "PC 用ウィンドウの設定（Ctrl+,）");
-        Add("minimize", "", null, "最小化");
-        Add("close", "", null, "閉じる（Esc）");
+        AddNav("prev", "", global::Text.Get("source.pcwindow.7"));
+        AddNav("next", "", global::Text.Get("source.pcwindow.8"));
+        AddNav("menu", "", global::Text.Get("source.pcwindow.9"));
+        Add("info", "", null, global::Text.Get("source.pcwindow.10"));
+        Add("viewonly", "", "", global::Text.Get("source.pcwindow.11"));
+        Add("topmost", "", "", global::Text.Get("source.pcwindow.12"));
+        Add("fullscreen", "", "", global::Text.Get("source.pcwindow.13"));
+        Add("settings", "", null, global::Text.Get("source.pcwindow.14"));
+        Add("minimize", "", null, global::Text.Get("source.pcwindow.15"));
+        Add("close", "", null, global::Text.Get("source.pcwindow.16"));
     }
 
     // Page buttons and the deck's menu sit on the left, next to the name; they replace the

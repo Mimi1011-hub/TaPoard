@@ -11,7 +11,7 @@ static class AppImporter
         path = Path.GetFullPath(path);
         string ext = Path.GetExtension(path).ToLowerInvariant();
         if (!File.Exists(path) || (ext != ".exe" && ext != ".lnk"))
-            throw new Exception("アプリの実行ファイル（.exe）かショートカット（.lnk）を選んでください。");
+            throw new Exception(global::Text.Get("source.appimporter.1"));
         return new AppEntry
         {
             name = Path.GetFileNameWithoutExtension(path),
@@ -100,7 +100,7 @@ sealed class ImportWindow : Form
     public ImportWindow(Action<List<AppEntry>> callback)
     {
         complete = callback;
-        Text = "TaPoard — アイコンから追加";
+        Text = global::Text.Get("source.appimporter.2");
         ClientSize = new Size(490, 260);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -110,7 +110,7 @@ sealed class ImportWindow : Form
         AllowDrop = true;
         var title = new Label
         {
-            Text = "ここにアプリのアイコンをドロップ",
+            Text = global::Text.Get("source.appimporter.3"),
             Dock = DockStyle.Top,
             Height = 65,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -119,13 +119,13 @@ sealed class ImportWindow : Form
         feedback = new Label
         {
             Text =
-                "デスクトップやエクスプローラーから\nショートカット（.lnk）・実行ファイル（.exe）を\nまとめて追加できます。\nブラウザのURLをドロップするとURLボタンになります。",
+                global::Text.Get("source.appimporter.4"),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
         };
-        var pick = new Button { Text = "ファイルを選んで追加", Dock = DockStyle.Fill };
-        var chooseApp = new Button { Text = "アプリを選んで追加", Dock = DockStyle.Fill };
-        var enterUrl = new Button { Text = "URLを入力して追加", Dock = DockStyle.Fill };
+        var pick = new Button { Text = global::Text.Get("source.appimporter.5"), Dock = DockStyle.Fill };
+        var chooseApp = new Button { Text = global::Text.Get("source.appimporter.6"), Dock = DockStyle.Fill };
+        var enterUrl = new Button { Text = global::Text.Get("source.appimporter.7"), Dock = DockStyle.Fill };
         enterUrl.Click += delegate { ShowUrlView(); };
         chooseApp.Click += delegate { ShowAppView(); };
         var buttons = ButtonRow3(pick, chooseApp, enterUrl);
@@ -134,7 +134,7 @@ sealed class ImportWindow : Form
             using (
                 var dialog = new OpenFileDialog
                 {
-                    Filter = "アプリ・ショートカット|*.exe;*.lnk",
+                    Filter = global::Text.Get("source.appimporter.8"),
                     Multiselect = true,
                     DereferenceLinks = false,
                 }
@@ -155,19 +155,19 @@ sealed class ImportWindow : Form
         urlView = new Panel { Dock = DockStyle.Fill, Visible = false, Padding = new Padding(24, 16, 24, 0) };
         var urlTitle = new Label
         {
-            Text = "URLを入力して追加",
+            Text = global::Text.Get("source.appimporter.9"),
             Dock = DockStyle.Top,
             Height = 44,
             TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 14),
         };
-        var urlLabel = new Label { Text = "開くURL（http:// または https://）", Dock = DockStyle.Top, Height = 22 };
+        var urlLabel = new Label { Text = global::Text.Get("source.appimporter.urlLabel"), Dock = DockStyle.Top, Height = 22 };
         urlBox = new TextBox { Dock = DockStyle.Top, MaxLength = 2048 };
-        var nameLabel = new Label { Text = "表示名（空欄ならサイト名）", Dock = DockStyle.Top, Height = 26, TextAlign = ContentAlignment.BottomLeft };
+        var nameLabel = new Label { Text = global::Text.Get("source.appimporter.10"), Dock = DockStyle.Top, Height = 26, TextAlign = ContentAlignment.BottomLeft };
         nameBox = new TextBox { Dock = DockStyle.Top, MaxLength = 80 };
         urlFeedback = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Firebrick };
-        var add = new Button { Text = "追加", Dock = DockStyle.Fill };
-        var back = new Button { Text = "戻る", Dock = DockStyle.Fill };
+        var add = new Button { Text = global::Text.Get("source.appimporter.11"), Dock = DockStyle.Fill };
+        var back = new Button { Text = global::Text.Get("source.appimporter.12"), Dock = DockStyle.Fill };
         add.Click += delegate { ImportUrl(); };
         back.Click += delegate { ShowDropView(); };
         var urlButtons = ButtonRow(70, add, back);
@@ -183,19 +183,19 @@ sealed class ImportWindow : Form
         appView = new Panel { Dock = DockStyle.Fill, Visible = false, Padding = new Padding(16, 12, 16, 0) };
         var appTitle = new Label
         {
-            Text = "アプリを選んで追加（スタートメニューのすべてのアプリ）",
+            Text = global::Text.Get("source.appimporter.13"),
             Dock = DockStyle.Top,
             Height = 36,
             TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 12),
         };
         appSearch = new TextBox { Dock = DockStyle.Top, MaxLength = 80 };
-        var searchLabel = new Label { Text = "名前で絞り込む（複数選べます：Ctrl + クリック）", Dock = DockStyle.Top, Height = 22, TextAlign = ContentAlignment.BottomLeft };
+        var searchLabel = new Label { Text = global::Text.Get("source.appimporter.14"), Dock = DockStyle.Top, Height = 22, TextAlign = ContentAlignment.BottomLeft };
         appList = new ListView { Dock = DockStyle.Fill, View = View.LargeIcon, MultiSelect = true, HideSelection = false };
         appList.LargeImageList = new ImageList { ImageSize = new Size(40, 40), ColorDepth = ColorDepth.Depth32Bit };
         appFeedback = new Label { Dock = DockStyle.Bottom, Height = 24, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Firebrick };
-        var addApps = new Button { Text = "選んだアプリを追加", Dock = DockStyle.Fill };
-        var appBack = new Button { Text = "戻る", Dock = DockStyle.Fill };
+        var addApps = new Button { Text = global::Text.Get("source.appimporter.15"), Dock = DockStyle.Fill };
+        var appBack = new Button { Text = global::Text.Get("source.appimporter.16"), Dock = DockStyle.Fill };
         addApps.Click += delegate { ImportStartApps(); };
         appBack.Click += delegate { ShowDropView(); };
         appList.ItemActivate += delegate { ImportStartApps(); };
@@ -272,13 +272,13 @@ sealed class ImportWindow : Form
             catch (Exception e)
             {
                 startApps = new List<StartApp>();
-                appFeedback.Text = "アプリの一覧を読めませんでした：" + e.Message;
+                appFeedback.Text = global::Text.Get("source.appimporter.17") + e.Message;
             }
             finally
             {
                 Cursor = Cursors.Default;
             }
-            if (startApps.Count == 0 && appFeedback.Text.Length == 0) appFeedback.Text = "アプリが見つかりませんでした。";
+            if (startApps.Count == 0 && appFeedback.Text.Length == 0) appFeedback.Text = global::Text.Get("source.appimporter.18");
         }
         FillAppList();
         appSearch.Focus();
@@ -322,12 +322,12 @@ sealed class ImportWindow : Form
     {
         if (appList.SelectedItems.Count == 0)
         {
-            appFeedback.Text = "追加するアプリを選んでください。";
+            appFeedback.Text = global::Text.Get("source.appimporter.19");
             return;
         }
         if (appList.SelectedItems.Count > 40)
         {
-            appFeedback.Text = "一度に追加できるのは40個までです。";
+            appFeedback.Text = global::Text.Get("source.appimporter.20");
             return;
         }
         var apps = new List<AppEntry>();
@@ -420,7 +420,7 @@ sealed class ImportWindow : Form
         try
         {
             if (files.Length > 40)
-                throw new Exception("一度に追加できるのは40個までです。");
+                throw new Exception(global::Text.Get("source.appimporter.21"));
             var apps = new List<AppEntry>();
             foreach (string file in files)
                 apps.Add(AppImporter.FromPath(file));

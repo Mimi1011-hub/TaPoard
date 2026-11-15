@@ -51,7 +51,7 @@ sealed class SystemController : ControllerBase
                 folder = raw as string;
             if (app == null)
             {
-                HttpIO.Reply(r.stream, 404, HttpIO.JsonType, "{\"error\":\"スライドショーが見つかりません。\"}");
+                HttpIO.Reply(r.stream, 404, HttpIO.JsonType, Text.Get("source.systemcontroller.1"));
                 return;
             }
         }

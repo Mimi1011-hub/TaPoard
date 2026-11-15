@@ -245,7 +245,7 @@ partial class Program
             !headers.TryGetValue("Content-Type", out type)
             || !type.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)
         )
-            throw new Exception("JSONで送信してください。");
+            throw new Exception(Text.Get("source.programhttp.1"));
         if (headers.TryGetValue("Origin", out origin))
         {
             Uri uri;
@@ -255,10 +255,10 @@ partial class Program
                 || uri.Authority != host
                 || uri.Scheme != "http"
             )
-                throw new Exception("別サイトからのリクエストは許可されていません。");
+                throw new Exception(Text.Get("source.programhttp.2"));
         }
         if (!headers.TryGetValue("Content-Length", out len) || !int.TryParse(len, out n) || n < 0 || n > 2097152)
-            throw new Exception("データが大きすぎます。");
+            throw new Exception(Text.Get("source.programhttp.3"));
         byte[] body = new byte[n];
         int read = 0;
         while (read < n)

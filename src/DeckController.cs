@@ -66,7 +66,7 @@ sealed class DeckController : ControllerBase
         {
             if (request == null || request.baseVersion != state.Version)
             {
-                HttpIO.ReplyJson(r.stream, 409, new { error = "ほかの所で設定が変わりました。読み直してください。", version = state.Version });
+                HttpIO.ReplyJson(r.stream, 409, new { error = Text.Get("source.deckcontroller.1"), version = state.Version });
                 return;
             }
             Settings next = DeckV3Validator.Validate(request.deck, state.Config, this);
@@ -335,7 +335,7 @@ sealed class DeckController : ControllerBase
     internal string ViewIdentity(ApiRequest r, string viewId)
     {
         if (String.IsNullOrEmpty(viewId) || viewId.Length < 8 || viewId.Length > 64 || !System.Text.RegularExpressions.Regex.IsMatch(viewId, "\\A[a-zA-Z0-9_-]+\\z"))
-            throw new Exception("表示セッションが正しくありません。");
+            throw new Exception(Text.Get("source.deckcontroller.2"));
         return Pairing.Hash(r.auth ?? r.remote.ToString()) + ":" + viewId;
     }
 
@@ -343,12 +343,12 @@ sealed class DeckController : ControllerBase
     {
         var next = new JavaScriptSerializer().Deserialize<Settings>(json);
         if (next.apps == null || next.apps.Count > 80)
-            throw new Exception("ボタンは縦・横それぞれ40個以内です");
+            throw new Exception(Text.Get("source.deckcontroller.3"));
         if (
             next.apps.FindAll(a => a.orientation == "landscape").Count > 40
             || next.apps.FindAll(a => a.orientation == "portrait").Count > 40
         )
-            throw new Exception("ボタンは縦・横それぞれ40個以内です");
+            throw new Exception(Text.Get("source.deckcontroller.4"));
         foreach (var a in next.apps)
             ValidateEntry(a);
         lock (state.Gate)
@@ -361,7 +361,7 @@ sealed class DeckController : ControllerBase
             var ids = new HashSet<string>();
             foreach (var a in next.apps)
                 if (!ids.Add(a.id))
-                    throw new Exception("ボタンIDが重複しています。");
+                    throw new Exception(Text.Get("source.deckcontroller.5"));
             CommitSettings(next, false);
         }
     }
@@ -369,26 +369,26 @@ sealed class DeckController : ControllerBase
     internal void ValidateEntry(AppEntry a)
     {
         if (a.steps != null)
-            throw new Exception("操作の並びは 4.1 で使えるようになります。");
+            throw new Exception(Text.Get("source.deckcontroller.6"));
         if (String.IsNullOrWhiteSpace(a.type))
             a.type = "app";
         WidgetDefinition definition = WidgetRegistry.Require(a.type);
         if (a.orientation != "landscape" && a.orientation != "portrait")
-            throw new Exception("ボタンの画面方向が正しくありません。");
+            throw new Exception(Text.Get("source.deckcontroller.7"));
         if (String.IsNullOrWhiteSpace(a.name))
-            throw new Exception("表示名を入力してください");
+            throw new Exception(Text.Get("source.deckcontroller.8"));
         // 3.1: a name may have line breaks, up to 3 lines.
         a.name = a.name.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
         string[] lines = a.name.Split('\n');
         if (lines.Length > 3) a.name = lines[0] + "\n" + lines[1] + "\n" + String.Join(" ", lines, 2, lines.Length - 2);
         if (a.name.Length > 80)
-            throw new Exception("表示名は80文字以内です");
+            throw new Exception(Text.Get("source.deckcontroller.9"));
         if (!IconPresets.ValidColor(a.iconColor))
-            throw new Exception("アイコンの色が正しくありません");
+            throw new Exception(Text.Get("source.deckcontroller.10"));
         if (!IconPresets.Exists(a.iconKey))
-            throw new Exception("登録されていないアイコンです");
+            throw new Exception(Text.Get("source.deckcontroller.11"));
         if (!IconPresets.ValidCustomIcon(a.customIcon))
-            throw new Exception("オリジナルアイコンの形式またはサイズが正しくありません");
+            throw new Exception(Text.Get("source.deckcontroller.12"));
         if (String.IsNullOrEmpty(a.customIcon) || !IconPacks.ValidId(a.iconPack) || !IconPacks.ValidItemId(a.iconPackItem))
         {
             a.iconPack = null;
@@ -410,7 +410,7 @@ sealed class DeckController : ControllerBase
             a.icon = null;
         }
         else
-            throw new Exception("登録されていない部品種類です。");
+            throw new Exception(Text.Get("source.deckcontroller.13"));
         WidgetRegistry.ValidateAndNormalize(a);
         if (String.IsNullOrEmpty(a.id) || !state.Config.apps.Exists(old => old.id == a.id))
             a.id = DeckView.NewId();

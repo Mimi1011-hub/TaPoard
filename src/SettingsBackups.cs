@@ -73,11 +73,11 @@ static class SettingsBackups
 
     internal static Settings Read(string data, string id)
     {
-        if (id == null || !NamePattern.IsMatch(id)) throw new Exception("バックアップが見つかりません。");
+        if (id == null || !NamePattern.IsMatch(id)) throw new Exception(Text.Get("source.settingsbackups.1"));
         string file = Path.Combine(Folder(data), id + ".json");
-        if (!File.Exists(file)) throw new Exception("バックアップが見つかりません。");
+        if (!File.Exists(file)) throw new Exception(Text.Get("source.settingsbackups.2"));
         var s = new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Deserialize<SettingsV3>(File.ReadAllText(file, Encoding.UTF8));
-        if (s == null || s.schemaVersion != SettingsFile.CurrentSchemaVersion) throw new Exception("バックアップのファイルが壊れています。");
+        if (s == null || s.schemaVersion != SettingsFile.CurrentSchemaVersion) throw new Exception(Text.Get("source.settingsbackups.3"));
         return SettingsMigration.ToV2(s);
     }
 }

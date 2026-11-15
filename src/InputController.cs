@@ -49,7 +49,7 @@ sealed class InputController : ControllerBase
     {
         object rawViewId;
         if (!r.input.TryGetValue("viewId", out rawViewId))
-            throw new Exception("表示セッションが正しくありません。");
+            throw new Exception(Text.Get("source.inputcontroller.1"));
         string viewId = Convert.ToString(rawViewId);
         var visible = new List<string>();
         object rawVisible;
@@ -57,7 +57,7 @@ sealed class InputController : ControllerBase
         {
             var list = rawVisible as System.Collections.IEnumerable;
             if (list == null || rawVisible is string || rawVisible is Dictionary<string, object>)
-                throw new Exception("表示部品が正しくありません。");
+                throw new Exception(Text.Get("source.inputcontroller.2"));
             foreach (object id in list)
                 visible.Add(Convert.ToString(id));
         }
@@ -74,7 +74,7 @@ sealed class InputController : ControllerBase
     {
         object session, view, sequence, events;
         if (!r.input.TryGetValue("sessionId", out session) || !r.input.TryGetValue("viewId", out view) || !r.input.TryGetValue("sequence", out sequence) || !r.input.TryGetValue("events", out events))
-            throw new Exception("入力要求が正しくありません。");
+            throw new Exception(Text.Get("source.inputcontroller.3"));
         string owner = deck.ViewIdentity(r, Convert.ToString(view));
         PcWindowService.YieldFocus();
         HttpIO.ReplyJson(r.stream, 200, InputSessions.Execute(owner, Convert.ToString(session), Convert.ToInt32(sequence), InputSessions.ParseEvents(events)));
@@ -84,7 +84,7 @@ sealed class InputController : ControllerBase
     {
         object session, view;
         if (!r.input.TryGetValue("sessionId", out session) || !r.input.TryGetValue("viewId", out view))
-            throw new Exception("入力要求が正しくありません。");
+            throw new Exception(Text.Get("source.inputcontroller.4"));
         string owner = deck.ViewIdentity(r, Convert.ToString(view));
         if (keepalive)
             InputSessions.Keepalive(owner, Convert.ToString(session));
@@ -113,7 +113,7 @@ sealed class InputController : ControllerBase
             notify = true;
         }
         else
-            throw new Exception("音量操作を指定してください。");
+            throw new Exception(Text.Get("source.inputcontroller.5"));
         return audio;
     }
 
@@ -142,7 +142,7 @@ sealed class InputController : ControllerBase
 
     internal void RunAction(ApiRequest r, Dictionary<string, object> input)
     {
-        string resultMessage = "操作を送信しました。";
+        string resultMessage = Text.Get("source.inputcontroller.6");
         string action = Convert.ToString(input["action"]);
         PcWindowService.YieldFocus();
         if (action == "up" || action == "down" || action == "mute")
@@ -157,13 +157,13 @@ sealed class InputController : ControllerBase
             lock (state.Gate)
                 app = state.Config.apps.Find(a => a.id == id);
             if (app == null)
-                throw new Exception("ボタンが見つかりません");
+                throw new Exception(Text.Get("source.inputcontroller.7"));
             if (WidgetRegistry.IsDisplayWidget(app.type))
-                throw new Exception("この部品は直接実行できません");
+                throw new Exception(Text.Get("source.inputcontroller.8"));
             resultMessage = Launch(app, resultMessage);
         }
         else
-            throw new Exception("不明な操作です");
+            throw new Exception(Text.Get("source.inputcontroller.9"));
         HttpIO.ReplyJson(r.stream, 200, new { ok = true, message = resultMessage });
     }
 
@@ -181,7 +181,7 @@ sealed class InputController : ControllerBase
             state.Host.AudioDevices.Switch(app.deviceTarget, app.deviceId);
             lock (state.Gate)
                 state.Signal();
-            return (app.deviceTarget == "mic" ? "入力先" : "出力先") + "を「" + app.deviceName + "」へ切り替えました。";
+            return (app.deviceTarget == "mic" ? Text.Get("source.inputcontroller.10") : Text.Get("source.inputcontroller.11")) + Text.Get("source.inputcontroller.12") + app.deviceName + Text.Get("source.inputcontroller.13");
         }
         if (DeckView.IsType(app, "hotkey"))
         {
@@ -195,21 +195,21 @@ sealed class InputController : ControllerBase
         if (DeckView.IsType(app, "url"))
         {
             state.Host.Shell.OpenUrl(app.url);
-            return "URLを開きました。";
+            return Text.Get("source.inputcontroller.14");
         }
         if (DeckView.IsType(app, "clipboard"))
         {
             state.Host.Shell.CopyText(app.text);
-            return "テキストをWindowsへコピーしました。";
+            return Text.Get("source.inputcontroller.15");
         }
         // Start menu apps (Store apps included) open through Explorer.
         if (state.Host.Shell.IsStartApp(app.path))
         {
             state.Host.Shell.StartApp(app.path);
-            return "アプリを起動しました。";
+            return Text.Get("source.inputcontroller.16");
         }
         // Shortcuts (.lnk) go through the shell so their own target, arguments and folder apply.
         state.Host.Shell.StartProcess(app.path, app.args);
-        return "アプリを起動しました。";
+        return Text.Get("source.inputcontroller.17");
     }
 }

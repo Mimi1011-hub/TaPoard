@@ -91,14 +91,14 @@ sealed class WebView2Host
         string loader = FindRuntime();
         if (loader == null)
         {
-            done("Microsoft Edge WebView2 ランタイムが見つかりません。");
+            done(Text.Get("source.webview2host.1"));
             return;
         }
         IntPtr module = LoadLibrary(loader);
         IntPtr export = module == IntPtr.Zero ? IntPtr.Zero : GetProcAddress(module, "CreateWebViewEnvironmentWithOptionsInternal");
         if (export == IntPtr.Zero)
         {
-            done("WebView2 ランタイムを読み込めませんでした。");
+            done(Text.Get("source.webview2host.2"));
             return;
         }
         Directory.CreateDirectory(userDataFolder);
@@ -112,7 +112,7 @@ sealed class WebView2Host
                     return;
                 if (hr < 0 || environment == IntPtr.Zero)
                 {
-                    done("WebView2 を開始できませんでした（0x" + hr.ToString("X8") + "）。");
+                    done(Text.Get("source.webview2host.3") + hr.ToString("X8") + "）。");
                     return;
                 }
                 var controllerDone = Callback.Completed(
@@ -120,7 +120,7 @@ sealed class WebView2Host
                     {
                         if (hr2 < 0 || created == IntPtr.Zero)
                         {
-                            done("WebView2 の表示を作成できませんでした（0x" + hr2.ToString("X8") + "）。");
+                            done(Text.Get("source.webview2host.4") + hr2.ToString("X8") + "）。");
                             return;
                         }
                         if (closed)
@@ -137,12 +137,12 @@ sealed class WebView2Host
                 );
                 int started = Slot<CreateController>(environment, EnvironmentCreateController)(environment, parent, controllerDone);
                 if (started < 0)
-                    done("WebView2 の表示を作成できませんでした（0x" + started.ToString("X8") + "）。");
+                    done(Text.Get("source.webview2host.5") + started.ToString("X8") + "）。");
             }
         );
         int result = create(true, 0, userDataFolder, IntPtr.Zero, environmentDone);
         if (result < 0)
-            done("WebView2 を開始できませんでした（0x" + result.ToString("X8") + "）。");
+            done(Text.Get("source.webview2host.6") + result.ToString("X8") + "）。");
     }
 
     void ConfigureSettings()

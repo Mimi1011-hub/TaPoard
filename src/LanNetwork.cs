@@ -76,7 +76,7 @@ sealed class LanNetwork : IDisposable
                         break;
                 }
             if (options == null)
-                throw new Exception("接続中の家庭内LANが見つかりません。");
+                throw new Exception(Text.Get("source.lannetwork.1"));
             File.WriteAllText(file, new JavaScriptSerializer().Serialize(options));
         }
         if (
@@ -85,7 +85,7 @@ sealed class LanNetwork : IDisposable
             || String.IsNullOrEmpty(options.hostName)
             || !ValidHost(options.hostName)
         )
-            throw new Exception("network.jsonの設定が不正です。");
+            throw new Exception(Text.Get("source.lannetwork.2"));
         changeTimer = new Timer(
             delegate
             {
@@ -153,7 +153,7 @@ sealed class LanNetwork : IDisposable
                 mask = nextMask;
                 if (address == null)
                 {
-                    Status = "LAN未接続。再接続すると自動復旧します。";
+                    Status = Text.Get("source.lannetwork.3");
                     return;
                 }
                 udp = new UdpClient(AddressFamily.InterNetwork);
@@ -171,7 +171,7 @@ sealed class LanNetwork : IDisposable
                 udp.MulticastLoopback = true;
                 udp.BeginReceive(Receive, udp);
                 Send(udp, BuildAnswer(HostName, address, 120, null), new IPEndPoint(Group, 5353));
-                Status = "同じLAN内から接続できます。IP変更は自動反映されます。";
+                Status = Text.Get("source.lannetwork.4");
             }
             catch (Exception e)
             {
@@ -180,7 +180,7 @@ sealed class LanNetwork : IDisposable
                     udp.Close();
                     udp = null;
                 }
-                Status = "名前での接続を開始できません。IPのURLを使用してください。 " + e.Message;
+                Status = Text.Get("source.lannetwork.5") + e.Message;
             }
         }
     }

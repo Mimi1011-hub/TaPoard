@@ -47,7 +47,7 @@ static class NativeInput
         int sent;
         lock (SendSync) sent = Executor(events);
         if (sent != events.Length)
-            throw new Exception("Windowsへの入力送信が途中で失敗しました（" + sent + "/" + events.Length + "）。");
+            throw new Exception(Text.Get("source.nativeinput.1") + sent + "/" + events.Length + "）。");
     }
 
     internal static void KeyTap(byte key)
@@ -111,7 +111,7 @@ static class NativeInput
             if (Byte.TryParse(control.Substring(3), System.Globalization.NumberStyles.HexNumber, null, out value))
                 return value;
         }
-        throw new Exception("対応していないキーです。");
+        throw new Exception(Text.Get("source.nativeinput.2"));
     }
 
     static uint ButtonFlag(string button, bool down)
@@ -119,7 +119,7 @@ static class NativeInput
         if (button == "left") return down ? LeftDown : LeftUp;
         if (button == "right") return down ? RightDown : RightUp;
         if (button == "middle") return down ? MiddleDown : MiddleUp;
-        throw new Exception("対応していないマウスボタンです。");
+        throw new Exception(Text.Get("source.nativeinput.3"));
     }
 
     static int SendWindows(NativeInputEvent[] events)
@@ -154,7 +154,7 @@ static class NativeInput
                     | (item.control == "numpad-enter" || item.control == "numpad-divide" || item.control == "numpad-numlock" ? ExtendedKey : 0);
             }
             else
-                throw new Exception("対応していない入力です。");
+                throw new Exception(Text.Get("source.nativeinput.4"));
         }
         return (int)SendInput((uint)native.Length, native, Marshal.SizeOf(typeof(INPUT)));
     }

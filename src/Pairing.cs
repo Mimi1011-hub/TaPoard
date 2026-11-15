@@ -52,9 +52,9 @@ static class Pairing
     {
         Prune();
         if (Pending.Count >= 8 || Starts.Count >= 30 || Starts.FindAll(x => x.Key == address).Count >= 3)
-            throw new Exception("接続リクエストが多いため、5分ほど待ってください。");
+            throw new Exception(Text.Get("source.pairing.1"));
         if (String.IsNullOrWhiteSpace(name) || name.Length > 60)
-            throw new Exception("端末名を1～60文字で入力してください。");
+            throw new Exception(Text.Get("source.pairing.2"));
         string code;
         do
         {
@@ -83,7 +83,7 @@ static class Pairing
         Prune();
         var p = Pending.Find(x => x.id == id);
         if (p == null)
-            throw new Exception("接続リクエストの期限が切れました。もう一度リクエストしてください。");
+            throw new Exception(Text.Get("source.pairing.3"));
         return p;
     }
 
@@ -91,7 +91,7 @@ static class Pairing
     {
         var p = Find(id);
         if (String.IsNullOrEmpty(secret) || p.secret != secret)
-            throw new Exception("接続リクエストを確認できません。");
+            throw new Exception(Text.Get("source.pairing.4"));
         return new
         {
             status = p.denied ? "denied"
@@ -105,13 +105,13 @@ static class Pairing
     {
         var p = Find(id);
         if (p.code != code || p.denied)
-            throw new Exception("確認番号が一致しないか、既に拒否されています。");
+            throw new Exception(Text.Get("source.pairing.5"));
         if (p.token != null)
             return;
         if (approve)
         {
             if (s.devices.Count >= 30)
-                throw new Exception("登録端末は30台以内です。使わない端末を解除してください。");
+                throw new Exception(Text.Get("source.pairing.6"));
             p.token = Random();
             s.devices.Add(
                 new PairedDevice

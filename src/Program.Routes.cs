@@ -24,7 +24,7 @@ partial class Program
         }
         if (!request.allowed)
         {
-            HttpIO.Reply(request.stream, 401, HttpIO.JsonType, "{\"error\":\"接続キーを確認してください\"}");
+            HttpIO.Reply(request.stream, 401, HttpIO.JsonType, Text.Get("source.programroutes.1"));
             return;
         }
         if (request.method == "GET")

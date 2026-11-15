@@ -7,9 +7,9 @@ static class PageNames
     {
         value = (value ?? "").Trim();
         if (value.IndexOf('\r') >= 0 || value.IndexOf('\n') >= 0)
-            throw new Exception("ページ名に改行は使えません。");
+            throw new Exception(Text.Get("source.pagenames.1"));
         if (value.Length > 20)
-            throw new Exception("ページ名は20文字以内です。");
+            throw new Exception(Text.Get("source.pagenames.2"));
         return value;
     }
 
