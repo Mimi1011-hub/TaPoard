@@ -1,5 +1,5 @@
 import { clear, el } from '../core/dom.js';
-import { catalogGroups } from './catalog-data.js';
+import { catalogGroups } from './catalog-data/index.js';
 import { catalogItem, controlFromAction } from './catalog-items.js';
 
 export class Catalog {
