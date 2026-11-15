@@ -40,6 +40,7 @@ i18n.init().then(() => {
       pages: document.querySelector('#settings-pages'),
       gridSize: document.querySelector('#settings-grid-size'),
       catalog: document.querySelector('#settings-catalog'),
+      inspector: document.querySelector('#settings-inspector'),
     }),
     documentObject: document,
     confirmFn: (message) => window.confirm(message),

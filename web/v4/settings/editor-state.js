@@ -134,6 +134,12 @@ export class EditorState {
     });
   }
 
+  canUpdateItem(address, values) {
+    const candidate = copy(this.deck), item = this.item(address, candidate);
+    if (!item) return false;
+    Object.keys(values).forEach((key) => { item[key] = copy(values[key]); }); return this.validateDeck(candidate);
+  }
+
   addPage(orientationName, after) {
     return this.change((deck) => {
       const pages = this.orientation(orientationName, deck).pages;
@@ -211,6 +217,13 @@ export class EditorState {
         pageValue.faders[target] = Object.assign({}, current, values, { hidden: undefined, off: undefined });
       }
     });
+  }
+  canUpdateFader(orientationName, page, target, values) {
+    const candidate = copy(this.deck), orientation = this.orientation(orientationName, candidate), pageValue = orientation.pages[page];
+    if (!pageValue || (target !== 'speaker' && target !== 'mic')) return false;
+    pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
+    const current = this.effectiveFader(orientation, page, target) || pageValue.faders[target] || orientation.faders[target]; pageValue.faders[target] = Object.assign({}, current, values);
+    pageValue.faders[`${target}Hidden`] = false; return this.validateDeck(candidate);
   }
 
   countItems(orientation) { return orientation.pages.reduce((total, page) => total + page.items.length, 0); }

@@ -8,6 +8,7 @@ import { Preview } from './preview.js';
 import { Pages } from './pages.js';
 import { GridSize } from './grid-size.js';
 import { Catalog } from './catalog.js';
+import { Inspector } from './inspector.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -26,7 +27,13 @@ export class SettingsApp {
     });
     this.preview = new Preview({
       root: this.nodes.preview, editor: this.editor, api: this.api, i18n: this.i18n,
-      onSelect: () => {}, onError: (message) => this.shell.showNotice(message),
+      onSelect: (selection) => { if (this.inspector) this.inspector.select(selection); },
+      onError: (message) => this.shell.showNotice(message),
+    });
+    this.inspector = new Inspector({
+      root: this.nodes.inspector, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      onUnavailable: () => this.shell.showNotice(this.i18n.t('settings.comingSoon')),
+      onError: (message) => this.shell.showNotice(message),
     });
     this.pages = new Pages({
       root: this.nodes.pages, editor: this.editor, preview: this.preview, i18n: this.i18n,
