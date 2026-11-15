@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#14161B">
+  <title></title>
+  <link rel="stylesheet" href="/v4/style/base.css">
+  <link rel="stylesheet" href="/v4/style/deck.css">
+  <link rel="stylesheet" href="/v4/style/settings.css">
+</head>
+<body>
+  <main id="settings-missing" class="settings-missing" hidden>
+    <div class="disconnected-mark">T</div>
+    <p data-i18n="settings.missingKey"></p>
+  </main>
+  <main id="settings-app" class="settings-app" hidden>
+    <header class="settings-header">
+      <h1 data-i18n="settings.title"></h1>
+      <p id="settings-connection" class="settings-connection"></p>
+    </header>
+    <div id="settings-offline" class="offline-band" data-i18n="connection.offline" hidden></div>
+    <section id="settings-conflict" class="settings-conflict" hidden>
+      <span data-i18n="settings.externalChange"></span>
+      <button type="button" data-conflict="reload" data-i18n="settings.reload"></button>
+      <button type="button" data-conflict="keep" data-i18n="settings.keepEditing"></button>
+    </section>
+    <div class="settings-body">
+      <nav id="settings-nav" class="settings-nav" data-i18n-label="settings.navigation">
+        <button type="button" class="is-active" data-section="layout"><span aria-hidden="true">▦</span><b data-i18n="settings.nav.layout"></b></button>
+        <button type="button" data-section="appearance"><span aria-hidden="true">✦</span><b data-i18n="settings.nav.appearance"></b></button>
+        <button type="button" data-section="saved"><span aria-hidden="true">▣</span><b data-i18n="settings.nav.saved"></b></button>
+        <button type="button" data-section="connection"><span aria-hidden="true">⌁</span><b data-i18n="settings.nav.connection"></b></button>
+        <button type="button" data-section="pc"><span aria-hidden="true">▤</span><b data-i18n="settings.nav.pc"></b></button>
+        <button type="button" data-section="general"><span aria-hidden="true">⚙</span><b data-i18n="settings.nav.general"></b></button>
+      </nav>
+      <section class="settings-workspace">
+        <aside id="settings-catalog" class="settings-panel settings-catalog"><h2 data-i18n="settings.catalog.title"></h2></aside>
+        <section class="settings-preview-column">
+          <div class="settings-preview-toolbar"><h2 data-i18n="settings.preview.title"></h2><button id="settings-undo" type="button" data-i18n="settings.undo" disabled></button></div>
+          <div id="settings-preview" class="settings-preview-placeholder" data-i18n="settings.preview.loading"></div>
+        </section>
+        <aside id="settings-inspector" class="settings-panel settings-inspector"><h2 data-i18n="settings.inspector.title"></h2><p data-i18n="settings.inspector.empty"></p></aside>
+      </section>
+    </div>
+    <p id="settings-notice" class="settings-notice" role="status" hidden></p>
+    <footer id="settings-save-status" class="settings-save-status" data-i18n="settings.saved"></footer>
+  </main>
+  <script type="module" src="/v4/settings/app.js"></script>
+</body>
+</html>

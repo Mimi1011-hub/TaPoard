@@ -1,0 +1,48 @@
+export class SettingsShell {
+  constructor(nodes, i18n) {
+    this.nodes = nodes;
+    this.i18n = i18n;
+    this.noticeTimer = 0;
+  }
+
+  start() {
+    this.nodes.nav.querySelectorAll('[data-section]').forEach((button) => {
+      button.addEventListener('click', () => this.chooseSection(button.getAttribute('data-section')));
+    });
+  }
+
+  chooseSection(section) {
+    if (section === 'layout') return;
+    this.showNotice(this.i18n.t('settings.comingSoon'));
+  }
+
+  updateConnection(state) {
+    const phone = this.i18n.t(state.phoneConnected ? 'settings.phone.connected' : 'settings.phone.none');
+    const pc = this.i18n.t(state.pcWindowOpen ? 'settings.pc.connected' : 'settings.pc.none');
+    this.nodes.connection.textContent = `${phone}・${pc}`;
+  }
+
+  setOffline(value) {
+    this.nodes.offline.hidden = !value;
+  }
+
+  showNotice(text) {
+    clearTimeout(this.noticeTimer);
+    this.nodes.notice.textContent = text;
+    this.nodes.notice.hidden = false;
+    this.noticeTimer = setTimeout(() => { this.nodes.notice.hidden = true; }, 6000);
+  }
+
+  showConflict(onReload, onKeep) {
+    this.nodes.conflict.hidden = false;
+    this.nodes.conflict.querySelector('[data-conflict="reload"]').onclick = onReload;
+    this.nodes.conflict.querySelector('[data-conflict="keep"]').onclick = () => {
+      this.nodes.conflict.hidden = true;
+      if (onKeep) onKeep();
+    };
+  }
+
+  hideConflict() {
+    this.nodes.conflict.hidden = true;
+  }
+}
