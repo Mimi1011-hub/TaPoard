@@ -17,6 +17,11 @@ const nodes = {
   conflict: document.querySelector('#settings-conflict'),
   nav: document.querySelector('#settings-nav'),
   notice: document.querySelector('#settings-notice'),
+  sections: {
+    layout: document.querySelector('#settings-section-layout'),
+    appearance: document.querySelector('#settings-section-appearance'),
+    saved: document.querySelector('#settings-section-saved'),
+  },
 };
 
 i18n.init().then(() => {
@@ -39,7 +44,7 @@ i18n.init().then(() => {
       orientation: Array.from(document.querySelectorAll('[data-orientation]')),
       pages: document.querySelector('#settings-pages'),
       gridSize: document.querySelector('#settings-grid-size'),
-      catalog: document.querySelector('#settings-catalog'),
+      catalog: document.querySelector('#settings-section-layout'),
       inspector: document.querySelector('#settings-inspector'),
     }),
     documentObject: document,

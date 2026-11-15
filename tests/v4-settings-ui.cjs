@@ -173,7 +173,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await page.locator('#settings-conflict:not([hidden])').waitFor();
     assert.equal(await page.locator('.settings-inspector textarea').first().inputValue(), 'Unsaved', 'external version does not overwrite dirty edit');
 
-    await page.getByRole('button', { name: '見た目' }).click();
+    await page.getByRole('button', { name: '接続' }).click();
     assert((await page.locator('#settings-notice').innerText()).includes('次の更新'));
     const unexpectedErrors = errors.filter((value) => !value.includes('Failed to load resource'));
     assert.deepEqual(unexpectedErrors, [], `console errors: ${unexpectedErrors.join('\n')}`);

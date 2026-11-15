@@ -1,8 +1,11 @@
+import { Sections } from './sections.js';
+
 export class SettingsShell {
   constructor(nodes, i18n) {
     this.nodes = nodes;
     this.i18n = i18n;
     this.noticeTimer = 0;
+    this.sections = new Sections(nodes.nav, nodes.sections, () => this.showNotice(this.i18n.t('settings.comingSoon')));
   }
 
   start() {
@@ -12,8 +15,7 @@ export class SettingsShell {
   }
 
   chooseSection(section) {
-    if (section === 'layout') return;
-    this.showNotice(this.i18n.t('settings.comingSoon'));
+    this.sections.choose(section);
   }
 
   updateConnection(state) {

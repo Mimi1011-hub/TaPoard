@@ -35,7 +35,11 @@
         <button type="button" data-section="general"><span aria-hidden="true">⚙</span><b data-i18n="settings.nav.general"></b></button>
       </nav>
       <section class="settings-workspace">
-        <aside id="settings-catalog" class="settings-panel settings-catalog"><h2 data-i18n="settings.catalog.title"></h2></aside>
+        <aside id="settings-catalog" class="settings-panel settings-catalog">
+          <div id="settings-section-layout"></div>
+          <div id="settings-section-appearance" hidden></div>
+          <div id="settings-section-saved" hidden></div>
+        </aside>
         <section class="settings-preview-column">
           <div class="settings-preview-toolbar"><h2 data-i18n="settings.preview.title"></h2><div class="settings-toolbar-actions"><div class="orientation-switch"><button type="button" data-orientation="landscape" class="is-active" data-i18n="settings.orientation.landscape"></button><button type="button" data-orientation="portrait" data-i18n="settings.orientation.portrait"></button></div><button id="settings-undo" type="button" data-i18n="settings.undo" disabled></button></div></div>
           <div class="settings-layout-tools"><div id="settings-pages" class="settings-pages"></div><div id="settings-grid-size" class="settings-grid-size"></div></div>
