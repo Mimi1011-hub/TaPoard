@@ -1,4 +1,4 @@
-import { catalogGroups } from './legacy.js';
+import { catalogGroups } from './base.js';
 
 const ids = ['info', 'mouse', 'photo', 'keyboard'];
 const audio = catalogGroups.find((group) => group.id === 'audio');

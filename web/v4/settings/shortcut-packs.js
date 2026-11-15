@@ -56,7 +56,8 @@ export class ShortcutPacks {
       await this.load();
     } catch (error) {
       if (iconPack) await this.api.post('/api/icon-packs/delete', { id: iconPack }).catch(() => {});
-      this.onError(error.serverError || this.i18n.t(`shortcuts.error.${error.message}`));
+      const known = ['format', 'version', 'name', 'count', 'empty', 'save'].indexOf(error.message) >= 0;
+      this.onError(error.serverError || this.i18n.t(`shortcuts.error.${known ? error.message : 'format'}`));
     }
   }
 

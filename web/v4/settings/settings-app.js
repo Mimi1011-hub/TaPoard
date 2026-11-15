@@ -68,7 +68,8 @@ export class SettingsApp {
       onNotice: (message) => this.shell.showNotice(message),
     });
     this.catalog.appsExtra = () => this.shortcutPacks.importButton();
-    await this.shortcutPacks.load();
+    // The catalog works without packs, so a failed read only shows a notice.
+    await this.shortcutPacks.load().catch((error) => this.shell.showNotice(error.serverError || error.message));
     this.appImport = new AppImport({
       root: this.nodes.catalog, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
       documentObject: this.documentObject, onNotice: (message) => this.shell.showNotice(message),

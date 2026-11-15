@@ -153,12 +153,20 @@ const waitFor = async (check, message) => {
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
     await page.goto(`${base}/v4/settings.html#admin=test`);
     await page.locator('.catalog-card').first().waitFor();
+    const shot = async (name) => {
+      if (!process.env.UI_SHOTS) return;
+      fs.mkdirSync(process.env.UI_SHOTS, { recursive: true });
+      await page.screenshot({ path: path.join(process.env.UI_SHOTS, `catalog-${name}.png`) });
+    };
     assert.equal(await page.locator('.catalog-card').count(), 4, 'four top categories');
+    await shot('top');
     await page.getByRole('button', { name: 'アプリ別', exact: false }).click();
     await page.getByRole('button', { name: /VS Code/ }).click();
     assert((await page.locator('.catalog-path').innerText()).includes('アプリ別 › VS Code'));
+    await shot('items');
     await page.locator('.catalog-back').click();
     assert((await page.locator('.catalog-path').innerText()).includes('アプリ別'));
+    await page.locator('.catalog-card').first().focus();
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('.catalog-card').count(), 4, 'Escape returns to top');
     await page.locator('.settings-catalog-search').fill('コマンドパレット');
@@ -168,6 +176,7 @@ const waitFor = async (check, message) => {
     assert(posts[0].deck.landscape.pages[0].items.some((item) => item.action === 'key-custom' && item.hotkey === 'Ctrl+Shift+P'));
     await page.locator('.settings-catalog-search').fill('');
     assert((await page.locator('.catalog-recent').innerText()).includes('コマンドパレット'));
+    await shot('recent');
 
     await page.getByRole('button', { name: 'アプリ別', exact: false }).click();
     const input = page.locator('input[accept=".tpshortcuts,.json"]');
@@ -181,6 +190,7 @@ const waitFor = async (check, message) => {
     await page.locator('[data-action="pack:pack12345:0"]').dblclick();
     await waitFor(() => posts.length === 2, 'pack shortcut save');
     await page.locator('.catalog-back').click();
+    await shot('groups');
     await page.locator('.catalog-pack-delete').click();
     await page.getByRole('dialog').getByRole('button', { name: '実行' }).click();
     await waitFor(() => shortcutPacks.length === 0, 'pack deleted');

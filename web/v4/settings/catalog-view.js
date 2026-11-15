@@ -22,7 +22,7 @@ export class CatalogView {
     top.groups.forEach((group) => {
       const button = el('button', 'catalog-card');
       button.type = 'button';
-      button.append(el('strong', '', this.i18n.t(group.title)), el('small', '', this.i18n.t(group.note)));
+      button.append(el('strong', '', this.title(group)), el('small', '', group.plain ? group.note : this.i18n.t(group.note)));
       button.appendChild(el('span', 'catalog-count', this.i18n.t('catalog.count', { count: group.items.length })));
       button.addEventListener('click', () => open(group));
       if (!group.pack) this.root.appendChild(button);
@@ -43,6 +43,10 @@ export class CatalogView {
     if (back) this.root.appendChild(this.header(title, back));
     items.forEach((item) => this.root.appendChild(row(item, groupLabel && groupLabel(item))));
     if (!items.length) this.root.appendChild(el('p', 'settings-catalog-empty', this.i18n.t('catalog.noResults')));
+  }
+
+  title(group) {
+    return group.plain ? group.title : this.i18n.t(group.title);
   }
 
   header(title, back) {

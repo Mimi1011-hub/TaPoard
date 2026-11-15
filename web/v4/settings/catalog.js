@@ -20,7 +20,8 @@ export class Catalog {
     this.root.append(el('h2', '', this.i18n.t('settings.catalog.title')), this.search, this.list, this.recentRoot);
     this.preview.overlay.addEventListener('dragover', (event) => this.dragOver(event));
     this.preview.overlay.addEventListener('drop', (event) => this.drop(event));
-    this.documentObject.addEventListener('keydown', (event) => {
+    // Esc goes back one level, but only from inside the catalog, so dialogs and text fields keep their own Esc.
+    this.root.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && this.back()) event.preventDefault();
     });
     this.render();
@@ -28,13 +29,16 @@ export class Catalog {
 
   text(value) { return value.indexOf('catalog.') === 0 ? this.i18n.t(value) : value; }
 
+  // Built-in names are dictionary keys; names from a pack are shown as they are.
+  label(value) { return value.plain ? value.name : this.i18n.t(value.name); }
+
   render() {
     const query = this.search.value.trim().toLocaleLowerCase();
     if (query) {
       const items = this.allGroups().flatMap((group) => group.items).filter((value) => {
-        return `${this.i18n.t(value.name)} ${this.text(value.description)}`.toLocaleLowerCase().includes(query);
+        return `${this.label(value)} ${this.text(value.description)}`.toLocaleLowerCase().includes(query);
       });
-      this.view.showItems('', items, null, (item, label) => this.row(item, label), (item) => this.i18n.t(this.groupFor(item).title));
+      this.view.showItems('', items, null, (item, label) => this.row(item, label), (item) => this.view.title(this.groupFor(item)));
       this.renderRecent(false);
       return;
     }
@@ -84,7 +88,7 @@ export class Catalog {
     return true;
   }
   path() {
-    return `${this.i18n.t(this.top.title)} › ${this.i18n.t(this.group.title)}`;
+    return `${this.i18n.t(this.top.title)} › ${this.view.title(this.group)}`;
   }
 
   row(value, groupLabel) {
@@ -92,7 +96,7 @@ export class Catalog {
     row.type = 'button';
     row.draggable = true;
     row.dataset.action = value.id || value.action;
-    row.append(el('strong', '', this.i18n.t(value.name)), el('small', '', this.text(value.description)));
+    row.append(el('strong', '', this.label(value)), el('small', '', this.text(value.description)));
     if (groupLabel) row.appendChild(el('small', 'catalog-item-group', groupLabel));
     row.addEventListener('dragstart', (event) => {
       event.dataTransfer.effectAllowed = 'copy';
@@ -124,6 +128,7 @@ export class Catalog {
   setShortcutPacks(packs, remove) {
     this.shortcutPacks = packs.map((pack) => ({
       id: `pack:${pack.id}`,
+      plain: true,
       title: pack.name,
       note: [pack.app, pack.author].filter(Boolean).join('・'),
       pack,
@@ -133,6 +138,7 @@ export class Catalog {
         const icon = iconId && pack.iconItems ? pack.iconItems.find((value) => value.id === iconId) : null;
         return {
           id: `pack:${pack.id}:${index}`,
+          plain: true,
           name: item.name,
           description: item.description || item.keys,
           keys: item.keys,
@@ -159,7 +165,7 @@ export class Catalog {
     const data = this.value(action);
     if (!data) return null;
     if (data.keys) {
-      const value = catalogItem('key-custom', this.i18n.t(data.name), data.category);
+      const value = catalogItem('key-custom', this.label(data), data.category);
       value.hotkey = data.keys;
       value.iconKey = data.iconKey || 'keyboard';
       if (data.iconPack && data.iconPackItem) {

@@ -1,4 +1,4 @@
-import { catalogGroups } from './legacy.js';
+import { catalogGroups } from './base.js';
 
 const actions = ['custom-url', 'custom-clipboard', 'key-custom', 'custom-audio-output', 'custom-audio-input'];
 const items = catalogGroups.flatMap((group) => group.items).filter((item) => actions.indexOf(item.action) >= 0);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { catalogGroups } from '../web/v4/settings/catalog-data/index.js';
-import { catalogGroups as previousGroups } from '../web/v4/settings/catalog-data/legacy.js';
+import { catalogGroups as previousGroups } from '../web/v4/settings/catalog-data/base.js';
 import { vscode } from '../web/v4/settings/catalog-data/vscode.js';
 import { catalogItem } from '../web/v4/settings/catalog-items.js';
 import { hotkeyNames } from '../web/v4/settings/details/hotkey-details.js';
