@@ -138,6 +138,7 @@ const server = http.createServer(async (req, res) => {
     if (name === 'v3/state') return json(res, 200, state());
     if (name === 'sync') return setTimeout(() => json(res, 200, state()), 30);
     if (name === 'icon-packs') return json(res, 200, { packs: [], maxPacks: 50, maxIcons: 5000 });
+    if (name === 'shortcut-packs') return json(res, 200, { packs: [], maxPacks: 20, maxShortcuts: 300 });
     if (name === 'presets') return json(res, 200, { presets: [] });
     if (name === 'icon-styles') return json(res, 200, { styles: [], maxStyles: 20 });
     if (name === 'backups') return json(res, 200, { backups: [] });
@@ -350,6 +351,7 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
         { type: 'url', name: 'Site', url: 'https://example.com/', icon: null, category: 'custom' },
       ],
     };
+    await page.locator('.catalog-card').filter({ hasText: /^起動・その他/ }).click();
     await page.getByRole('button', { name: 'アプリや URL を追加' }).click();
     await waitFor(() => deck.landscape.pages[0].items.length === 7, 'two new items saved');
     const added = deck.landscape.pages[0].items.slice(5);

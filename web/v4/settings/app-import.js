@@ -23,7 +23,6 @@ export class AppImport {
     this.button = el('button', 'settings-import', this.i18n.t('import.open'));
     this.button.type = 'button';
     this.button.addEventListener('click', () => this.start());
-    this.root.prepend(this.button);
     this.documentObject.defaultView.addEventListener('pagehide', () => clearTimeout(this.timer));
   }
 

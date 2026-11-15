@@ -61,6 +61,7 @@ const server = http.createServer(async (req, res) => {
     if (name === 'v3/state') return json(res, 200, state());
     if (name === 'sync') return setTimeout(() => json(res, 200, state()), 30);
     if (name === 'icon-packs') return json(res, 200, { packs: [], maxPacks: 50, maxIcons: 5000 });
+    if (name === 'shortcut-packs') return json(res, 200, { packs: [], maxPacks: 20, maxShortcuts: 300 });
     if (name === 'presets') return json(res, 200, { presets });
     if (name === 'presets/apply') {
       deck[body.orientation].pages[body.page].items = [item('preset', 'Mute', 0, 0)];

@@ -80,6 +80,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/action') { actionRequests.push(body); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/audio') { audioRequests.push(body); return json(res, 200, { ok: true, audio: state().audio }); }
     if (url.pathname === '/api/icon-packs' && req.method === 'GET') return json(res, 200, { packs: packs.map((pack) => ({ id: pack.id, name: pack.name, author: pack.author, count: pack.icons.length, mapped: pack.icons.filter((icon) => icon.key).length })), maxPacks: 50, maxIcons: 5000 });
+    if (url.pathname === '/api/shortcut-packs' && req.method === 'GET') return json(res, 200, { packs: [], maxPacks: 20, maxShortcuts: 300 });
     if (url.pathname === '/api/icon-packs/get') { const pack = packs.find((value) => value.id === url.searchParams.get('id')); return json(res, pack ? 200 : 404, pack || { error: 'missing' }); }
     if (url.pathname === '/api/icon-packs/create') { const value = JSON.parse(body), pack = { id: `pack-${packs.length + 1}`, name: value.name, author: value.author, icons: [] }; packs.push(pack); packCreates.push(value); return json(res, 200, { id: pack.id }); }
     if (url.pathname === '/api/icon-packs/add') { const value = JSON.parse(body), pack = packs.find((entry) => entry.id === value.id); pack.icons.push(...value.icons); packAdds.push(value); return json(res, 200, { ok: true }); }
@@ -185,6 +186,8 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.equal(posts.length, overlapPosts, 'overlap does not save');
 
     const catalogPosts = posts.length;
+    await page.locator('.catalog-card').filter({ hasText: /^操作/ }).click();
+    await page.getByRole('button', { name: /よく使う操作/ }).click();
     await page.locator('.settings-catalog-item[data-action="common-copy"]').dblclick();
     await waitFor(() => posts.length === catalogPosts + 1, 'catalog save');
     assert(posts.at(-1).deck.landscape.pages[0].items.some((value) => value.action === 'common-copy'));

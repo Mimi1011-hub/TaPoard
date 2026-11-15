@@ -44,7 +44,10 @@ export class Catalog {
       const extra = this.top.id === 'apps' && this.appsExtra ? this.appsExtra() : null;
       this.view.showGroups(top, () => this.showTop(), (group) => this.openGroup(group), extra);
     }
-    else this.view.showItems(this.path(), this.group.items, () => this.openTop(this.top), (item) => this.row(item));
+    else {
+      this.view.showItems(this.path(), this.group.items, () => this.openTop(this.top), (item) => this.row(item));
+      if (this.top.id === 'launch' && this.launchExtra) this.list.appendChild(this.launchExtra());
+    }
     this.renderRecent(this.level === 'top');
   }
 

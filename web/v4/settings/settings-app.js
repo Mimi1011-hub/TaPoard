@@ -73,6 +73,7 @@ export class SettingsApp {
       root: this.nodes.catalog, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
       documentObject: this.documentObject, onNotice: (message) => this.shell.showNotice(message),
     });
+    this.catalog.launchExtra = () => this.appImport.button;
     this.appearance = new Appearance({
       root: this.nodes.sections.appearance, api: this.api, editor: this.editor, preview: this.preview, iconPicker: this.iconPicker,
       i18n: this.i18n, confirmFn: this.confirmFn, promptFn: this.promptFn, onError: (message) => this.shell.showNotice(message),
