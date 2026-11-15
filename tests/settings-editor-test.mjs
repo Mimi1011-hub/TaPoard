@@ -63,4 +63,18 @@ assert(history.undo());
 assert.equal(editor.item(address(editor, 'wide')).column, beforeUndo, 'undo restores the deck');
 assert(history.redo());
 assert.equal(editor.item(address(editor, 'wide')).column, 2, 'redo reapplies the deck');
+
+const appearance = new EditorState(response());
+const appearanceHistory = new History(appearance);
+const iconAddress = { orientation: 'landscape', page: 0, index: 0 };
+assert(appearance.updateItem(iconAddress, { iconKey: 'heart', iconColor: '#b53846', customIcon: '', iconPack: null, iconPackItem: null }));
+assert.equal(appearance.item(iconAddress).iconKey, 'heart');
+assert(appearanceHistory.undo());
+assert.equal(appearance.item(iconAddress).iconKey, '', 'one undo restores an icon choice');
+assert(appearance.change((deck) => deck.landscape.pages[0].items.forEach((value) => { value.iconKey = 'star'; value.iconColor = '#3569c8'; })));
+assert(appearanceHistory.undo());
+assert.equal(appearance.item(iconAddress).iconKey, '', 'one undo restores a bulk icon change');
+const dirty = appearance.dirty;
+appearance.setBackground({ color: '#000000' });
+assert.equal(appearance.dirty, dirty, 'background does not mark the deck dirty');
 console.log('PASS settings editor: placement, pages, reflow, undo and redo');

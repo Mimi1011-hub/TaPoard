@@ -1,9 +1,12 @@
+import { FaderEditor } from './fader-editor.js';
+
 const copy = (value) => JSON.parse(JSON.stringify(value));
 
 export class EditorState {
   constructor(response) {
     this.listeners = new Set();
     this.revision = 0;
+    this.faderEditor = new FaderEditor(this);
     this.load(response);
   }
 
@@ -185,46 +188,11 @@ export class EditorState {
     return { ok: true, count: moved.count };
   }
 
-  moveFader(orientationName, page, target, row, column) {
-    return this.change((deck) => {
-      const orientation = this.orientation(orientationName, deck), pageValue = orientation.pages[page];
-      if (!pageValue || (target !== 'speaker' && target !== 'mic')) return false;
-      const effective = this.effectiveFader(orientation, page, target);
-      pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
-      pageValue.faders[target] = Object.assign({}, effective || orientation.faders[target], { row, column, off: undefined });
-      pageValue.faders[`${target}Hidden`] = false;
-    });
-  }
-
-  canMoveFader(orientationName, page, target, row, column) {
-    const candidate = copy(this.deck), orientation = this.orientation(orientationName, candidate), pageValue = orientation.pages[page];
-    if (!pageValue || (target !== 'speaker' && target !== 'mic')) return false;
-    const effective = this.effectiveFader(orientation, page, target);
-    pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
-    pageValue.faders[target] = Object.assign({}, effective || orientation.faders[target], { row, column, off: undefined });
-    pageValue.faders[`${target}Hidden`] = false;
-    return this.validateDeck(candidate);
-  }
-
-  updateFader(orientationName, page, target, values) {
-    return this.change((deck) => {
-      const orientation = this.orientation(orientationName, deck), pageValue = orientation.pages[page];
-      if (!pageValue || (target !== 'speaker' && target !== 'mic')) return false;
-      pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
-      if (Object.prototype.hasOwnProperty.call(values, 'hidden')) pageValue.faders[`${target}Hidden`] = !!values.hidden;
-      if (values.width || values.height) {
-        const current = this.effectiveFader(orientation, page, target) || orientation.faders[target];
-        pageValue.faders[target] = Object.assign({}, current, values, { hidden: undefined, off: undefined });
-      }
-    });
-  }
-  canUpdateFader(orientationName, page, target, values) {
-    const candidate = copy(this.deck), orientation = this.orientation(orientationName, candidate), pageValue = orientation.pages[page];
-    if (!pageValue || (target !== 'speaker' && target !== 'mic')) return false;
-    pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
-    const current = this.effectiveFader(orientation, page, target) || pageValue.faders[target] || orientation.faders[target]; pageValue.faders[target] = Object.assign({}, current, values);
-    pageValue.faders[`${target}Hidden`] = false; return this.validateDeck(candidate);
-  }
+  moveFader(...args) { return this.faderEditor.move(...args); }
+  canMoveFader(...args) { return this.faderEditor.canMove(...args); }
+  updateFader(...args) { return this.faderEditor.update(...args); }
+  canUpdateFader(...args) { return this.faderEditor.canUpdate(...args); }
+  setBackground(background) { this.deck.background = copy(background); this.savedDeck.background = copy(background); this.emit({ source: 'background' }); }
 
   countItems(orientation) { return orientation.pages.reduce((total, page) => total + page.items.length, 0); }
   sizeAllowed(item) {

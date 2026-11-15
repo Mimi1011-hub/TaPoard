@@ -11,6 +11,12 @@ let deckGets = 0;
 const posts = [];
 const actionRequests = [];
 const audioRequests = [];
+const backgroundRequests = [];
+const packCreates = [];
+const packAdds = [];
+const imageRequests = [];
+let background = { color: '', color2: '', image: '', landscape: { fit: 'cover', x: 50, y: 50, zoom: 1 }, portrait: { fit: 'cover', x: 50, y: 50, zoom: 1 }, keys: '', dim: 0, blur: 0, keyClear: 0 };
+let packs = [];
 const faders = () => ({
   speaker: { row: 2, column: 0, width: 1, height: 1, off: false },
   mic: { row: 2, column: 1, width: 1, height: 1, off: false },
@@ -38,6 +44,7 @@ const response = () => ({ version: String(version), deck, widgetDefinitions: def
 const state = () => ({
   version: String(version), revision, phoneConnected: true, pcWindowOpen: true,
   audio: { speakerVolume: 30, micVolume: 40, speakerAvailable: true, micAvailable: true }, metrics: {}, weather: {},
+  background,
 });
 function json(res, status, value) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value));
@@ -58,6 +65,16 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/sync') return setTimeout(() => json(res, 200, state()), 30);
     if (url.pathname === '/api/action') { actionRequests.push(body); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/audio') { audioRequests.push(body); return json(res, 200, { ok: true, audio: state().audio }); }
+    if (url.pathname === '/api/icon-packs' && req.method === 'GET') return json(res, 200, { packs: packs.map((pack) => ({ id: pack.id, name: pack.name, author: pack.author, count: pack.icons.length, mapped: pack.icons.filter((icon) => icon.key).length })), maxPacks: 50, maxIcons: 5000 });
+    if (url.pathname === '/api/icon-packs/get') { const pack = packs.find((value) => value.id === url.searchParams.get('id')); return json(res, pack ? 200 : 404, pack || { error: 'missing' }); }
+    if (url.pathname === '/api/icon-packs/create') { const value = JSON.parse(body), pack = { id: `pack-${packs.length + 1}`, name: value.name, author: value.author, icons: [] }; packs.push(pack); packCreates.push(value); return json(res, 200, { id: pack.id }); }
+    if (url.pathname === '/api/icon-packs/add') { const value = JSON.parse(body), pack = packs.find((entry) => entry.id === value.id); pack.icons.push(...value.icons); packAdds.push(value); return json(res, 200, { ok: true }); }
+    if (url.pathname === '/api/icon-packs/rename') { const value = JSON.parse(body), pack = packs.find((entry) => entry.id === value.id); Object.assign(pack, { name: value.name, author: value.author }); return json(res, 200, { ok: true }); }
+    if (url.pathname === '/api/icon-packs/delete') { const value = JSON.parse(body); packs = packs.filter((entry) => entry.id !== value.id); return json(res, 200, { ok: true }); }
+    if (url.pathname === '/api/background' && req.method === 'POST') { background = { ...background, ...JSON.parse(body) }; backgroundRequests.push(background); return json(res, 200, { background }); }
+    if (url.pathname === '/api/background/image' && req.method === 'POST') { const value = JSON.parse(body); imageRequests.push(value); background = { ...background, image: 'image-1', imageWidth: 2000, imageHeight: 1000 }; return json(res, 200, { background }); }
+    if (url.pathname === '/api/background/image' && req.method === 'GET') return json(res, 200, { data: '' });
+    if (url.pathname === '/api/background/image/delete') { background = { ...background, image: '' }; return json(res, 200, { background }); }
     return json(res, 404, { error: 'not found' });
   }
   let file = url.pathname === '/v4/settings.html' ? 'web/v4/settings.html' : null;
@@ -74,7 +91,10 @@ async function waitFor(check, message, timeout = 4000) {
   throw new Error(`Timed out: ${message}`);
 }
 async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
-  const box = await locator.boundingBox();
+  await locator.first().waitFor({ state: 'visible' });
+  let box = null;
+  for (let attempt = 0; attempt < 10 && !box; attempt += 1) { box = await locator.first().boundingBox(); if (!box) await new Promise((resolve) => setTimeout(resolve, 20)); }
+  assert(box, 'drag source is visible');
   const overlay = await page.locator('.preview-overlay').boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -133,6 +153,79 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     const filteredCatalogItems = await page.locator('.settings-catalog-item').count();
     assert(filteredCatalogItems > 0 && filteredCatalogItems < allCatalogItems, 'catalog search filters items');
     await page.locator('.settings-catalog-search').fill('');
+
+    await page.locator('.preview-hit[data-kind="item"]').first().click();
+    let appearancePosts = posts.length;
+    await page.getByRole('button', { name: 'アイコンを変える' }).click();
+    await page.getByTitle('赤').click();
+    await page.locator('.icon-search').fill('ハート');
+    await page.locator('.icon-choice').filter({ hasText: 'ハート' }).click();
+    await waitFor(() => posts.length === appearancePosts + 1, 'built-in icon save');
+    assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].iconKey, 'heart');
+    assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].iconColor, '#b53846');
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'icon GET');
+
+    appearancePosts = posts.length;
+    await page.locator('.preview-hit[data-kind="item"]').first().click();
+    await page.getByRole('button', { name: 'アイコンを変える' }).click();
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+3MxZ5wAAAABJRU5ErkJggg==', 'base64');
+    await page.locator('.icon-picker input[type="file"]').setInputFiles({ name: 'custom.png', mimeType: 'image/png', buffer: png });
+    await waitFor(() => posts.length === appearancePosts + 1, 'custom icon save');
+    assert(posts.at(-1).deck.landscape.pages[0].items[0].customIcon.startsWith('data:image/png'));
+    assert(posts.at(-1).deck.landscape.pages[0].items[0].customIcon.length <= 60000);
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'custom icon GET');
+
+    await page.getByRole('button', { name: '見た目' }).click();
+    const { buildZip } = await import('../web/v4/settings/zip.js');
+    const manifest = { format: 'tapoard-icons', name: 'Test Pack', icons: [{ file: 'icons/heart.png', name: 'Pack Heart', key: 'heart' }] };
+    const packBlob = buildZip([{ name: 'icons.json', bytes: new TextEncoder().encode(JSON.stringify(manifest)) }, { name: 'icons/heart.png', bytes: png }]);
+    await page.locator('#settings-section-appearance input[accept*="tpicons"]').setInputFiles({ name: 'test.tpicons', mimeType: 'application/zip', buffer: Buffer.from(await packBlob.arrayBuffer()) });
+    await waitFor(() => packCreates.length === 1 && packAdds.length === 1, 'pack import');
+    await page.getByRole('button', { name: '配置' }).click();
+    await page.locator('.preview-hit[data-kind="item"]').first().click();
+    appearancePosts = posts.length;
+    await page.getByRole('button', { name: 'アイコンを変える' }).click();
+    await page.getByRole('button', { name: 'Test Pack' }).click();
+    await page.locator('.icon-choice').filter({ hasText: 'Pack Heart' }).click();
+    await waitFor(() => posts.length === appearancePosts + 1, 'pack icon save');
+    assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].iconPack, 'pack-1');
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'pack icon GET');
+
+    const deckPostsBeforeBackground = posts.length;
+    await page.getByRole('button', { name: '見た目' }).click();
+    await page.locator('.background-swatches').first().locator('button').nth(1).click();
+    await waitFor(() => backgroundRequests.length === 1, 'background save');
+    assert.equal(posts.length, deckPostsBeforeBackground, 'background does not save the deck');
+    assert.equal(backgroundRequests[0].color, '#000000');
+    const backgroundPanel = await page.evaluate(() => { const node = document.querySelector('.background-swatches'); node.dataset.kept = '1'; return true; });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.equal(await page.locator('.background-swatches[data-kept="1"]').count(), backgroundPanel ? 1 : 0, 'sync alone does not redraw the background controls');
+
+    await page.locator('#settings-section-appearance input[accept="image/*"]').setInputFiles({ name: 'wide.png', mimeType: 'image/png', buffer: png });
+    await waitFor(() => imageRequests.length === 1, 'background image upload');
+    assert(imageRequests[0].data.startsWith('data:image/jpeg'));
+    await page.getByRole('button', { name: '完了' }).waitFor({ state: 'visible' });
+    const screenBox = await page.locator('.settings-preview-screen').boundingBox();
+    const adjustRequests = backgroundRequests.length;
+    await page.mouse.move(screenBox.x + screenBox.width / 2, screenBox.y + screenBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(screenBox.x + screenBox.width / 2 + 80, screenBox.y + screenBox.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await page.mouse.wheel(0, -200);
+    assert.equal(posts.length, deckPostsBeforeBackground, 'adjusting the picture never moves buttons');
+    await page.getByRole('button', { name: '完了' }).click();
+    await waitFor(() => backgroundRequests.length === adjustRequests + 1, 'adjusted position save');
+    assert(backgroundRequests.at(-1).landscape.x < 50, 'dragging right moves the picture right');
+    assert(backgroundRequests.at(-1).landscape.zoom > 1, 'wheel zooms in');
+    assert.equal(backgroundRequests.at(-1).portrait.x, 50, 'the other orientation keeps its own position');
+    await page.getByRole('button', { name: '画像を外す' }).click();
+    await waitFor(async () => (await page.getByRole('button', { name: '画像を外す' }).count()) === 0, 'image removed');
+
+    background = { ...background, color: '#14213d', color2: '' }; revision += 1;
+    await waitFor(async () => (await page.locator('.background-swatches button[aria-pressed="true"]').getAttribute('title')) === '濃紺', 'background changed elsewhere is shown');
+    assert.equal(posts.length, deckPostsBeforeBackground, 'background changes never save the deck');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, 'appearance has no horizontal scroll at 1100px');
+    await page.getByRole('button', { name: '配置' }).click();
 
     const pagePosts = posts.length;
     await page.getByRole('button', { name: 'ページを追加' }).click();

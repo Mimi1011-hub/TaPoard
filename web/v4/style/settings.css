@@ -30,6 +30,15 @@
 .appearance-block select, .appearance-block button, .appearance-block input[type="file"] { max-width: 100%; padding: 7px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-button); }
 .pack-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto auto; gap: 4px; align-items: center; padding: 6px 0; }
 .pack-row strong, .pack-row small { grid-column: 1; overflow: hidden; text-overflow: ellipsis; }
+.background-swatches { display: flex; flex-wrap: wrap; gap: 4px; }
+.background-swatches button { width: 25px; height: 25px; padding: 0; border-radius: 6px; }
+.background-field { display: grid; gap: 4px; color: var(--color-muted); font-size: 10px; }
+.background-field input, .background-field select { width: 100%; }
+.background-field input[type="checkbox"] { width: auto; justify-self: start; }
+.background-range-value { color: var(--color-text); }
+.background-note, .background-status { margin: 0; color: var(--color-muted); font-size: 10px; line-height: 1.5; }
+.background-status:empty { display: none; }
+.settings-preview-screen.is-adjusting-background { cursor: move; outline: 2px solid var(--color-accent); touch-action: none; }
 .settings-inspector { border-left: 1px solid var(--color-border); }
 .settings-inspector p { color: var(--color-muted); font-size: 12px; line-height: 1.7; }
 .settings-inspector h3 { margin: 14px 0 8px; font-size: 13px; }

@@ -11,6 +11,7 @@ import { Catalog } from './catalog.js';
 import { Inspector } from './inspector.js';
 import { IconPicker } from './icon-picker.js';
 import { Appearance } from './appearance.js';
+import { BackgroundSettings } from './background-settings.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -57,10 +58,11 @@ export class SettingsApp {
       i18n: this.i18n, confirmFn: this.confirmFn, promptFn: this.promptFn, onError: (message) => this.shell.showNotice(message),
     });
     await this.appearance.start();
+    this.backgroundSettings = new BackgroundSettings({ root: this.appearance.backgroundRoot, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n, onError: (message) => this.shell.showNotice(message) });
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
       this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
       this.preview.setOrientation(button.dataset.orientation);
-      this.pages.render(); this.gridSize.render();
+      this.pages.render(); this.gridSize.render(); this.backgroundSettings.orientationChanged();
     }));
     this.history.subscribe((history) => { this.nodes.undo.disabled = !history.past.length; });
     this.nodes.undo.addEventListener('click', () => this.history.undo());
@@ -95,6 +97,7 @@ export class SettingsApp {
   stateChanged(state) {
     this.shell.updateConnection(state);
     if (this.preview) this.preview.updateRuntime(state);
+    if (this.backgroundSettings && state.background) this.backgroundSettings.external(state.background);
     if (!this.editor || !state.version || state.version === this.editor.version || this.saver.saving) return;
     if (this.editor.dirty) this.externalConflict();
     else this.reloadDeck();
