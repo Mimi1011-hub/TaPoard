@@ -23,12 +23,19 @@ export class Connect {
     this.root.appendChild(rotate);
     this.pairing.mount(this.root);
     this.firewall.mount(this.root);
-    await Promise.all([this.qr.load(), this.pairing.refresh(true), this.firewall.load()]);
   }
 
-  active(value) {
+  async active(value) {
     clearTimeout(this.pollTimer);
     if (!value) return;
+    if (!this.loaded) {
+      this.loaded = true;
+      try {
+        await Promise.all([this.qr.load(), this.pairing.refresh(true), this.firewall.load()]);
+      } catch (error) {
+        this.onError(this.authMessage(error));
+      }
+    }
     const poll = async () => {
       try {
         await this.pairing.refresh(false);

@@ -14,6 +14,7 @@ import { Appearance } from './appearance.js';
 import { BackgroundSettings } from './background-settings.js';
 import { Saved } from './saved.js';
 import { Connect } from './connect.js';
+import { PcWindowSettings } from './pc-window-settings.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -79,6 +80,12 @@ export class SettingsApp {
     });
     await this.connect.start();
     this.shell.sections.subscribe((section) => this.connect.active(section === 'connection'));
+    this.pcWindowSettings = new PcWindowSettings({
+      root: this.nodes.sections.pc, api: this.api, i18n: this.i18n,
+      onError: (message) => this.shell.showNotice(message),
+    });
+    this.pcWindowSettings.start();
+    this.shell.sections.subscribe((section) => this.pcWindowSettings.active(section === 'pc'));
     this.preview.onTarget = () => this.saved.targetChanged();
     this.editor.subscribe((event) => { if (event.source === 'load') this.saved.targetChanged(); });
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
