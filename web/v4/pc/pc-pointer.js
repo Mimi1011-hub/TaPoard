@@ -1,4 +1,5 @@
-const INTERACTIVE = 'button,a,input,select,textarea,label,.deck-tile,.phone-menu,.menu-backdrop,.offline-band';
+// Same as 3.x: clocks, weather, PC info and slideshows can be used to move the window; widgets with their own gestures cannot.
+const INTERACTIVE = 'button,a,input,select,textarea,label,.audio-fader,.touchpad-widget,.wheel-widget,.keypad-widget,.phone-menu,.menu-backdrop,.offline-band';
 
 export class PcPointer {
   constructor(context) {
