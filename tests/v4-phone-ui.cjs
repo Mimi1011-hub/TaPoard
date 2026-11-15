@@ -108,6 +108,10 @@ function collectErrors(page, errors, authFailureExpected) {
   page.on('pageerror', (error) => errors.push(String(error)));
   if (!authFailureExpected)
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  // Headless browsers refuse the screen wake lock; give every page the same working one.
+  return page.addInitScript(() => {
+    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async () => ({ release: async () => {} }) } });
+  });
 }
 
 async function assertPlacement(page, id, row, column, width, height) {
@@ -134,8 +138,8 @@ async function assertPlacement(page, id, row, column, width, height) {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe' });
-    const portrait = await browser.newPage({ viewport: { width: 375, height: 667 } });
-    collectErrors(portrait, errors);
+    const portrait = await browser.newPage({ locale: 'ja-JP', viewport: { width: 375, height: 667 } });
+    await collectErrors(portrait, errors);
     await portrait.goto(`${base}/v4/#connect=test`);
     await portrait.locator('.deck-button').waitFor();
     await assertPlacement(portrait, 'portrait-main', 2, 1, 2, 1);
@@ -143,8 +147,8 @@ async function assertPlacement(page, id, row, column, width, height) {
     assert.equal(await portrait.evaluate(() => window.__injected), undefined, 'server name cannot execute markup');
     assert.equal(await portrait.locator('.deck-label').innerText(), malicious, 'server name stays literal text');
 
-    const landscape = await browser.newPage({ viewport: { width: 667, height: 375 } });
-    collectErrors(landscape, errors);
+    const landscape = await browser.newPage({ locale: 'ja-JP', viewport: { width: 667, height: 375 } });
+    await collectErrors(landscape, errors);
     await landscape.goto(`${base}/v4/#connect=test`);
     await landscape.locator('.deck-button').waitFor();
     await assertPlacement(landscape, 'landscape-main', 1, 2, 2, 1);
@@ -163,7 +167,6 @@ async function assertPlacement(page, id, row, column, width, height) {
     await portrait.mouse.down();
     await portrait.mouse.move(deckBox.x + deckBox.width * 0.2, deckBox.y + deckBox.height / 2, { steps: 8 });
     await portrait.mouse.up();
-    await portrait.waitForFunction((count) => window.__pageCount = count, beforeSwipe);
     for (let count = 0; count < 30 && pageRequests.length === beforeSwipe; count += 1) await new Promise((resolve) => setTimeout(resolve, 20));
     assert.equal(pageRequests.length, beforeSwipe + 1, 'swipe sends one page request');
     assert.deepEqual(pageRequests.at(-1), { page: 1, orientation: 'portrait' });
@@ -195,15 +198,15 @@ async function assertPlacement(page, id, row, column, width, height) {
     assert.equal(portrait.url(), urlBeforeLanguage, 'language changes without a reload');
     await portrait.close();
 
-    const narrow = await browser.newPage({ viewport: { width: 320, height: 568 } });
-    collectErrors(narrow, errors);
+    const narrow = await browser.newPage({ locale: 'ja-JP', viewport: { width: 320, height: 568 } });
+    await collectErrors(narrow, errors);
     await narrow.goto(`${base}/v4/#connect=test`);
     await narrow.locator('.deck-button').waitFor();
     assert.equal(await narrow.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, '320px has no horizontal scrolling');
     await narrow.close();
 
-    const unauthorized = await browser.newPage({ viewport: { width: 375, height: 667 } });
-    collectErrors(unauthorized, errors, true);
+    const unauthorized = await browser.newPage({ locale: 'ja-JP', viewport: { width: 375, height: 667 } });
+    await collectErrors(unauthorized, errors, true);
     await unauthorized.goto(`${base}/v4/#connect=bad`);
     await unauthorized.locator('#disconnected:not([hidden])').waitFor();
     assert.equal(await unauthorized.locator('#disconnected h1').innerText(), '接続されていません');

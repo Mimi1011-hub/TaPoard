@@ -93,18 +93,21 @@ export function widgetGlyphNode(name) {
 }
 
 export function iconNode(item) {
-  const source = safeImageSource(item.customIcon) ? item.customIcon : safeImageSource(item.icon) ? item.icon : '';
-  if (source) {
-    const image = document.createElement('img');
-    image.className = 'app-icon';
-    image.alt = '';
-    image.src = source;
-    return image;
-  }
+  // Same order as the 3.x screen: own image, then built-in icon, then the app's own icon.
+  if (safeImageSource(item.customIcon)) return imageNode(item.customIcon);
   if (item.iconKey && presetMap[item.iconKey]) return presetIconNode(item.iconKey, item.iconColor);
+  if (safeImageSource(item.icon)) return imageNode(item.icon);
   if (item.type === 'hotkey') return shortcutGlyph(item.category);
   const fallback = document.createElement('span');
   fallback.className = 'icon-fallback';
   fallback.textContent = String(item.name || '?').slice(0, 1).toUpperCase();
   return fallback;
+}
+
+function imageNode(source) {
+  const image = document.createElement('img');
+  image.className = 'app-icon';
+  image.alt = '';
+  image.src = source;
+  return image;
 }
