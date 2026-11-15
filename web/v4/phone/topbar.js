@@ -31,11 +31,13 @@ export class TopBar {
     this.container.append(pages, this.menu);
   }
 
-  update(page, total, orientation) {
+  update(page, total, orientation, name) {
     this.page = Math.max(0, page || 0);
     this.total = Math.max(1, total || 1);
     this.orientation = orientation;
-    this.label.textContent = this.i18n.t('deck.page', { current: this.page + 1, total: this.total });
+    this.name = name || '';
+    const pages = this.i18n.t('deck.page', { current: this.page + 1, total: this.total });
+    this.label.textContent = this.name ? `${this.name}　${pages}` : pages;
     this.previous.disabled = this.page <= 0;
     this.next.disabled = this.page >= this.total - 1;
   }
@@ -46,7 +48,7 @@ export class TopBar {
     try {
       await this.api.post('/api/page', { page, orientation: this.orientation }, 5000);
       this.page = page;
-      this.update(this.page, this.total, this.orientation);
+      this.update(this.page, this.total, this.orientation, '');
       this.onPage(page, this.orientation);
     } catch (error) {
       this.onError(error);

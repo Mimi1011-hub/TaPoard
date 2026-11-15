@@ -35,15 +35,15 @@ function state() {
       landscape: {
         columns: 5, rows: 3, faders: faders(),
         pages: [
-          { faders: null, items: [item('landscape-main', malicious, 1, 2, 2, 1)] },
-          { faders: null, items: [item('landscape-two', 'Second', 1, 1, 1, 1)] },
+          { name: '配信', faders: null, items: [item('landscape-main', malicious, 1, 2, 2, 1)] },
+          { name: '作業', faders: null, items: [item('landscape-two', 'Second', 1, 1, 1, 1)] },
         ],
       },
       portrait: {
         columns: 3, rows: 5, faders: faders(),
         pages: [
-          { faders: null, items: [item('portrait-main', malicious, 2, 1, 2, 1)] },
-          { faders: null, items: [item('portrait-two', 'Second', 1, 1, 1, 1)] },
+          { name: 'ホーム', faders: null, items: [item('portrait-main', malicious, 2, 1, 2, 1)] },
+          { name: '作業', faders: null, items: [item('portrait-two', 'Second', 1, 1, 1, 1)] },
         ],
       },
     },
@@ -143,6 +143,7 @@ async function assertPlacement(page, id, row, column, width, height) {
     await collectErrors(portrait, errors);
     await portrait.goto(`${base}/v4/#connect=test`);
     await portrait.locator('.deck-button').waitFor();
+    assert.match(await portrait.locator('.page-label').innerText(), /^ホーム.*1 \/ 2$/);
     await assertPlacement(portrait, 'portrait-main', 2, 1, 2, 1);
     assert.equal(await portrait.locator('.deck-button img').count(), 0, 'server name is not parsed as an image');
     assert.equal(await portrait.evaluate(() => window.__injected), undefined, 'server name cannot execute markup');
@@ -158,6 +159,7 @@ async function assertPlacement(page, id, row, column, width, height) {
     const next = portrait.getByRole('button', { name: '次のページ' });
     await next.click();
     await portrait.waitForFunction(() => document.querySelector('.deck-label').textContent === 'Second');
+    assert.match(await portrait.locator('.page-label').innerText(), /^作業.*2 \/ 2$/);
     assert.deepEqual(pageRequests.at(-1), { page: 1, orientation: 'portrait' });
     await portrait.getByRole('button', { name: '前のページ' }).click();
     await portrait.waitForFunction(() => document.querySelector('.deck-label').textContent.startsWith('<img'));

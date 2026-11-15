@@ -43,7 +43,7 @@ static class SettingsMigration
         int pageCount = DeckLayout.Pages(settings, orientation);
         var pages = new List<PageV3>();
         for (int page = 0; page < pageCount; page++)
-            pages.Add(new PageV3 { faders = PageFaders(settings, portrait, page, pageCount), items = new List<DeckItem>() });
+            pages.Add(new PageV3 { name = PageNames.Normalize(PageNames.Get(settings, portrait, page)), faders = PageFaders(settings, portrait, page, pageCount), items = new List<DeckItem>() });
         foreach (var app in settings.apps ?? new List<AppEntry>())
         {
             if (app.orientation != orientation)
@@ -131,6 +131,7 @@ static class SettingsMigration
             hideLabel = app.hideLabel,
             hotkey = app.hotkey,
             options = Copy(app.options),
+            steps = Copy(app.steps),
         };
     }
 
@@ -173,6 +174,7 @@ static class SettingsMigration
             target.portraitMicOff = source.faders.mic.off;
             target.portraitPageCount = source.pages.Count;
             target.portraitControlPages = new List<ControlPage>();
+            target.portraitPageNames = new List<string>();
         }
         else
         {
@@ -185,12 +187,14 @@ static class SettingsMigration
             target.landscapePageCount = source.pages.Count;
             target.pageCount = source.pages.Count;
             target.landscapeControlPages = new List<ControlPage>();
+            target.landscapePageNames = new List<string>();
         }
         for (int page = 0; page < source.pages.Count; page++)
         {
             PageV3 sourcePage = source.pages[page];
             if (sourcePage == null)
                 throw new Exception("settings-v3.json のページ設定が正しくありません。");
+            PageNames.List(target, portrait).Add(PageNames.Normalize(sourcePage.name));
             if (sourcePage.faders != null)
                 Controls(target, portrait).Add(new ControlPage
                 {
@@ -215,7 +219,7 @@ static class SettingsMigration
         return new ControlPlacement { row = source.row, column = source.column, width = source.width, height = source.height };
     }
 
-    static AppEntry ToApp(DeckItem item, bool portrait, int page)
+    internal static AppEntry ToApp(DeckItem item, bool portrait, int page)
     {
         if (item == null)
             throw new Exception("settings-v3.json の部品設定が正しくありません。");
@@ -253,6 +257,7 @@ static class SettingsMigration
             hideLabel = item.hideLabel,
             hotkey = item.hotkey,
             options = Copy(item.options),
+            steps = Copy(item.steps),
         };
     }
 

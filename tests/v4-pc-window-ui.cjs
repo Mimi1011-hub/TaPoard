@@ -16,9 +16,9 @@ function item(id, type, row, column, width, height, options) {
 function orientation() {
   return {
     columns: 5, rows: 4, faders: { speaker: { off: true }, mic: { off: true } }, pages: [
-      { faders: null, items: [item('action-1', 'launch', 0, 0, 1, 1), item('wheel-1', 'wheel', 0, 1, 1, 2, { sensitivity: 12 })] },
-      { faders: null, items: [item('action-2', 'launch', 0, 0, 1, 1)] },
-      { faders: null, items: [item('action-3', 'launch', 0, 0, 1, 1)] },
+      { name: '配信', faders: null, items: [item('action-1', 'launch', 0, 0, 1, 1), item('wheel-1', 'wheel', 0, 1, 1, 2, { sensitivity: 12 })] },
+      { name: '作業', faders: null, items: [item('action-2', 'launch', 0, 0, 1, 1)] },
+      { name: '', faders: null, items: [item('action-3', 'launch', 0, 0, 1, 1)] },
     ],
   };
 }
@@ -91,6 +91,7 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     assert.equal(await page.locator('#topbar').isHidden(), true);
     assert.equal(await page.evaluate(() => typeof window.tapoardPc.set), 'function');
     await page.waitForFunction(() => window.__hostMessages.includes('page:1/3'));
+    await page.waitForFunction(() => window.__hostMessages.includes('pagename:配信'));
 
     await page.evaluate(() => { window.__hostMessages = []; });
     await page.mouse.move(15, 250); await page.mouse.down(); await page.mouse.move(42, 270, { steps: 3 }); await page.mouse.up();
@@ -103,8 +104,10 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
 
     await page.evaluate(() => window.tapoardPc.page(1));
     await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
+    await page.waitForFunction(() => window.__hostMessages.includes('pagename:作業'));
     const button = page.locator('.deck-button').filter({ hasText: 'action-2' }); await button.hover(); await page.mouse.wheel(0, 100);
     await page.waitForFunction(() => window.__hostMessages.includes('page:3/3'));
+    await page.waitForFunction(() => window.__hostMessages.includes('pagename:'));
     await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
     await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:1/3'));
 

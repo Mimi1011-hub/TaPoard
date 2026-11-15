@@ -21,6 +21,7 @@ static class PublicDeckV3
         foreach (PageV3 page in orientation.pages)
         {
             var publicPage = new Dictionary<string, object>();
+            publicPage["name"] = page.name;
             publicPage["faders"] = page.faders;
             var items = new List<object>();
             foreach (DeckItem item in page.items)

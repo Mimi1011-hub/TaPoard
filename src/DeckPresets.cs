@@ -440,6 +440,7 @@ static class DeckPresets
         int pages = DeckLayout.RequiredPages(s, orientation);
         if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, pages);
         else { s.landscapePageCount = Math.Max(s.landscapePageCount, pages); s.pageCount = s.landscapePageCount; }
+        PageNames.Resize(s);
         return layout.items.Length;
     }
 }

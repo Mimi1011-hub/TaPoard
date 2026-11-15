@@ -183,7 +183,8 @@ partial class Program
                     lock (State.Gate)
                         Signal();
                 };
-                admin = RandomKey();
+                string testAdmin = Environment.GetEnvironmentVariable("TAPOARD_TEST_ADMIN_KEY");
+                admin = String.IsNullOrWhiteSpace(testAdmin) ? RandomKey() : testAdmin;
                 lan = new LanNetwork(Path.Combine(Root, "network.json"));
                 State.Lan = lan;
                 File.WriteAllText(Path.Combine(Root, "network-status.txt"), lan.Status);

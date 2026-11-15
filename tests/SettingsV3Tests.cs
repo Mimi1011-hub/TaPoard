@@ -141,6 +141,12 @@ class SettingsV3Tests
             },
         };
         DeckLayout.Migrate(settings);
+        settings.landscapePageNames = new List<string> { "配信", "作業", "" };
+        settings.portraitPageNames = new List<string> { "縦", "" };
+        settings.apps[0].steps = new List<ActionStep>
+        {
+            new ActionStep { type = "url", url = "https://example.com/", delayMs = 250 },
+        };
         DeckLayout.Validate(settings);
         return settings;
     }
@@ -167,8 +173,10 @@ class SettingsV3Tests
         SettingsV3 v3 = SettingsMigration.ToV3(source);
         Check(Serializer.Serialize(source) == before, "v2 to v3 does not modify its input");
         Check(v3.schemaVersion == 3 && v3.deck.landscape.pages.Count == 3 && v3.deck.portrait.pages.Count == 2, "v3 keeps landscape, portrait and empty page counts");
+        Check(v3.deck.landscape.pages[0].name == "配信" && v3.deck.landscape.pages[1].name == "作業", "v3 keeps page names");
         Check(v3.deck.landscape.pages[0].items.Count == 1 && v3.deck.landscape.pages[1].items.Count == 1 && v3.deck.landscape.pages[2].items.Count == 0, "v3 groups items into ordered pages");
         DeckItem clock = v3.deck.landscape.pages[1].items[0];
+        Check(v3.deck.landscape.pages[0].items[0].steps.Count == 1 && v3.deck.landscape.pages[0].items[0].steps[0].delayMs == 250, "v3 keeps future action steps");
         Check(clock.row == 0 && clock.column == 0 && clock.width == 2 && clock.height == 2, "v3 stores actual item rectangle");
         Check(v3.deck.landscape.pages[0].faders == null && v3.deck.landscape.pages[1].faders != null && v3.deck.landscape.pages[1].faders.mic == null, "v3 keeps only page-specific fader overrides");
         Check(v3.deck.portrait.faders.speaker.off, "v3 keeps an orientation-wide removed fader");
@@ -178,6 +186,7 @@ class SettingsV3Tests
         Check(!json.Contains("speakerSlot") && !json.Contains("micSlot") && !json.Contains("landscapePageCount") && !json.Contains("portraitPageCount") && !json.Contains("pageCount"), "v3 omits legacy slot and page-count fields");
         Settings roundTrip = SettingsMigration.ToV2(v3);
         Check(Comparable(roundTrip) == Comparable(source), "normalized v2 settings survive a v3 round trip");
+        Check(roundTrip.landscapePageNames[0] == "配信" && roundTrip.apps[0].steps.Count == 1, "page names and action steps survive a v3 round trip");
         DeckLayout.Validate(roundTrip);
         Check(roundTrip.apps[1].size == 2, "v3 restores the legacy size field used by the web UI");
         source.apps.Add(Item("broken-orientation", "app", "sideways", 0, 0, 0, 1, 1));
@@ -195,6 +204,8 @@ class SettingsV3Tests
         SettingsFile.Save(root, loaded);
         string v3Path = Path.Combine(root, SettingsFile.FileName);
         Check(File.Exists(v3Path) && !File.Exists(v3Path + ".tmp"), "saving migrated v2 atomically creates settings-v3.json");
+        string savedV3 = File.ReadAllText(v3Path, Encoding.UTF8);
+        Check(savedV3.Contains("\"name\":\"配信\"") && savedV3.Contains("\"steps\":["), "v3 file keeps page names and future action steps");
         Check(Convert.ToBase64String(File.ReadAllBytes(v2Path)) == Convert.ToBase64String(original), "saving v3 leaves settings-v2.json byte-identical");
 
         SettingsV3 preferred = SettingsMigration.ToV3(source);

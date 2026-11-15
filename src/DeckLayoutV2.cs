@@ -260,6 +260,7 @@ static class DeckLayout
         }
         foreach (bool portrait in new[] { false, true }) PlaceUnpositioned(s, portrait);
         s.landscapePageCount = Math.Max(s.landscapePageCount, RequiredPages(s, "landscape")); s.portraitPageCount = Math.Max(s.portraitPageCount, RequiredPages(s, "portrait"));
+        PageNames.Resize(s);
     }
 
     static void SetPosition(AppEntry app, bool portrait, TilePosition value) { if (portrait) app.portrait = value; else app.landscape = value; }
@@ -340,6 +341,7 @@ static class DeckLayout
             SetPosition(app, portrait, placed); Mark(occupied, placed, Width(app), Height(app), columns, rows, s, portrait);
         }
         if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, RequiredPages(s, orientation)); else s.landscapePageCount = Math.Max(s.landscapePageCount, RequiredPages(s, orientation));
+        PageNames.Resize(s);
     }
 
     // 3.1: removes one page of one orientation. Its buttons and fader overrides go; later pages move up.
@@ -350,6 +352,7 @@ static class DeckLayout
         int pages = Pages(s, orientation);
         if (pages <= 1) throw new Exception("最後の1ページは削除できません。");
         if (page < 0 || page >= pages) throw new Exception("ページ番号が正しくありません。");
+        PageNames.Delete(s, portrait, page);
         int removed = s.apps.RemoveAll(app => app.orientation == orientation && Position(app, portrait) != null && Position(app, portrait).page == page);
         foreach (var app in s.apps)
         {
@@ -376,6 +379,7 @@ static class DeckLayout
         bool portrait = orientation == "portrait";
         int pages = Pages(s, orientation);
         if (page < 0 || page >= pages || to < 0 || to >= pages || Math.Abs(page - to) != 1) throw new Exception("ページを移動できません。");
+        PageNames.Move(s, portrait, page, to);
         foreach (var app in s.apps)
         {
             if (app.orientation != orientation) continue;
@@ -411,6 +415,7 @@ static class DeckLayout
         }
         int pages = RequiredPages(s, orientation);
         if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, pages); else { s.landscapePageCount = Math.Max(s.landscapePageCount, pages); s.pageCount = s.landscapePageCount; }
+        PageNames.Resize(s);
     }
 
     internal static int RequiredPages(Settings s, string orientation)
@@ -418,8 +423,8 @@ static class DeckLayout
         int count = 1; bool portrait = orientation == "portrait"; foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null) count = Math.Max(count, Position(app, portrait).page + 1); return count;
     }
     internal static int Pages(Settings s, string orientation) { return Math.Max(orientation == "portrait" ? s.portraitPageCount : s.landscapePageCount, RequiredPages(s, orientation)); }
-    static bool ControlDimensionsValid(ControlPlacement p) { return p != null && ((p.width == 1 && p.height == 1) || (p.width == 2 && p.height == 2) || (p.width == 3 && p.height == 1) || (p.width == 4 && p.height == 1) || (p.width == 3 && p.height == 2) || (p.width == 4 && p.height == 2)); }
-    static bool ControlFits(ControlPlacement p, int columns, int rows)
+    internal static bool ControlDimensionsValid(ControlPlacement p) { return p != null && ((p.width == 1 && p.height == 1) || (p.width == 2 && p.height == 2) || (p.width == 3 && p.height == 1) || (p.width == 4 && p.height == 1) || (p.width == 3 && p.height == 2) || (p.width == 4 && p.height == 2)); }
+    internal static bool ControlFits(ControlPlacement p, int columns, int rows)
     {
         return ControlDimensionsValid(p) && p.row >= 0 && p.column >= 0 && p.row + p.height <= rows && p.column + p.width <= columns;
     }

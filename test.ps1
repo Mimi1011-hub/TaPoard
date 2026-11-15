@@ -3,6 +3,9 @@ $base = 'http://127.0.0.1:18781'
 $config = [IO.File]::ReadAllText("$PSScriptRoot\dist\data\settings-v3.json", [Text.Encoding]::UTF8) | ConvertFrom-Json
 if ($config.schemaVersion -ne 3) { throw 'Unexpected settings schema version' }
 $headers = @{ Authorization = 'Bearer ' + $config.security.token }
+$adminKey = $env:TAPOARD_TEST_ADMIN_KEY
+if ([string]::IsNullOrWhiteSpace($adminKey)) { throw 'Set TAPOARD_TEST_ADMIN_KEY before starting TaPoard and running test.ps1' }
+$adminHeaders = @{ Authorization = 'Bearer ' + $adminKey }
 function Assert-Status($Path, $Expected, $Auth, $Method = 'GET', $Body = $null) {
     try {
         $r = Invoke-WebRequest ($base + $Path) -UseBasicParsing -Headers $Auth -Method $Method -Body $Body -ContentType 'application/json'
@@ -58,6 +61,11 @@ Assert-Status '/api/state' 401 @{}
 Assert-Status '/api/state' 200 $headers
 Assert-Status '/api/v3/state' 401 @{}
 Assert-Status '/api/v3/state' 200 $headers
+$privateDeck = Invoke-RestMethod ($base + '/api/v3/deck') -Headers $adminHeaders
+if ($privateDeck.schemaVersion -ne 3 -or !$privateDeck.version -or !$privateDeck.deck) { throw 'Admin v3 deck response missing or invalid' }
+$privateDeckBody = @{ baseVersion = $privateDeck.version; deck = $privateDeck.deck } | ConvertTo-Json -Depth 100 -Compress
+Assert-Status '/api/v3/deck' 200 $adminHeaders 'POST' $privateDeckBody
+Write-Host 'PASS admin v3 deck can be read and saved unchanged'
 Assert-Status '/api/ping' 401 @{ Authorization = 'Bearer ABCDEFGHJKLM' }
 Write-Host 'PASS long key works and removed 12-character key is rejected'
 $state = Invoke-RestMethod ($base + '/api/state') -Headers $headers

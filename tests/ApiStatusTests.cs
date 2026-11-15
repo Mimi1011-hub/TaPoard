@@ -55,7 +55,18 @@ public static class ApiStatusTests
             NetworkStream stream = client.GetStream();
             stream.Write(headerBytes, 0, headerBytes.Length);
             if (bodyBytes.Length > 0) stream.Write(bodyBytes, 0, bodyBytes.Length);
-            using (var reader = new StreamReader(stream, Encoding.UTF8)) responseText = reader.ReadToEnd();
+            var response = new MemoryStream();
+            var buffer = new byte[4096];
+            try
+            {
+                int read;
+                while ((read = stream.Read(buffer, 0, buffer.Length)) > 0) response.Write(buffer, 0, read);
+            }
+            catch (IOException)
+            {
+                // The minimal server can close with an unread rejected POST body. Keep the complete response sent before the reset.
+            }
+            responseText = Encoding.UTF8.GetString(response.ToArray());
         }
         if (!server.Join(12000)) throw new Exception("Test server timeout");
         if (failure != null) throw failure;
@@ -91,6 +102,13 @@ public static class ApiStatusTests
             Check("GET", "/api/v3/state", null, null, 401);
             Check("GET", "/api/v3/state", "phone-token", null, 200);
             Check("GET", "/api/v3/state", "admin-token", null, 200);
+            Check("GET", "/api/v3/deck", null, null, 401);
+            Check("GET", "/api/v3/deck", "phone-token", null, 404);
+            Check("GET", "/api/v3/deck", "admin-token", null, 200);
+            Check("POST", "/api/v3/deck", null, "{}", 401);
+            Check("POST", "/api/v3/deck", "phone-token", "{}", 403);
+            string deckBody = HttpIO.Json(new { baseVersion = Program.State.Version, deck = SettingsMigration.ToV3(config).deck });
+            Check("POST", "/api/v3/deck", "admin-token", deckBody, 200);
             Check("GET", "/api/ping", "phone-token", null, 200);
             Check("GET", "/api/ping", "ABCDEFGHJKLM", null, 401);
             Check("GET", "/api/settings", "phone-token", null, 404);

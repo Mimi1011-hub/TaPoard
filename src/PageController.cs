@@ -52,6 +52,7 @@ sealed class PageController : ControllerBase
                     state.Config.portraitPageCount = ++pages;
                 else
                     state.Config.landscapePageCount = ++pages;
+                PageNames.Resize(state.Config);
                 state.Save();
             }
             int selected = Math.Max(0, Math.Min(requested, pages - 1));

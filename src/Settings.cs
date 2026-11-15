@@ -36,6 +36,7 @@ class AppEntry
     public bool hideLabel { get; set; }
     public string hotkey { get; set; }
     public Dictionary<string, object> options { get; set; }
+    public List<ActionStep> steps { get; set; }
 }
 
 class Settings
@@ -77,6 +78,8 @@ class Settings
     public int pageCount { get; set; }
     public int landscapePageCount { get; set; }
     public int portraitPageCount { get; set; }
+    public List<string> landscapePageNames { get; set; }
+    public List<string> portraitPageNames { get; set; }
     public List<PairedDevice> devices { get; set; }
     public string weatherName { get; set; }
     public double weatherLatitude { get; set; }

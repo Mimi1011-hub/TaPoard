@@ -21,6 +21,12 @@ sealed class DeckRuntimeState
     internal InputSessions.PublicSession[] inputSessions;
 }
 
+sealed class DeckV3SaveRequest
+{
+    public string baseVersion { get; set; }
+    public DeckV3 deck { get; set; }
+}
+
 sealed class DeckController : ControllerBase
 {
     internal DeckController(AppState state, IDesktop desktop) : base(state, desktop)
@@ -32,9 +38,43 @@ sealed class DeckController : ControllerBase
         api.Get("/api/ping", ApiAccess.Paired, delegate(ApiRequest r) { HttpIO.Reply(r.stream, 200, HttpIO.JsonType, "{\"ok\":true}"); });
         api.Get("/api/state", ApiAccess.Paired, GetState);
         api.Get("/api/v3/state", ApiAccess.Paired, GetV3State);
+        api.Get("/api/v3/deck", ApiAccess.Admin, GetV3Deck);
         api.Get("/api/sync", ApiAccess.Paired, WaitForSync);
         api.Get("/api/settings", ApiAccess.Admin, GetSettings);
         api.Post("/api/settings", ApiAccess.Admin, SaveRequest);
+        api.Post("/api/v3/deck", ApiAccess.Admin, SaveV3Request);
+    }
+
+    internal void GetV3Deck(ApiRequest r)
+    {
+        lock (state.Gate)
+        {
+            HttpIO.ReplyJson(r.stream, 200, new
+            {
+                schemaVersion = 3,
+                version = state.Version,
+                deck = SettingsMigration.ToV3(state.Config).deck,
+                widgetDefinitions = WidgetRegistry.PublicDefinitions(),
+            });
+        }
+    }
+
+    internal void SaveV3Request(ApiRequest r)
+    {
+        var request = new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Deserialize<DeckV3SaveRequest>(r.json);
+        lock (state.Gate)
+        {
+            if (request == null || request.baseVersion != state.Version)
+            {
+                HttpIO.ReplyJson(r.stream, 409, new { error = "ほかの所で設定が変わりました。読み直してください。", version = state.Version });
+                return;
+            }
+            Settings next = DeckV3Validator.Validate(request.deck, state.Config, this);
+            KeepGlobalServerFields(next);
+            KeepServerItemFields(next);
+            CommitSettings(next, true);
+            HttpIO.ReplyJson(r.stream, 200, new { ok = true, version = state.Version });
+        }
     }
     void SaveRequest(ApiRequest r)
     {
@@ -312,26 +352,23 @@ sealed class DeckController : ControllerBase
             ValidateEntry(a);
         lock (state.Gate)
         {
-            KeepServerFields(next);
+            KeepGlobalServerFields(next);
+            KeepLegacyDeckFields(next);
+            KeepServerItemFields(next);
             DeckLayout.Migrate(next);
             DeckLayout.Validate(next);
             var ids = new HashSet<string>();
             foreach (var a in next.apps)
                 if (!ids.Add(a.id))
                     throw new Exception("ボタンIDが重複しています。");
-            state.Config = next;
-            DisplaySubscriptions.RemoveUnknown(state.Config.apps);
-            InputSessions.ClearAll();
-            state.Save();
-            state.Version = DeckView.NewId();
-            state.LandscapePage = Math.Min(state.LandscapePage, DeckLayout.Pages(state.Config, "landscape") - 1);
-            state.PortraitPage = Math.Min(state.PortraitPage, DeckLayout.Pages(state.Config, "portrait") - 1);
-            state.Signal();
+            CommitSettings(next, false);
         }
     }
 
     internal void ValidateEntry(AppEntry a)
     {
+        if (a.steps != null)
+            throw new Exception("操作の並びは 4.1 で使えるようになります。");
         if (String.IsNullOrWhiteSpace(a.type))
             a.type = "app";
         WidgetDefinition definition = WidgetRegistry.Require(a.type);
@@ -356,50 +393,8 @@ sealed class DeckController : ControllerBase
             a.iconPack = null;
             a.iconPackItem = null;
         }
-        if (DeckView.IsType(a, "audioDevice"))
-        {
-            var device = ResolveAudioDevice(a);
-            a.type = "audioDevice";
-            a.deviceName = device.name;
-            a.category = "audio";
-            a.path = "";
-            a.args = "";
-            a.url = "";
-            a.text = "";
-            a.action = null;
-            a.icon = null;
-        }
-        else if (DeckView.IsType(a, "hotkey"))
-        {
-            if (!ShortcutKeys.Exists(a.action))
-                throw new Exception("登録されていないショートカットです");
-            ShortcutKeys.ValidateOverride(a.action, a.hotkey);
-            a.path = "";
-            a.args = "";
-            a.url = "";
-            a.text = "";
-            a.icon = null;
-        }
-        else if (DeckView.IsType(a, "url"))
-        {
-            CustomActions.ValidateUrl(a.url);
-            a.path = "";
-            a.args = "";
-            a.text = "";
-            a.action = null;
-            a.category = "custom";
-            a.icon = null;
-        }
-        else if (DeckView.IsType(a, "clipboard"))
-        {
-            CustomActions.ValidateText(a.text);
-            a.path = "";
-            a.args = "";
-            a.url = "";
-            a.action = null;
-            a.category = "custom";
-            a.icon = null;
-        }
+        if (ActionSteps.IsActionType(a.type))
+            ActionSteps.ValidateEntryAction(a, ResolveAudioDevice, true);
         else if (definition.displayOnly)
         {
             a.path = "";
@@ -412,17 +407,6 @@ sealed class DeckController : ControllerBase
             a.deviceTarget = null;
             a.deviceName = null;
             a.icon = null;
-        }
-        else if (DeckView.IsType(a, "app"))
-        {
-            a.type = "app";
-            a.action = null;
-            a.category = "app";
-            a.url = "";
-            a.text = "";
-            if (!AppImporter.ValidPath(a.path))
-                throw new Exception("実在するexe・ショートカットの絶対パスを指定してください");
-            a.icon = StartApps.IsStartApp(a.path) ? StartApps.Icon(a.path) : AppIcons.Read(a.path);
         }
         else
             throw new Exception("登録されていない部品種類です。");
@@ -455,10 +439,21 @@ sealed class DeckController : ControllerBase
         }
     }
 
-    internal void KeepServerFields(Settings next)
+    internal void KeepGlobalServerFields(Settings next)
     {
         next.schemaVersion = state.Config.schemaVersion;
         next.token = state.Config.token;
+        next.devices = state.Config.devices;
+        next.weatherName = state.Config.weatherName;
+        next.weatherLatitude = state.Config.weatherLatitude;
+        next.weatherLongitude = state.Config.weatherLongitude;
+        next.weatherTimezone = state.Config.weatherTimezone;
+        next.pcWindow = state.Config.pcWindow;
+        next.background = state.Config.background;
+    }
+
+    internal void KeepLegacyDeckFields(Settings next)
+    {
         next.columns = state.Config.columns;
         next.rows = state.Config.rows;
         next.landscapeColumns = state.Config.landscapeColumns;
@@ -478,15 +473,36 @@ sealed class DeckController : ControllerBase
         next.landscapeMicOff = state.Config.landscapeMicOff;
         next.portraitSpeakerOff = state.Config.portraitSpeakerOff;
         next.portraitMicOff = state.Config.portraitMicOff;
-        next.devices = state.Config.devices;
         next.pageCount = state.Config.pageCount;
         next.landscapePageCount = state.Config.landscapePageCount;
         next.portraitPageCount = state.Config.portraitPageCount;
-        next.weatherName = state.Config.weatherName;
-        next.weatherLatitude = state.Config.weatherLatitude;
-        next.weatherLongitude = state.Config.weatherLongitude;
-        next.weatherTimezone = state.Config.weatherTimezone;
-        next.pcWindow = state.Config.pcWindow;
-        next.background = state.Config.background;
+        next.landscapePageNames = state.Config.landscapePageNames;
+        next.portraitPageNames = state.Config.portraitPageNames;
+    }
+
+    internal void KeepServerItemFields(Settings next)
+    {
+        foreach (AppEntry item in next.apps)
+        {
+            AppEntry previous = state.Config.apps.Find(old => old.id == item.id);
+            if (previous == null || !String.Equals(previous.type, item.type, StringComparison.OrdinalIgnoreCase)) continue;
+            if (DeckView.IsType(item, "app") && previous.path == item.path) item.icon = previous.icon;
+            if (DeckView.IsType(item, "audioDevice") && previous.deviceId == item.deviceId && previous.deviceTarget == item.deviceTarget)
+                item.deviceName = previous.deviceName;
+        }
+    }
+
+    internal void CommitSettings(Settings next, bool clearPageUndo)
+    {
+        DeckView.NormalizeControlSlots(next);
+        state.Config = next;
+        DisplaySubscriptions.RemoveUnknown(state.Config.apps);
+        InputSessions.ClearAll();
+        state.Save();
+        state.Version = DeckView.NewId();
+        state.LandscapePage = Math.Min(state.LandscapePage, DeckLayout.Pages(state.Config, "landscape") - 1);
+        state.PortraitPage = Math.Min(state.PortraitPage, DeckLayout.Pages(state.Config, "portrait") - 1);
+        if (clearPageUndo) state.Undo.Clear();
+        state.Signal();
     }
 }

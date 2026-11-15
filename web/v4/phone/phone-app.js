@@ -104,8 +104,9 @@ export class PhoneApp {
     const orientationDeck = state.deck[orientation];
     if (!orientationDeck || !orientationDeck.pages || !orientationDeck.pages.length) return;
     const page = Math.max(0, Math.min((state.current && state.current[orientation]) || 0, orientationDeck.pages.length - 1));
-    this.topbar.update(page, orientationDeck.pages.length, orientation);
-    if (this.pcHost) { this.pcHost.updatePage(page, orientationDeck.pages.length); this.pcHost.updateLayout(orientationDeck.columns, orientationDeck.rows); }
+    const pageName = orientationDeck.pages[page].name || '';
+    this.topbar.update(page, orientationDeck.pages.length, orientation, pageName);
+    if (this.pcHost) { this.pcHost.updatePage(page, orientationDeck.pages.length, pageName); this.pcHost.updateLayout(orientationDeck.columns, orientationDeck.rows); }
     const signature = `${state.version || ''}|${orientation}|${page}|${this.i18n.language}`;
     if (signature !== this.signature) {
       this.signature = signature;

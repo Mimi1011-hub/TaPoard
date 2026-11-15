@@ -20,7 +20,7 @@
 }
 .topbar-button:disabled { color: var(--color-disabled); opacity: .55; }
 .page-button { font-size: 24px; line-height: 1; }
-.page-label { min-width: 58px; color: var(--color-muted); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.page-label { min-width: 58px; max-width: min(58vw,320px); overflow: hidden; color: var(--color-muted); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .menu-button { font-size: 18px; }
 
 .menu-backdrop {

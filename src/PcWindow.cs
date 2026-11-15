@@ -561,7 +561,7 @@ sealed class PcWindow : Form
 
     string lastPushed;
 
-    // Requests from the deck page: "raise", "page:N/M", "drag:<ratio>", "resize:<edge>",
+    // Requests from the deck page: "raise", "page:N/M", "pagename:<name>", "drag:<ratio>", "resize:<edge>",
     // "move:dx,dy" and "dragend". Moves are measured by the page from the press, in physical
     // pixels, so they work for the mouse, real touch and edgehost's injected touch alike
     // (injected touch neither moves the cursor nor counts as a pressed mouse button).
@@ -573,6 +573,8 @@ sealed class PcWindow : Form
             Raise();
         else if (message.StartsWith("page:"))
             bar.SetPage(message.Substring(5));
+        else if (message.StartsWith("pagename:"))
+            bar.SetPageName(message.Substring(9));
         else if (message.StartsWith("drag:"))
         {
             if (fullscreen)
@@ -1534,6 +1536,8 @@ sealed class PcBar : Control
     readonly List<Item> nav = new List<Item>();
     string pageText = "1/1";
     Rectangle pageTextBounds;
+    string pageName = "";
+    Rectangle pageNameBounds;
     bool dragging;
     Point dragStart;
     Rectangle dragBounds;
@@ -1567,6 +1571,14 @@ sealed class PcBar : Control
         if (text == pageText)
             return;
         pageText = text;
+        Invalidate();
+    }
+
+    internal void SetPageName(string text)
+    {
+        text = text ?? "";
+        if (text == pageName) return;
+        pageName = text;
         Invalidate();
     }
 
@@ -1605,25 +1617,31 @@ sealed class PcBar : Control
             if (items[i].id == "minimize")
                 x -= gap;
         }
-        // Left: name, then ‹ page › and the menu. The name is dropped when space runs short.
+        // Left: app title, then ‹ page-name page › and the menu. Text is dropped or ellipsized first.
         int rightStart = x,
             navW = (int)Math.Round(h * 0.95),
             textW = (int)Math.Round(h * 1.5),
-            navTotal = navW * 3 + textW + gap;
+            wantedNameW = String.IsNullOrEmpty(pageName) ? 0 : (int)Math.Round(h * 3.2),
+            baseTotal = navW * 3 + textW + gap;
         int left = (int)(h * 0.4f) + (int)(h * 2.4f);
-        showTitle = left + navTotal <= rightStart - gap;
+        showTitle = left + baseTotal + wantedNameW <= rightStart - gap;
         if (!showTitle)
             left = (int)(h * 0.2f);
+        int nameW = Math.Min(wantedNameW, Math.Max(0, rightStart - left - baseTotal));
         nav[0].bounds = new Rectangle(left, 0, navW, h);
-        pageTextBounds = new Rectangle(left + navW, 0, textW, h);
-        nav[1].bounds = new Rectangle(left + navW + textW, 0, navW, h);
-        nav[2].bounds = new Rectangle(left + navW * 2 + textW + gap, 0, navW, h);
+        pageNameBounds = new Rectangle(left + navW, 0, nameW, h);
+        pageTextBounds = new Rectangle(left + navW + nameW, 0, textW, h);
+        nav[1].bounds = new Rectangle(left + navW + nameW + textW, 0, navW, h);
+        nav[2].bounds = new Rectangle(left + navW * 2 + nameW + textW + gap, 0, navW, h);
         bool fits = nav[2].bounds.Right <= rightStart;
         foreach (var item in nav)
             if (!fits)
                 item.bounds = Rectangle.Empty;
         if (!fits)
+        {
             pageTextBounds = Rectangle.Empty;
+            pageNameBounds = Rectangle.Empty;
+        }
     }
 
     bool showTitle = true;
@@ -1730,6 +1748,11 @@ sealed class PcBar : Control
                 using (var pageFont = new Font("Segoe UI", h * 0.34f, GraphicsUnit.Pixel))
                 using (var fg = new SolidBrush(Color.FromArgb(170, 176, 190)))
                     g.DrawString(pageText.Replace("/", " / "), pageFont, fg, pageTextBounds, center);
+            if (!pageNameBounds.IsEmpty)
+                using (var pageFont = new Font("Segoe UI", h * 0.34f, GraphicsUnit.Pixel))
+                using (var fg = new SolidBrush(Color.FromArgb(205, 209, 218)))
+                using (var ellipsis = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap })
+                    g.DrawString(pageName, pageFont, fg, pageNameBounds, ellipsis);
         }
     }
 

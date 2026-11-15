@@ -149,6 +149,8 @@ static class IconStyles
         s.landscapeSpeakerOff = deck.landscapeSpeakerOff; s.landscapeMicOff = deck.landscapeMicOff;
         s.portraitSpeakerOff = deck.portraitSpeakerOff; s.portraitMicOff = deck.portraitMicOff;
         s.pageCount = deck.pageCount; s.landscapePageCount = deck.landscapePageCount; s.portraitPageCount = deck.portraitPageCount;
+        s.landscapePageNames = deck.landscapePageNames; s.portraitPageNames = deck.portraitPageNames;
+        PageNames.Resize(s);
     }
 
     internal static string Save(string data, string name, Settings s)

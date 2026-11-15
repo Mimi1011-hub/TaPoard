@@ -49,6 +49,7 @@ class FaderV3
 
 class PageV3
 {
+    public string name { get; set; }
     public PageFadersV3 faders { get; set; }
     public List<DeckItem> items { get; set; }
 }
@@ -92,6 +93,7 @@ class DeckItem
     public bool hideLabel { get; set; }
     public string hotkey { get; set; }
     public Dictionary<string, object> options { get; set; }
+    public List<ActionStep> steps { get; set; }
 }
 
 class WeatherV3

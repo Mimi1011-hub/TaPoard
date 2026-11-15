@@ -3,7 +3,7 @@ import { PcPointer } from './pc-pointer.js';
 
 export class PcHost {
   constructor(context) {
-    this.context = context; this.lastPage = '';
+    this.context = context; this.lastPage = ''; this.lastPageName = null;
     context.documentObject.body.classList.add('pc-window'); context.topbar.hidden = true;
     this.info = new PcInfo(context);
     this.pointer = new PcPointer({
@@ -26,9 +26,11 @@ export class PcHost {
     this.fill = value.aspect === 'fill';
     this.context.documentObject.body.classList.toggle('pc-fill', this.fill); this.fitLayout();
   }
-  updatePage(page, total) {
+  updatePage(page, total, name) {
     const value = `${Math.min(page + 1, total)}/${total}`;
     if (value !== this.lastPage) { this.lastPage = value; this.post(`page:${value}`); }
+    const pageName = name || '';
+    if (pageName !== this.lastPageName) { this.lastPageName = pageName; this.post(`pagename:${pageName}`); }
   }
   updateLayout(columns, rows) {
     this.columns = Math.max(1, columns); this.rows = Math.max(1, rows); this.fitLayout();
