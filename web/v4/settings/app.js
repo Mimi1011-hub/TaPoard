@@ -37,8 +37,11 @@ i18n.init().then(() => {
       saveStatus: document.querySelector('#settings-save-status'),
       preview: document.querySelector('#settings-preview'),
       orientation: Array.from(document.querySelectorAll('[data-orientation]')),
+      pages: document.querySelector('#settings-pages'),
+      gridSize: document.querySelector('#settings-grid-size'),
     }),
     documentObject: document,
+    confirmFn: (message) => window.confirm(message),
     fetchFn: (path, options) => fetch(path, options),
     onAuthLost: () => {
       keys.clear();

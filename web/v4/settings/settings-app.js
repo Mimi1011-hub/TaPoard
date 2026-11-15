@@ -5,6 +5,8 @@ import { EditorState } from './editor-state.js';
 import { History } from './history.js';
 import { Saver } from './saver.js';
 import { Preview } from './preview.js';
+import { Pages } from './pages.js';
+import { GridSize } from './grid-size.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -25,9 +27,19 @@ export class SettingsApp {
       root: this.nodes.preview, editor: this.editor, api: this.api, i18n: this.i18n,
       onSelect: () => {}, onError: (message) => this.shell.showNotice(message),
     });
+    this.pages = new Pages({
+      root: this.nodes.pages, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      confirmFn: this.confirmFn, onError: (message) => this.shell.showNotice(message),
+    });
+    this.gridSize = new GridSize({
+      root: this.nodes.gridSize, editor: this.editor, i18n: this.i18n,
+      orientation: () => this.preview.orientation, confirmFn: this.confirmFn,
+      onError: (message) => this.shell.showNotice(message),
+    });
     this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
       this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
       this.preview.setOrientation(button.dataset.orientation);
+      this.pages.render(); this.gridSize.render();
     }));
     this.history.subscribe((history) => { this.nodes.undo.disabled = !history.past.length; });
     this.nodes.undo.addEventListener('click', () => this.history.undo());
