@@ -54,6 +54,7 @@
   "icon.name.windows": "Windows", "icon.name.desktop": "デスクトップ", "icon.name.folder": "フォルダー", "icon.name.file": "ファイル", "icon.name.save": "保存", "icon.name.keyboard": "キーボード", "icon.name.mouse": "マウス", "icon.name.print": "印刷", "icon.name.screenshot": "スクリーンショット", "icon.name.trash": "ごみ箱", "icon.name.copy": "コピー", "icon.name.paste": "貼り付け",
   "icon.name.brush": "ブラシ", "icon.name.pen": "ペン", "icon.name.pencil": "鉛筆", "icon.name.eraser": "消しゴム", "icon.name.palette": "パレット", "icon.name.image": "画像", "icon.name.layers": "レイヤー", "icon.name.eye": "表示", "icon.name.eyedropper": "スポイト", "icon.name.zoom-in": "拡大", "icon.name.zoom-out": "縮小", "icon.name.rotate": "回転",
   "icon.name.arrow-up": "上", "icon.name.arrow-down": "下", "icon.name.arrow-left": "左", "icon.name.arrow-right": "右", "icon.name.back": "戻る", "icon.name.forward": "進む", "icon.name.refresh": "更新", "icon.name.menu": "メニュー", "icon.name.grid": "グリッド", "icon.name.list": "一覧", "icon.name.fullscreen": "全画面", "icon.name.target": "ターゲット",
+  "packs.title": "アイコンパック", "packs.standard": "標準アイコン", "packs.progress": "変換しています… {current} / {total}", "packs.rename": "名前を変える", "packs.export": "書き出す", "packs.delete": "削除", "packs.name": "パック名", "packs.author": "作者", "packs.confirmDelete": "アイコンパック「{name}」を削除しますか？",
   "inspector.name": "名前", "inspector.action": "押したときの動き", "inspector.size": "大きさ",
   "inspector.fontSize": "文字の大きさ", "inspector.iconScale": "アイコンの大きさ", "inspector.labelOpacity": "文字の濃さ",
   "inspector.keyClear": "ボタンの透け", "inspector.hideLabel": "名前を隠す", "inspector.url": "URL", "inspector.text": "コピーする文字",
