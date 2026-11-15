@@ -21,8 +21,7 @@ export class DeckGrid {
     this.renderFaders(container, orientationDeck.faders, page.faders, state);
     const displayTypes = new Set((widgetDefinitions || []).filter((item) => item.displayOnly).map((item) => item.type));
     (page.items || []).forEach((item) => {
-      if (this.preview && ['wheel', 'touchpad', 'keypad'].includes(item.type)) container.appendChild(this.placeholder(item));
-      else if (isDisplayWidget(item.type)) this.mountWidget(container, item, widgetTypes[item.type], state);
+      if (isDisplayWidget(item.type)) this.mountWidget(container, item, widgetTypes[item.type], state);
       else if (displayTypes.has(item.type) || ['wheel', 'touchpad', 'keypad'].includes(item.type)) container.appendChild(this.placeholder(item));
       else container.appendChild(this.button(item));
     });

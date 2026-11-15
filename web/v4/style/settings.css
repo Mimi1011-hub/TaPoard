@@ -165,3 +165,60 @@
 @media (max-width: 1150px) {
   .settings-workspace { grid-template-columns: 220px minmax(360px, 1fr) 250px; }
 }
+
+/* Connection, PC window and general sections */
+#settings-section-connection h3, #settings-section-general h3 { margin: 18px 0 6px; font-size: 12px; }
+#settings-section-connection > button, #settings-section-pc > button, #settings-section-general > button, .settings-import, .pair-buttons button, .weather-result, .confirm-dialog button, .inspector-action {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-button);
+  font-size: 12px;
+  cursor: pointer;
+}
+#settings-section-connection > button:disabled, #settings-section-pc > button:disabled, .settings-import:disabled, .inspector-action:disabled { opacity: .5; cursor: default; }
+.settings-import { width: 100%; margin-top: 10px; }
+.settings-danger { margin-top: 10px; color: #ffb4b4; }
+.settings-note, .settings-empty, .firewall-status, .firewall-result, .general-about, .weather-current { margin: 6px 0; color: var(--color-muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.connect-qr { display: block; width: 100%; max-width: 188px; height: auto; margin: 10px auto 6px; border-radius: 8px; }
+.connect-url { margin: 0; font-size: 11px; text-align: center; overflow-wrap: anywhere; user-select: text; }
+#settings-section-connection .orientation-switch { display: grid; grid-template-columns: 1fr 1fr; margin-top: 10px; }
+#settings-section-connection .orientation-switch button { padding: 7px 8px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-button); font-size: 12px; cursor: pointer; }
+.pairing-list { display: grid; gap: 6px; }
+.pair-request-row { display: grid; padding: 8px; gap: 6px; border: 1px solid var(--color-border); border-radius: 9px; }
+.pair-text { display: grid; min-width: 0; gap: 2px; font-size: 12px; overflow-wrap: anywhere; }
+.pair-text small { color: var(--color-muted); font-size: 10px; }
+.pair-code { font-size: 18px; letter-spacing: .12em; }
+.pair-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pair-request-row > button { padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-button); font-size: 11px; cursor: pointer; }
+.settings-field { display: grid; grid-template-columns: 1fr auto; margin-top: 10px; align-items: center; gap: 6px 8px; font-size: 12px; }
+.settings-field select, .settings-field input[type="range"] { grid-column: 1 / -1; width: 100%; }
+.settings-field select, #settings-section-general input[type="search"] {
+  padding: 7px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  outline: 0;
+  background: #11151d;
+  color: var(--color-text);
+}
+.settings-field input[type="range"] { accent-color: var(--color-accent); }
+.settings-field output { grid-row: 1; grid-column: 2; color: var(--color-muted); font-size: 11px; }
+#settings-section-pc > button { width: 100%; margin-top: 8px; }
+#settings-section-pc > p { margin: 12px 0 0; color: #ffcf8a; font-size: 11px; line-height: 1.6; }
+#settings-section-general input[type="search"] { width: 100%; margin-bottom: 6px; }
+.weather-results { display: grid; margin-top: 6px; gap: 5px; }
+.weather-result { text-align: left; overflow-wrap: anywhere; }
+.confirm-dialog { width: min(380px, calc(100% - 40px)); padding: 18px; border: 1px solid var(--color-border); border-radius: 14px; color: var(--color-text); background: var(--color-surface); }
+.confirm-dialog::backdrop { background: rgba(0,0,0,.72); }
+.confirm-dialog p { margin: 0 0 14px; font-size: 13px; line-height: 1.6; }
+
+/* Settings that only one kind of item has */
+.inspector-details { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--color-border); }
+.inspector-heading { margin: 12px 0 0; font-size: 12px; }
+.settings-inspector .inspector-note { margin: 10px 0 0; color: var(--color-muted); font-size: 10px; line-height: 1.6; }
+.inspector-value { font-size: 10px; }
+.inspector-action { width: 100%; margin-top: 10px; }
+.inspector-details .inspector-field:has(input[type="checkbox"]) { grid-template-columns: 1fr auto; align-items: center; }
+.settings-inspector .hotkey-current { margin: 10px 0 0; color: var(--color-text); font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.hotkey-modifiers { display: grid; grid-template-columns: repeat(4, auto); margin-top: 8px; gap: 6px; color: var(--color-muted); font-size: 11px; }
+.hotkey-modifiers label { display: flex; align-items: center; gap: 4px; }

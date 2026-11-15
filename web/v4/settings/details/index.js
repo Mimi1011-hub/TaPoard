@@ -1,3 +1,4 @@
+import { el } from '../../core/dom.js';
 import { clockDetails } from './clock-details.js';
 import { metricsDetails } from './metrics-details.js';
 import { wheelDetails } from './wheel-details.js';
@@ -18,25 +19,26 @@ const builders = {
   weather: weatherDetails,
 };
 
+// Adds the settings that only one kind of item has. Every change goes through updateItem, so it is saved and undoable.
 export function detailsFor(options) {
   const build = builders[options.item.type];
   if (!build) return;
+  const root = el('div', 'inspector-details');
+  options.root.appendChild(root);
   const context = Object.assign({}, options, {
+    root,
     options: Object.assign({}, options.item.options || {}),
-    t: (key) => options.i18n.t(key),
+    t: (key, values) => options.i18n.t(key, values),
     defaults(values) {
       this.options = Object.assign({}, values, this.options);
     },
     change(name, value) {
-      this.options[name] = typeof valuesAsNumber[name] === 'boolean' ? Number(value) : value;
-      options.updateItem({ options: this.options });
+      this.changeMany({ [name]: value });
     },
     changeMany(values) {
       Object.assign(this.options, values);
-      options.updateItem({ options: this.options });
+      options.updateItem({ options: Object.assign({}, this.options) });
     },
   });
   build(context);
 }
-
-const valuesAsNumber = { multiplier: true, interval: true };

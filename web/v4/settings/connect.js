@@ -17,16 +17,17 @@ export class Connect {
   async start() {
     this.root.appendChild(el('h2', '', this.i18n.t('settings.nav.connection')));
     this.qr.mount(this.root);
-    const rotate = el('button', '', this.i18n.t('connect.rotate'));
+    const rotate = el('button', 'settings-danger', this.i18n.t('connect.rotate'));
     rotate.type = 'button';
     rotate.addEventListener('click', () => this.rotate().catch((error) => this.onError(this.authMessage(error))));
-    this.root.appendChild(rotate);
     this.pairing.mount(this.root);
+    this.root.appendChild(rotate);
     this.firewall.mount(this.root);
   }
 
   async active(value) {
     clearTimeout(this.pollTimer);
+    this.shown = false;
     if (!value) return;
     if (!this.loaded) {
       this.loaded = true;
@@ -36,13 +37,17 @@ export class Connect {
         this.onError(this.authMessage(error));
       }
     }
+    this.shown = true;
     const poll = async () => {
       try {
         await this.pairing.refresh(false);
+        this.pollFailed = false;
       } catch (error) {
-        this.onError(this.authMessage(error));
+        // One notice per outage is enough; the list simply catches up when the PC answers again.
+        if (!this.pollFailed) this.onError(this.authMessage(error));
+        this.pollFailed = true;
       }
-      this.pollTimer = setTimeout(poll, 2000);
+      if (this.shown) this.pollTimer = setTimeout(poll, 2000);
     };
     this.pollTimer = setTimeout(poll, 2000);
   }

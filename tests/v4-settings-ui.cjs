@@ -309,7 +309,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
 
     await page.getByRole('button', { name: '接続' }).click();
     await page.locator('.connect-qr').waitFor({ state: 'visible' });
-    assert.equal(await page.locator('.connect-url').innerText(), 'http://test/');
+    await page.waitForFunction(() => document.querySelector('.connect-url').textContent === 'http://test/');
     const unexpectedErrors = errors.filter((value) => !value.includes('Failed to load resource'));
     assert.deepEqual(unexpectedErrors, [], `console errors: ${unexpectedErrors.join('\n')}`);
     console.log('PASS v4 settings UI: auth, layout edits, save, conflict, validation, preview safety and 1100px width');

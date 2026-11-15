@@ -1,4 +1,4 @@
-import { clear, el } from '../core/dom.js';
+import { el } from '../core/dom.js';
 
 export class ConnectQr {
   constructor(options) {
@@ -18,7 +18,7 @@ export class ConnectQr {
     });
     this.canvas = el('canvas', 'connect-qr');
     this.url = el('p', 'connect-url');
-    root.append(this.tabs, this.canvas, this.url);
+    root.append(this.tabs, this.canvas, this.url, el('p', 'settings-note', this.i18n.t('connect.qrNote')));
   }
 
   async load() {
@@ -36,7 +36,6 @@ export class ConnectQr {
     if (!this.links) return;
     const value = this.kind === 'iphone' ? this.links.iphoneUrl : this.links.androidUrl;
     this.url.textContent = value.split('#')[0];
-    clear(this.canvas);
     const code = globalThis.qrcode(0, 'M');
     code.addData(value, 'Byte');
     code.make();

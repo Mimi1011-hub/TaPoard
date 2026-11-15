@@ -24,13 +24,19 @@ export class PairingList {
     clear(this.devices);
     (value.pending || []).forEach((request) => {
       const row = el('div', 'pair-request-row');
-      row.append(el('strong', '', `${request.code} · ${request.name}`), el('small', '', request.address));
-      row.append(this.action('connect.allow', () => this.decide(request, true)), this.action('connect.deny', () => this.decide(request, false)));
+      const text = el('div', 'pair-text');
+      text.append(el('strong', 'pair-code', request.code), el('span', '', request.name), el('small', '', request.address));
+      const buttons = el('div', 'pair-buttons');
+      buttons.append(this.action('connect.allow', () => this.decide(request, true)), this.action('connect.deny', () => this.decide(request, false)));
+      row.append(text, buttons);
       this.pending.appendChild(row);
     });
     (value.devices || []).forEach((device) => {
       const row = el('div', 'pair-request-row');
-      row.appendChild(el('span', '', `${device.name} · ${new Date(device.created).toLocaleDateString()}`));
+      const text = el('div', 'pair-text');
+      const created = new Date(device.created);
+      text.append(el('span', '', device.name), el('small', '', Number.isNaN(created.getTime()) ? '' : created.toLocaleDateString()));
+      row.appendChild(text);
       row.appendChild(this.action('connect.revoke', async () => {
         if (!await this.confirmDialog.ask(this.i18n.t('connect.revokeConfirm'))) return;
         await this.api.post('/api/pair/manage', { id: device.id, revoke: true });
@@ -38,6 +44,8 @@ export class PairingList {
       }));
       this.devices.appendChild(row);
     });
+    if (!this.pending.firstChild) this.pending.appendChild(el('p', 'settings-empty', this.i18n.t('connect.noPending')));
+    if (!this.devices.firstChild) this.devices.appendChild(el('p', 'settings-empty', this.i18n.t('connect.noDevices')));
   }
 
   action(key, run) {

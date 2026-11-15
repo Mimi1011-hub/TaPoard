@@ -3,6 +3,18 @@ import { DeckBackground } from '../deck/background.js';
 import { DeckGrid } from '../deck/grid.js';
 import { PreviewDrag } from './drag.js';
 
+// The preview never operates the PC, so the input widgets get a sender that does nothing.
+const silentSender = {
+  listen() {},
+  steps() {},
+  move() {},
+  wheel() {},
+  button() {},
+  keyTap() {},
+  release() {},
+  keepalive() {},
+};
+
 export class Preview {
   constructor(options) {
     Object.assign(this, options);
@@ -26,6 +38,8 @@ export class Preview {
     this.root.appendChild(this.screen);
     const context = {
       preview: true,
+      documentObject: this.root.ownerDocument,
+      senders: { get: () => silentSender },
       i18n: this.i18n,
       api: this.api,
       feedback: { prepare() {}, tap() {} },

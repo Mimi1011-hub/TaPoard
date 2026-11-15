@@ -1,6 +1,21 @@
 import { el } from '../core/dom.js';
+import { catalogItem } from './catalog-items.js';
 
 const sameText = (left, right) => String(left || '').toLocaleLowerCase() === String(right || '').toLocaleLowerCase();
+
+// Only the fields an imported app or URL can carry are taken from the PC's answer.
+export function importedItem(source) {
+  const url = source.type === 'url';
+  const item = catalogItem('custom-url', String(source.name || ''));
+  item.type = url ? 'url' : 'app';
+  item.category = url ? 'custom' : 'app';
+  item.path = String(source.path || '');
+  item.args = String(source.args || '');
+  item.url = String(source.url || '');
+  item.icon = source.icon || null;
+  if (item.icon || !url) item.iconKey = '';
+  return item;
+}
 
 export class AppImport {
   constructor(options) {
@@ -9,9 +24,6 @@ export class AppImport {
     this.button.type = 'button';
     this.button.addEventListener('click', () => this.start());
     this.root.prepend(this.button);
-    this.documentObject.addEventListener('visibilitychange', () => {
-      if (this.documentObject.hidden) clearTimeout(this.timer);
-    });
     this.documentObject.defaultView.addEventListener('pagehide', () => clearTimeout(this.timer));
   }
 
@@ -43,7 +55,10 @@ export class AppImport {
         return;
       }
       const counts = this.add(response.result.apps || []);
-      this.finish(this.i18n.t('import.result', counts));
+      const parts = [this.i18n.t(counts.added ? 'import.added' : 'import.noneAdded', { count: counts.added })];
+      if (counts.skipped) parts.push(this.i18n.t('import.skipped', { count: counts.skipped }));
+      if (counts.full) parts.push(this.i18n.t('import.full', { count: counts.full }));
+      this.finish(parts.join(' '));
     } catch (error) {
       this.finish(error.message);
     }
@@ -61,10 +76,7 @@ export class AppImport {
           counts.skipped += 1;
           return;
         }
-        const item = JSON.parse(JSON.stringify(source));
-        item.width = item.width || 1;
-        item.height = item.height || 1;
-        item.id = item.id || '';
+        const item = importedItem(source);
         const space = this.editor.firstSpace(orientation, pageIndex, item);
         if (!space || this.editor.countItems(orientation) >= 40) {
           counts.full += 1;

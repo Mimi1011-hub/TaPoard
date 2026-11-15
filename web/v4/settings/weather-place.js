@@ -13,6 +13,9 @@ export class WeatherPlace {
     const search = el('button', '', this.i18n.t('general.weatherSearch'));
     search.type = 'button';
     search.addEventListener('click', () => this.search().catch((error) => this.onError(error.message)));
+    this.query.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') search.click();
+    });
     this.results = el('div', 'weather-results');
     root.append(el('h3', '', this.i18n.t('general.weather')), this.current, this.query, search, this.results);
   }
