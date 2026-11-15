@@ -8,6 +8,7 @@ export class Catalog {
   constructor(options) {
     Object.assign(this, options);
     this.level = 'top';
+    this.shortcutPacks = [];
     this.recent = new CatalogRecent(this.documentObject.defaultView.localStorage);
     this.search = el('input', 'settings-catalog-search');
     this.search.type = 'search'; this.search.placeholder = this.i18n.t('catalog.search');
@@ -30,7 +31,7 @@ export class Catalog {
   render() {
     const query = this.search.value.trim().toLocaleLowerCase();
     if (query) {
-      const items = catalogGroups.flatMap((group) => group.items).filter((value) => {
+      const items = this.allGroups().flatMap((group) => group.items).filter((value) => {
         return `${this.i18n.t(value.name)} ${this.text(value.description)}`.toLocaleLowerCase().includes(query);
       });
       this.view.showItems('', items, null, (item, label) => this.row(item, label), (item) => this.i18n.t(this.groupFor(item).title));
@@ -38,7 +39,11 @@ export class Catalog {
       return;
     }
     if (this.level === 'top') this.view.showCards(catalogTops, (top) => this.openTop(top));
-    else if (this.level === 'groups') this.view.showGroups(this.top, () => this.showTop(), (group) => this.openGroup(group));
+    else if (this.level === 'groups') {
+      const top = Object.assign({}, this.top, { groups: this.groupsFor(this.top) });
+      const extra = this.top.id === 'apps' && this.appsExtra ? this.appsExtra() : null;
+      this.view.showGroups(top, () => this.showTop(), (group) => this.openGroup(group), extra);
+    }
     else this.view.showItems(this.path(), this.group.items, () => this.openTop(this.top), (item) => this.row(item));
     this.renderRecent(this.level === 'top');
   }
@@ -107,11 +112,40 @@ export class Catalog {
   }
 
   groupFor(item) {
-    return catalogGroups.find((group) => group.items.indexOf(item) >= 0);
+    return this.allGroups().find((group) => group.items.indexOf(item) >= 0);
+  }
+
+  allGroups() { return catalogGroups.concat(this.shortcutPacks); }
+  groupsFor(top) { return top.id === 'apps' ? top.groups.concat(this.shortcutPacks) : top.groups; }
+
+  setShortcutPacks(packs, remove) {
+    this.shortcutPacks = packs.map((pack) => ({
+      id: `pack:${pack.id}`,
+      title: pack.name,
+      note: [pack.app, pack.author].filter(Boolean).join('・'),
+      pack,
+      remove,
+      items: (pack.shortcuts || []).map((item, index) => {
+        const iconId = item.icon ? `i${index + 1}` : '';
+        const icon = iconId && pack.iconItems ? pack.iconItems.find((value) => value.id === iconId) : null;
+        return {
+          id: `pack:${pack.id}:${index}`,
+          name: item.name,
+          description: item.description || item.keys,
+          keys: item.keys,
+          category: 'common',
+          iconKey: 'keyboard',
+          iconPack: pack.iconPack || '',
+          iconPackItem: iconId,
+          customIcon: icon ? icon.data : '',
+        };
+      }),
+    }));
+    this.render();
   }
 
   value(action) {
-    for (const group of catalogGroups) {
+    for (const group of this.allGroups()) {
       const found = group.items.find((item) => (item.id || item.action) === action);
       if (found) return found;
     }
@@ -125,6 +159,11 @@ export class Catalog {
       const value = catalogItem('key-custom', this.i18n.t(data.name), data.category);
       value.hotkey = data.keys;
       value.iconKey = data.iconKey || 'keyboard';
+      if (data.iconPack && data.iconPackItem) {
+        value.iconPack = data.iconPack;
+        value.iconPackItem = data.iconPackItem;
+        value.customIcon = data.customIcon || '';
+      }
       return value;
     }
     return catalogItem(action, this.i18n.t(data.name), data.category);

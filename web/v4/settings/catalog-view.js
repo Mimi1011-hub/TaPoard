@@ -25,7 +25,15 @@ export class CatalogView {
       button.append(el('strong', '', this.i18n.t(group.title)), el('small', '', this.i18n.t(group.note)));
       button.appendChild(el('span', 'catalog-count', this.i18n.t('catalog.count', { count: group.items.length })));
       button.addEventListener('click', () => open(group));
-      this.root.appendChild(button);
+      if (!group.pack) this.root.appendChild(button);
+      else {
+        const row = el('div', 'catalog-pack-card');
+        const remove = el('button', 'catalog-pack-delete', this.i18n.t('shortcuts.delete'));
+        remove.type = 'button';
+        remove.addEventListener('click', () => group.remove(group.pack));
+        row.append(button, remove);
+        this.root.appendChild(row);
+      }
     });
     if (extra) this.root.appendChild(extra);
   }

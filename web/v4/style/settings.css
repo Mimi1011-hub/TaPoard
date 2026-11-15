@@ -35,6 +35,9 @@
 .settings-catalog-item { width: 100%; min-width: 0; text-align: left; border: 0; border-top: 1px solid var(--color-border); }
 .settings-catalog-item strong, .settings-catalog-item small { max-width: 100%; overflow-wrap: anywhere; }
 .catalog-item-group { opacity: .8; }
+.catalog-pack-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
+.catalog-pack-delete { align-self: stretch; padding: 6px; color: #ffb4b4; }
+.catalog-import-pack { width: 100%; padding: 9px; }
 .appearance-block { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
 .appearance-block h3 { margin: 0; font-size: 12px; }
 .appearance-block select, .appearance-block button, .appearance-block input[type="file"] { max-width: 100%; padding: 7px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-button); }

@@ -17,6 +17,8 @@ import { Connect } from './connect.js';
 import { PcWindowSettings } from './pc-window-settings.js';
 import { General } from './general.js';
 import { AppImport } from './app-import.js';
+import { ShortcutPacks } from './shortcut-packs.js';
+import { ConfirmDialog } from './confirm-dialog.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -59,6 +61,14 @@ export class SettingsApp {
       root: this.nodes.catalog, editor: this.editor, preview: this.preview, i18n: this.i18n, documentObject: this.documentObject,
       onError: (message) => this.shell.showNotice(message),
     });
+    this.shortcutPacks = new ShortcutPacks({
+      api: this.api, catalog: this.catalog, i18n: this.i18n, documentObject: this.documentObject,
+      confirmDialog: new ConfirmDialog(this.documentObject, this.i18n),
+      onError: (message) => this.shell.showNotice(message),
+      onNotice: (message) => this.shell.showNotice(message),
+    });
+    this.catalog.appsExtra = () => this.shortcutPacks.importButton();
+    await this.shortcutPacks.load();
     this.appImport = new AppImport({
       root: this.nodes.catalog, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
       documentObject: this.documentObject, onNotice: (message) => this.shell.showNotice(message),
