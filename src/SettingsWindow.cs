@@ -18,7 +18,7 @@ sealed class SettingsWindow : Form
         this.notify = notify;
         Text = "TaPoard 設定";
         FormBorderStyle = FormBorderStyle.Sizable;
-        MinimumSize = new Size(1100, 700);
+        MinimumSize = new Size(1100, 640);
         StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = true;
         BackColor = Color.FromArgb(17, 18, 22);

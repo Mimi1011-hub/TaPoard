@@ -23,6 +23,7 @@ export class Saver {
     clearTimeout(this.timer);
     if (this.blocked || this.saving || !this.editor.dirty) return;
     this.saving = true;
+    let failed = false;
     const revision = this.editor.revision;
     const body = { baseVersion: this.editor.version, deck: JSON.parse(JSON.stringify(this.editor.deck)) };
     this.onStatus('saving');
@@ -34,12 +35,15 @@ export class Saver {
     } catch (error) {
       if (error.status === 409) { this.blocked = true; this.onConflict(error); }
       else {
-        this.editor.restoreSaved();
+        // 400 means the server refused this layout, so go back to the last saved one.
+        // Other errors (timeout, server busy) keep the edits; the next edit tries again.
+        failed = true;
+        if (error.status === 400) this.editor.restoreSaved();
         this.onStatus('failed', error.serverError || error.message);
       }
     } finally {
       this.saving = false;
-      if (this.editor.dirty && !this.blocked) this.schedule(0);
+      if (this.editor.dirty && !this.blocked && !failed) this.schedule(0);
     }
   }
 
