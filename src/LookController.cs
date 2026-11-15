@@ -23,10 +23,36 @@ sealed class LookController : ControllerBase
         api.Get("/api/backups", ApiAccess.Admin, GetBackups);
         api.Get("/api/presets", ApiAccess.Admin, delegate(ApiRequest r) { HttpIO.ReplyJson(r.stream, 200, new { presets = DeckPresets.Public() }); });
         api.Get("/api/icon-styles", ApiAccess.Admin, GetStyles);
+        api.Get("/api/shortcut-packs", ApiAccess.Admin, GetShortcutPacks);
         api.Post("/api/backups/restore", ApiAccess.Admin, delegate(ApiRequest r) { RestoreBackup(r, r.input); });
         api.PostPrefix("/api/background", ApiAccess.Admin, delegate(ApiRequest r) { SetBackground(r, r.path, r.input, r.json); });
         api.PostPrefix("/api/icon-styles/", ApiAccess.Admin, delegate(ApiRequest r) { IconStyleAction(r, r.path.Substring("/api/icon-styles/".Length), r.input); });
         api.PostPrefix("/api/icon-packs/", ApiAccess.Admin, delegate(ApiRequest r) { IconPackAction(r, r.path.Substring("/api/icon-packs/".Length), r.input, r.json); });
+        api.Post("/api/shortcut-packs/save", ApiAccess.Admin, SaveShortcutPack);
+        api.Post("/api/shortcut-packs/delete", ApiAccess.Admin, DeleteShortcutPack);
+    }
+
+    void GetShortcutPacks(ApiRequest r)
+    {
+        HttpIO.ReplyJson(r.stream, 200, new
+        {
+            packs = ShortcutPacks.List(state.Data),
+            maxPacks = ShortcutPacks.MaxPacks,
+            maxShortcuts = ShortcutPacks.MaxShortcuts,
+        });
+    }
+
+    void SaveShortcutPack(ApiRequest r)
+    {
+        var pack = IconPacks.Serializer().Deserialize<ShortcutPack>(r.json);
+        HttpIO.ReplyJson(r.stream, 200, new { id = ShortcutPacks.Save(state.Data, pack) });
+    }
+
+    void DeleteShortcutPack(ApiRequest r)
+    {
+        object raw;
+        ShortcutPacks.Delete(state.Data, r.input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null);
+        HttpIO.ReplyJson(r.stream, 200, new { ok = true });
     }
     void GetBackground(ApiRequest r)
     {

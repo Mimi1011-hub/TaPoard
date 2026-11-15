@@ -38,6 +38,7 @@ public static class ApiRouteTableTests
                 "GET /api/backups Admin",
                 "GET /api/presets Admin",
                 "GET /api/icon-styles Admin",
+                "GET /api/shortcut-packs Admin",
                 "GET /api/slideshow Paired",
                 "GET /api/firewall Admin",
                 "POST /api/pair/manage Admin",
@@ -68,6 +69,8 @@ public static class ApiRouteTableTests
                 "POST /api/background* Admin",
                 "POST /api/icon-styles/* Admin",
                 "POST /api/icon-packs/* Admin",
+                "POST /api/shortcut-packs/save Admin",
+                "POST /api/shortcut-packs/delete Admin",
             };
             Assert(router.Describe().Count == expected.Length, "route count matches the specification");
             for (int i = 0; i < expected.Length; i++)
