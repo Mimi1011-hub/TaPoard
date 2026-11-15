@@ -42,7 +42,34 @@ public static class ControllerTests
             new InputController(state, desktop, deck).Register(router);
             new SystemController(state, desktop).Register(router);
 
-            ApiRequest request = Request("/api/state", null); router.Find("GET", request.path, false)(request);
+            string languageData = Path.Combine(Path.GetTempPath(), "TaPoard-language-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(languageData);
+            var languageState = new AppState("root", languageData, "test", state.Host, store);
+            languageState.Config = Settings();
+            var languageRouter = new ApiRouter<ApiRequest>();
+            new SystemController(languageState, desktop).Register(languageRouter);
+            ApiRequest request = Request("/api/v3/language", null);
+            request.method = "GET";
+            languageRouter.Find("GET", request.path, true)(request);
+            Assert(Body(request).Contains("\"preference\":"), "language preference can be read");
+            request = Request("/api/v3/language", new Dictionary<string, object> { { "preference", "en" } });
+            languageRouter.Find("POST", request.path, true)(request);
+            Assert(File.ReadAllText(Path.Combine(languageData, "language.txt")) == "en", "language preference is saved");
+            Assert(Text.Language == "en", "saved language is applied");
+            bool invalidLanguage = false;
+            try
+            {
+                request = Request("/api/v3/language", new Dictionary<string, object> { { "preference", "xx" } });
+                languageRouter.Find("POST", request.path, true)(request);
+            }
+            catch (ArgumentException)
+            {
+                invalidLanguage = true;
+            }
+            Assert(invalidLanguage, "invalid language is rejected as a bad request");
+            Directory.Delete(languageData, true);
+
+            request = Request("/api/state", null); router.Find("GET", request.path, false)(request);
             Assert(Body(request).Contains("\"revision\":"), "state response includes revision");
 
             state.Config.apps.Add(new AppEntry { id = "launch", name = "Launch", type = "app", orientation = "landscape", path = @"C:\secret\tool.exe", args = "--secret", landscape = new TilePosition { page = 0, row = 1, column = 0 }, width = 2, height = 2, fontSize = 11, iconScale = 82, labelOpacity = 45 });

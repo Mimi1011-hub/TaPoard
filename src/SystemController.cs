@@ -51,8 +51,11 @@ sealed class SystemController : ControllerBase
             throw new ArgumentException(Text.Get("language.invalid"));
         Directory.CreateDirectory(state.Data);
         File.WriteAllText(Path.Combine(state.Data, "language.txt"), preference);
-        Text.Use(preference);
-        state.Signal();
+        lock (state.Gate)
+        {
+            Text.Use(preference);
+            state.Signal();
+        }
         HttpIO.ReplyJson(r.stream, 200, LanguageView());
     }
 
