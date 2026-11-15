@@ -38,6 +38,8 @@
   "weather.loading": "天気を取得中",
   "weather.rain": "降水 {value}%",
   "weather.today": "今日",
+  "weather.updated": "更新 {time}",
+  "weather.stalePrefix": "古い予報・",
   "metrics.title": "PC情報",
   "metrics.memory": "メモリ",
   "metrics.gpuMemory": "GPUメモリ",

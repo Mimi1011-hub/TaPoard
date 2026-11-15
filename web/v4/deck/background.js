@@ -1,58 +1,115 @@
-function safeColor(value) {
-  return /^#[0-9a-f]{6}$/i.test(value || '') ? value : '';
-}
+import { safeImageSource } from '../core/image-source.js';
+import { hexRgb, keyShade, lightness, mixRgb, rgbCss } from './color.js';
 
-function safeImage(value) {
-  return typeof value === 'string' && value.indexOf('data:image/') === 0 ? value : '';
+function backgroundPosition(background, orientation) {
+  const position = background[orientation] || {};
+  return {
+    fit: position.fit === 'contain' ? 'contain' : 'cover',
+    x: Number.isFinite(position.x) ? position.x : 50,
+    y: Number.isFinite(position.y) ? position.y : 50,
+    zoom: position.zoom >= 1 ? position.zoom : 1,
+  };
 }
 
 export class DeckBackground {
   constructor(target, api) {
     this.target = target;
     this.api = api;
-    this.imageSignature = null;
+    this.imageVersion = null;
     this.imageData = '';
     this.layer = target.ownerDocument.createElement('div');
     this.layer.className = 'deck-background';
     this.layer.setAttribute('aria-hidden', 'true');
+    this.picture = target.ownerDocument.createElement('div');
+    this.picture.className = 'deck-background-picture';
+    this.shade = target.ownerDocument.createElement('div');
+    this.shade.className = 'deck-background-shade';
+    this.layer.append(this.picture, this.shade);
     target.insertBefore(this.layer, target.firstChild);
+    this.resize = () => this.paint();
+    target.ownerDocument.defaultView.addEventListener('resize', this.resize);
   }
 
   async update(background, orientation) {
-    const value = background || {};
-    this.value = value;
+    this.value = background || {};
     this.orientation = orientation;
-    const signature = JSON.stringify([value.image || '', value.imageRevision || value.revision || '']);
-    if (signature !== this.imageSignature) {
-      this.imageSignature = signature;
+    const wanted = this.value.image || '';
+    if (wanted !== this.imageVersion) {
+      this.imageVersion = wanted;
       this.imageData = '';
-      if (value.image) {
+      if (wanted) {
         try {
           const result = await this.api.get('/api/background/image', 20000);
-          if (signature === this.imageSignature) this.imageData = safeImage(result.data);
-        } catch (error) { this.imageSignature = null; }
+          if (wanted === this.imageVersion) this.imageData = safeImageSource(result.data);
+        } catch (error) { if (wanted === this.imageVersion) this.imageVersion = null; }
       }
     }
     this.paint();
   }
 
   paint() {
-    const value = this.value || {};
-    const one = safeColor(value.color);
-    const two = safeColor(value.color2);
-    this.target.style.background = one ? (two ? `linear-gradient(135deg, ${one}, ${two})` : one) : '';
-    const position = value[this.orientation] || {};
-    this.layer.style.backgroundImage = this.imageData ? `url("${this.imageData}")` : '';
-    this.layer.style.backgroundSize = position.fit === 'contain' ? 'contain' : 'cover';
-    this.layer.style.backgroundPosition = `${Number.isFinite(position.x) ? position.x : 50}% ${Number.isFinite(position.y) ? position.y : 50}%`;
-    this.layer.style.transform = `scale(${position.zoom >= 1 ? position.zoom : 1})`;
-    this.layer.style.filter = value.blur ? `blur(${Math.max(0, Math.min(30, value.blur))}px)` : '';
-    const dim = Math.max(0, Math.min(100, value.dim || 0)) / 100;
-    this.layer.style.boxShadow = dim ? `inset 0 0 0 100vmax rgba(0,0,0,${dim})` : '';
-    this.target.classList.toggle('has-deck-background', !!(one || this.imageData));
-    this.target.classList.toggle('keys-glass', value.keys === 'glass' || (!!this.imageData && value.keys !== 'standard'));
-    this.target.style.setProperty('--global-key-alpha', String(1 - Math.max(0, Math.min(100, value.keyClear || 0)) / 100));
+    const background = this.value || {};
+    const one = hexRgb(background.color);
+    const two = hexRgb(background.color2);
+    const active = !!(one || (background.image && this.imageData));
+    this.target.classList.toggle('has-deck-background', active);
+    this.target.style.background = one ? (two ? `linear-gradient(135deg, ${background.color}, ${background.color2})` : background.color) : '';
+    this.paintPicture(background);
+    this.paintKeys(background, active);
+    this.fadeKeys(background);
   }
 
-  destroy() { this.layer.remove(); }
+  paintPicture(background) {
+    const position = backgroundPosition(background, this.orientation);
+    this.picture.style.backgroundImage = background.image && this.imageData ? `url("${this.imageData}")` : '';
+    this.picture.style.backgroundPosition = `${position.x}% ${position.y}%`;
+    this.picture.style.filter = background.blur ? `blur(${background.blur}px)` : '';
+    this.picture.style.transform = background.blur ? 'scale(1.04)' : '';
+    this.shade.style.background = background.dim ? `rgba(0,0,0,${background.dim / 100})` : 'transparent';
+    if (!background.image || !this.imageData) { this.picture.style.backgroundSize = ''; return; }
+    const width = this.target.clientWidth || 1;
+    const height = this.target.clientHeight || 1;
+    const imageWidth = background.imageWidth || 1;
+    const imageHeight = background.imageHeight || 1;
+    const scale = (position.fit === 'contain' ? Math.min(width / imageWidth, height / imageHeight) : Math.max(width / imageWidth, height / imageHeight)) * position.zoom;
+    this.picture.style.backgroundSize = `${Math.round(imageWidth * scale)}px ${Math.round(imageHeight * scale)}px`;
+  }
+
+  paintKeys(background, active) {
+    const mode = !active || background.keys === 'standard' ? '' : background.keys === 'glass' || !background.color ? 'glass' : 'tint';
+    const first = hexRgb(background.color);
+    const second = hexRgb(background.color2) || first;
+    const light = mode === 'tint' && first && (lightness(first) + lightness(second)) / 2 > 0.6;
+    this.target.classList.toggle('keys-tint', mode === 'tint');
+    this.target.classList.toggle('keys-glass', mode === 'glass');
+    this.target.classList.toggle('keys-light', !!light);
+    ['--key-bg', '--key-border', '--key-empty', '--key-shadow'].forEach((name) => this.target.style.removeProperty(name));
+    if (mode !== 'tint') return;
+    const one = keyShade(first, light);
+    const two = background.color2 ? keyShade(second, light) : mixRgb(one, light ? [255, 255, 255] : [0, 0, 0], light ? 0.35 : 0.25);
+    this.target.style.setProperty('--key-bg', `linear-gradient(145deg, ${rgbCss(one)}, ${rgbCss(two)})`);
+    this.target.style.setProperty('--key-border', rgbCss(light ? mixRgb(one, [0, 0, 0], 0.16) : mixRgb(one, [255, 255, 255], 0.28)));
+    this.target.style.setProperty('--key-empty', rgbCss(one, 0.45));
+    this.target.style.setProperty('--key-shadow', rgbCss(mixRgb(two, [0, 0, 0], light ? 0.3 : 0.55)));
+  }
+
+  fadeKeys(background) {
+    const view = this.target.ownerDocument.defaultView;
+    this.target.querySelectorAll('.deck-tile').forEach((tile) => {
+      const own = tile.dataset.keyClear;
+      const clear = own !== undefined && own !== '' ? Number(own) : Math.max(0, Math.min(100, background.keyClear || 0));
+      tile.classList.remove('key-fade');
+      if (!(clear > 0)) { tile.style.removeProperty('--key-fill'); tile.style.removeProperty('--key-alpha'); return; }
+      const style = view.getComputedStyle(tile);
+      const fill = style.backgroundImage && style.backgroundImage !== 'none' ? `${style.backgroundImage}, ${style.backgroundColor}` : style.backgroundColor;
+      tile.style.setProperty('--key-fill', fill);
+      tile.style.setProperty('--key-alpha', String(1 - clear / 100));
+      tile.classList.add('key-fade');
+    });
+  }
+
+  destroy() {
+    this.target.ownerDocument.defaultView.removeEventListener('resize', this.resize);
+    this.layer.remove();
+  }
 }

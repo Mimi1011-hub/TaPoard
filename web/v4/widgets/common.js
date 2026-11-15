@@ -10,7 +10,3 @@ export function percent(value, available, unsupported, i18n) {
     ? `${Math.max(0, Math.min(100, value)).toFixed(1)}%`
     : i18n.t('metrics.waiting');
 }
-
-export function safeImageSource(value) {
-  return typeof value === 'string' && (value.indexOf('data:image/') === 0 || value.indexOf('/') === 0) ? value : '';
-}

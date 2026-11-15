@@ -42,7 +42,7 @@ export class DeckGrid {
   mountWidget(container, item, WidgetClass, state, extraClass) {
     const node = el('div', `deck-tile widget-tile${extraClass ? ` ${extraClass}` : ''}`);
     node.dataset.widgetId = item.id || '';
-    if (typeof item.keyClear === 'number') node.style.setProperty('--key-alpha', String(1 - Math.max(0, Math.min(100, item.keyClear)) / 100));
+    if (typeof item.keyClear === 'number') node.dataset.keyClear = item.keyClear;
     this.place(node, item);
     container.appendChild(node);
     const widget = new WidgetClass(this.context);
@@ -84,7 +84,7 @@ export class DeckGrid {
       label.style.setProperty('--label-opacity', opacity); label.style.setProperty('--label-opacity-soft', opacity * 0.75);
       node.appendChild(label);
     } else node.appendChild(el('span', 'visually-hidden', item.name));
-    if (typeof item.keyClear === 'number') node.style.setProperty('--key-alpha', String(1 - Math.max(0, Math.min(100, item.keyClear)) / 100));
+    if (typeof item.keyClear === 'number') node.dataset.keyClear = item.keyClear;
     this.bindPress(node, item);
     this.place(node, item);
     return node;

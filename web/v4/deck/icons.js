@@ -1,3 +1,5 @@
+import { safeImageSource } from '../core/image-source.js';
+
 const presetGroups = [
   ['media', [
     ['headphones', '∩'], ['headset', '∩'], ['earbuds', '♬'], ['soundbar', '▰'], ['usb-mic', '♩'],
@@ -60,10 +62,6 @@ const widgetGlyphs = {
   mouse: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 3v6M6 10h12"/></svg>',
   keyboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M6 13.5h1M17 13.5h1M9 14.5h6"/></svg>',
 };
-
-function safeImageSource(value) {
-  return typeof value === 'string' && (/^data:image\//i.test(value) || /^\/(?!\/)/.test(value) || /^\.\.?\//.test(value));
-}
 
 function presetIconNode(key, color) {
   const preset = presetMap[key];

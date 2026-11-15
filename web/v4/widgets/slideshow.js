@@ -1,5 +1,6 @@
 import { el } from '../core/dom.js';
-import { appendWidgetName, safeImageSource } from './common.js';
+import { safeImageSource } from '../core/image-source.js';
+import { appendWidgetName } from './common.js';
 
 export class SlideshowWidget {
   constructor(context) {

@@ -54,6 +54,11 @@ export class WeatherWidget {
         days.appendChild(column);
       });
       this.node.appendChild(days);
+      if (weather.updatedAt) {
+        const time = new Date(weather.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const prefix = weather.stale ? this.context.i18n.t('weather.stalePrefix') : '';
+        this.node.appendChild(el('small', 'weather-updated', `${prefix}${this.context.i18n.t('weather.updated', { time })}`));
+      }
       this.node.appendChild(el('small', 'weather-attribution', weather.attribution || 'Weather data by Open-Meteo.com'));
     }
     appendWidgetName(this.node, this.item);

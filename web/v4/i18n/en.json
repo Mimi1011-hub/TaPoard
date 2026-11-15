@@ -38,6 +38,8 @@
   "weather.loading": "Loading weather",
   "weather.rain": "Rain {value}%",
   "weather.today": "Today",
+  "weather.updated": "Updated {time}",
+  "weather.stalePrefix": "Old forecast · ",
   "metrics.title": "PC information",
   "metrics.memory": "Memory",
   "metrics.gpuMemory": "GPU memory",
