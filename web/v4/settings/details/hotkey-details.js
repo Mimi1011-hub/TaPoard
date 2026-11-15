@@ -74,6 +74,6 @@ export function hotkeyDetails(context) {
     else record.value = context.t('details.chooseFromList');
   });
   field(context.root, context.t('details.hotkey'), record);
-  if (current) button(context, 'details.reset', () => context.updateItem({ hotkey: '' }));
+  if (current && context.item.action !== 'key-custom') button(context, 'details.reset', () => context.updateItem({ hotkey: '' }));
   note(context, 'details.hotkeyNote');
 }

@@ -83,16 +83,16 @@ export class Catalog {
     const row = el('button', 'settings-catalog-item');
     row.type = 'button';
     row.draggable = true;
-    row.dataset.action = value.action;
+    row.dataset.action = value.id || value.action;
     row.append(el('strong', '', this.i18n.t(value.name)), el('small', '', this.text(value.description)));
     if (groupLabel) row.appendChild(el('small', 'catalog-item-group', groupLabel));
     row.addEventListener('dragstart', (event) => {
       event.dataTransfer.effectAllowed = 'copy';
-      event.dataTransfer.setData('text/x-tapoard-catalog', value.action);
+      event.dataTransfer.setData('text/x-tapoard-catalog', value.id || value.action);
     });
-    row.addEventListener('dblclick', () => this.add(value.action));
+    row.addEventListener('dblclick', () => this.add(value.id || value.action));
     row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') this.add(value.action);
+      if (event.key === 'Enter') this.add(value.id || value.action);
     });
     return row;
   }
@@ -112,7 +112,7 @@ export class Catalog {
 
   value(action) {
     for (const group of catalogGroups) {
-      const found = group.items.find((item) => item.action === action);
+      const found = group.items.find((item) => (item.id || item.action) === action);
       if (found) return found;
     }
     return null;
@@ -120,7 +120,14 @@ export class Catalog {
 
   create(action) {
     const data = this.value(action);
-    return data ? catalogItem(action, this.i18n.t(data.name), data.category) : null;
+    if (!data) return null;
+    if (data.keys) {
+      const value = catalogItem('key-custom', this.i18n.t(data.name), data.category);
+      value.hotkey = data.keys;
+      value.iconKey = data.iconKey || 'keyboard';
+      return value;
+    }
+    return catalogItem(action, this.i18n.t(data.name), data.category);
   }
 
   add(action, cell) {
