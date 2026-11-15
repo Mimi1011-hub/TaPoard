@@ -89,6 +89,7 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, { ok: true });
       return;
     }
+    if (url.pathname === '/api/view') { json(res, 200, { ok: true }); return; }
     json(res, 404, { error: 'not found' });
     return;
   }
