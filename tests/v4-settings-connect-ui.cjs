@@ -11,6 +11,7 @@ let pairRevision = 1;
 let pairReads = 0;
 let token = 'one';
 let importResult = null;
+let languagePreference = 'ja';
 const calls = [];
 const evil = '<img src=x onerror="window.hacked=1">';
 
@@ -128,6 +129,14 @@ const server = http.createServer(async (req, res) => {
     const body = text ? JSON.parse(text) : {};
     const name = url.pathname.slice(5);
     if (req.method === 'POST') calls.push({ name, body });
+    if (name === 'v3/language') {
+      if (req.method === 'POST') languagePreference = body.preference;
+      const language = languagePreference === 'auto' ? 'ja' : languagePreference;
+      return json(res, 200, {
+        preference: languagePreference, language,
+        languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
+      });
+    }
     if (name === 'v3/deck' && req.method === 'GET') return json(res, 200, { version: String(version), deck, widgetDefinitions: definitions });
     if (name === 'v3/deck') {
       deck = body.deck;
@@ -243,7 +252,8 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     const inspector = page.locator('#settings-inspector');
     // Set UI_SHOTS to a folder to keep a picture of each section for a visual check.
     const shot = async (name) => {
-      if (process.env.UI_SHOTS && name.startsWith('details-')) await inspector.locator('.inspector-details').scrollIntoViewIfNeeded();
+      if (process.env.UI_SHOTS && name.startsWith('details-'))
+        await inspector.locator('.inspector-details').scrollIntoViewIfNeeded().catch(() => {});
       if (process.env.UI_SHOTS) await page.screenshot({ path: path.join(process.env.UI_SHOTS, `${name}.png`) });
     };
     const section = (name) => page.locator(`.settings-nav [data-section="${name}"]`).click();
@@ -404,9 +414,25 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     await device.selectOption('b');
     await waitFor(() => savedItem('device').deviceId === 'b' && savedItem('device').deviceName === 'Second', 'device saved');
 
+    await section('general');
+    await general.locator('select').first().selectOption('en');
+    await page.waitForFunction(() => document.title === 'TaPoard Settings');
+    assert.equal(last('v3/language').body.preference, 'en', 'English preference is posted');
+    for (const name of ['layout', 'appearance', 'saved', 'connection', 'pc', 'general']) {
+      await section(name);
+      const visibleText = await page.locator(`#settings-section-${name}`).innerText();
+      const withoutLanguageName = visibleText.replace('日本語', '');
+      assert(!/[ぁ-んァ-ヶ一-龠]/.test(withoutLanguageName), `${name} has no Japanese text in English`);
+      await shot(`english-${name}`);
+      await noOverflow(name);
+    }
+    await page.locator('#settings-section-general select').first().selectOption('ja');
+    await page.waitForFunction(() => document.title === 'TaPoard 設定');
+    assert.equal(last('v3/language').body.preference, 'ja', 'Japanese preference is posted');
+
     assert.equal(await page.evaluate(() => window.hacked), undefined, 'names from the PC never run as HTML');
     assert.deepEqual(errors, [], `console errors: ${errors.join('\n')}`);
-    console.log('PASS v4 settings connect: connection, PC window, general, app import and item details');
+    console.log('PASS v4 settings connect: connection, PC window, general, language, app import and item details');
   } catch (error) {
     if (errors.length) console.error(`console errors: ${errors.join('\n')}`);
     if (process.env.UI_DEBUG) await browser.contexts()[0].pages()[0].screenshot({ path: process.env.UI_DEBUG });

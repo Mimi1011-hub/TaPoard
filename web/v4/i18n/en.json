@@ -323,7 +323,7 @@
   "inspector.fader.speaker": "Speaker fader",
   "inspector.fader.mic": "Microphone fader",
   "inspector.fader.hidden": "Hide on this page",
-  "catalog.search": "Search by name or action",
+  "catalog.search": "Search items",
   "catalog.noResults": "No matching items",
   "catalog.noSpace": "There is no room for this item",
   "catalog.group.audio": "Audio & microphone",

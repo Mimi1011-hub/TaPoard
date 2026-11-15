@@ -55,6 +55,9 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
   if (url.pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
   if (url.pathname.startsWith('/api/')) {
+    if (url.pathname === '/api/v3/language') return json(res, 200, {
+      preference: 'ja', language: 'ja', languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
+    });
     if (req.headers.authorization !== 'Bearer test') return json(res, 401, { error: 'unauthorized' });
     if (url.pathname === '/api/v3/deck' && req.method === 'GET') { deckGets += 1; return json(res, 200, response()); }
     if (url.pathname === '/api/v3/deck' && req.method === 'POST') {

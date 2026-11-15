@@ -48,7 +48,7 @@ function state() {
       },
     },
     widgetDefinitions: [], current: { ...current }, background: null,
-    audio: {}, metrics: {}, weather: {}, phoneConnected: true, pcWindowOpen: false, inputSessions: [],
+    audio: {}, metrics: {}, weather: {}, phoneConnected: true, pcWindowOpen: false, inputSessions: [], pcLanguage: 'en',
   };
 }
 

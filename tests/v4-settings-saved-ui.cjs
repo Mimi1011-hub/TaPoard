@@ -55,6 +55,9 @@ const server = http.createServer(async (req, res) => {
     for await (const chunk of req) text += chunk;
     const body = text ? JSON.parse(text) : {};
     const name = url.pathname.slice(5);
+    if (name === 'v3/language') return json(res, 200, {
+      preference: 'ja', language: 'ja', languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
+    });
     if (req.method === 'POST' || name === 'v3/deck') calls.push({ name: `${req.method} ${name}`, body });
     if (name === 'v3/deck' && req.method === 'GET') return json(res, 200, { version: String(version), deck, widgetDefinitions: [{ type: 'hotkey', sizes: ['1x1'] }] });
     if (name === 'v3/deck') { deck = body.deck; return changed(res); }

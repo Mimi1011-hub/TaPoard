@@ -30,6 +30,7 @@ export class SettingsApp {
   async start() {
     this.languageView = await this.api.get('/api/v3/language', 10000);
     await this.i18n.setLanguage(this.languageView.language, false);
+    this.documentObject.title = this.i18n.t('settings.title');
     this.i18n.apply(this.documentObject);
     const response = await this.api.get('/api/v3/deck', 10000);
     this.editor = new EditorState(response);
