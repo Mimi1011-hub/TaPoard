@@ -10,6 +10,7 @@ let busy = false;
 const nextSequence = {};
 const inputs = [];
 const releases = [];
+const layoutRequests = [];
 const syncWaiters = new Set();
 const controls = {
   speakerSlot: 0, micSlot: 1, speakerSize: 1, micSize: 1,
@@ -80,6 +81,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (path === '/api/input/release') { releases.push(JSON.parse(body)); res.end('{"ok":true}'); return; }
   if (path === '/api/input/keepalive') { res.end('{"ok":true}'); return; }
+  if (path === '/api/layout') { layoutRequests.push({ method: req.method, body }); res.end(JSON.stringify(state())); return; }
   if (path === '/api/devices') { res.end('{"devices":[]}'); return; }
   if (path === '/api/page') { res.end(JSON.stringify(state())); return; }
   const file = path === '/' || path === '/settings' ? 'index.html' : path.slice(1);
@@ -238,6 +240,14 @@ async function save(page) {
     assert(vibrations >= 1 && vibrations <= 3, 'Android vibrates once per finger step at most: ' + vibrations);
     await android.click('#device-menu-button');
     assert.match(await android.locator('#feedback-note').innerText(), /振動/);
+    assert.equal(await android.locator('#grid-columns, #grid-rows').count(), 0, 'grid controls are not shown on the phone');
+    assert.match(await android.locator('.menu-note').innerText(), /PCの設定画面/);
+    const initialAwake = await android.locator('#awake').isChecked();
+    const layoutRequestsBeforeAwake = layoutRequests.length;
+    await android.locator('label.menu-switch', { hasText: '画面を維持' }).click();
+    const expectedAwake = !initialAwake;
+    assert.equal(await android.evaluate(() => localStorage.getItem('tapoard-keep-awake')), expectedAwake ? '1' : '0');
+    assert.equal(layoutRequests.length, layoutRequestsBeforeAwake, 'phone keep-awake does not update the server layout');
     await android.locator('label.menu-switch', { hasText: '操作の手応え' }).click();
     assert.equal(await android.evaluate(() => localStorage.getItem('tapoard-feedback')), 'off');
     await android.click('#device-menu-close');
@@ -245,6 +255,7 @@ async function save(page) {
     assert.equal(await android.evaluate(() => window.__vibrations.length), vibrations, 'feedback can be turned off on this device');
     await android.reload();
     await android.locator('#deck .wheel-vertical').waitFor();
+    assert.equal(await android.locator('#awake').isChecked(), expectedAwake, 'keep-awake is remembered on this device');
     assert.equal(await android.locator('#feedback').isChecked(), false, 'the off setting is remembered per device');
 
     const iphone = await browser.newPage({ viewport: { width: 667, height: 375 } });
@@ -286,7 +297,7 @@ async function save(page) {
     const [shortBox, tallBox] = await tallPhone.locator('#deck .wheel-vertical').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
     assert(tallBox > shortBox * 1.8, 'the 1x2 wheel is twice as tall on the phone: ' + shortBox + ' / ' + tallBox);
     assert.deepEqual(errors, []);
-    console.log('PASS wheel UI: vertical, 1x2 vertical and rotary wheels, settings, steps, middle-click tap, release, busy indicator and per-device vibration/click feedback');
+    console.log('PASS wheel UI: vertical, 1x2 vertical and rotary wheels, settings, steps, middle-click tap, release, busy indicator, per-device keep-awake and vibration/click feedback');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();

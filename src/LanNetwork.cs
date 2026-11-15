@@ -12,7 +12,6 @@ class NetworkOptions
 {
     public string interfaceId { get; set; }
     public string hostName { get; set; }
-    public string legacyHostName { get; set; }
 }
 
 sealed class LanNetwork : IDisposable
@@ -81,21 +80,10 @@ sealed class LanNetwork : IDisposable
             File.WriteAllText(file, new JavaScriptSerializer().Serialize(options));
         }
         if (
-            options != null
-            && options.hostName != null
-            && options.hostName.StartsWith("streamdeck-", StringComparison.OrdinalIgnoreCase)
-        )
-        {
-            options.legacyHostName = options.hostName;
-            options.hostName = "tapoard-" + options.hostName.Substring("streamdeck-".Length);
-            File.WriteAllText(file, new JavaScriptSerializer().Serialize(options));
-        }
-        if (
             options == null
             || String.IsNullOrEmpty(options.interfaceId)
             || String.IsNullOrEmpty(options.hostName)
             || !ValidHost(options.hostName)
-            || (!String.IsNullOrEmpty(options.legacyHostName) && !ValidHost(options.legacyHostName))
         )
             throw new Exception("network.jsonの設定が不正です。");
         changeTimer = new Timer(
@@ -156,12 +144,6 @@ sealed class LanNetwork : IDisposable
                     try
                     {
                         Send(udp, BuildAnswer(HostName, address, 0, null), new IPEndPoint(Group, 5353));
-                        if (!String.IsNullOrEmpty(options.legacyHostName))
-                            Send(
-                                udp,
-                                BuildAnswer(options.legacyHostName, address, 0, null),
-                                new IPEndPoint(Group, 5353)
-                            );
                     }
                     catch { }
                     udp.Close();
@@ -189,8 +171,6 @@ sealed class LanNetwork : IDisposable
                 udp.MulticastLoopback = true;
                 udp.BeginReceive(Receive, udp);
                 Send(udp, BuildAnswer(HostName, address, 120, null), new IPEndPoint(Group, 5353));
-                if (!String.IsNullOrEmpty(options.legacyHostName))
-                    Send(udp, BuildAnswer(options.legacyHostName, address, 120, null), new IPEndPoint(Group, 5353));
                 Status = "同じLAN内から接続できます。IP変更は自動反映されます。";
             }
             catch (Exception e)
@@ -251,11 +231,6 @@ sealed class LanNetwork : IDisposable
                     byte[] question;
                     string matched = HostName;
                     bool found = Matches(packet, matched, out unicast, out question);
-                    if (!found && !String.IsNullOrEmpty(options.legacyHostName))
-                    {
-                        matched = options.legacyHostName;
-                        found = Matches(packet, matched, out unicast, out question);
-                    }
                     if (found)
                     {
                         bool legacy = from.Port != 5353;
@@ -420,8 +395,6 @@ sealed class LanNetwork : IDisposable
                 try
                 {
                     Send(udp, BuildAnswer(HostName, address, 0, null), new IPEndPoint(Group, 5353));
-                    if (!String.IsNullOrEmpty(options.legacyHostName))
-                        Send(udp, BuildAnswer(options.legacyHostName, address, 0, null), new IPEndPoint(Group, 5353));
                 }
                 catch { }
                 udp.Close();

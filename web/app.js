@@ -17,9 +17,9 @@
   var key = admin
     ? location.hash.slice(1) ||
       sessionStorage.getItem('tapoard-admin') ||
-      sessionStorage.getItem('streamdeck-admin') ||
       ''
-    : scannedKey || localStorage.getItem('tapoard-key') || localStorage.getItem('streamdeck-key') || '';
+    : scannedKey || localStorage.getItem('tapoard-key') || '';
+  var keepAwakePreference = localStorage.getItem('tapoard-keep-awake');
   var viewId = sessionStorage.getItem('tapoard-view-id');
   if (!/^[a-zA-Z0-9_-]{8,64}$/.test(viewId || '')) {
     viewId =
@@ -45,8 +45,7 @@
     watchStarted = false,
     saveQueue = Promise.resolve(),
     previewOrientation =
-      (localStorage.getItem('tapoard-preview-orientation') ||
-        localStorage.getItem('streamdeck-preview-orientation')) === 'portrait'
+      localStorage.getItem('tapoard-preview-orientation') === 'portrait'
         ? 'portrait'
         : 'landscape',
     layout = {
@@ -727,7 +726,6 @@
           if (!r.ok) {
             if (r.status === 401 && !admin) {
               localStorage.removeItem('tapoard-key');
-              localStorage.removeItem('streamdeck-key');
               key = '';
               $('controls').hidden = true;
               $('pair').hidden = false;
@@ -2924,8 +2922,6 @@
       minimumColumns = Math.max(minimumColumns, app.width || app.size || 1);
       minimumRows = Math.max(minimumRows, app.height || app.size || 1);
     });
-    $('grid-columns').value = grid.columns;
-    $('grid-rows').value = grid.rows;
     // The slideshow sizes offered follow the grid.
     if (admin && $('shortcut-groups') && $('shortcut-groups').childNodes.length) {
       var sizesKey = grid.columns + 'x' + grid.rows;
@@ -2936,10 +2932,10 @@
     }
     $('admin-columns').value = grid.columns;
     $('admin-rows').value = grid.rows;
-    [$('grid-columns'), $('admin-columns')].forEach(function (select) {
+    [$('admin-columns')].forEach(function (select) {
       Array.prototype.forEach.call(select.options, function (option) { option.disabled = Number(option.value) < minimumColumns; });
     });
-    [$('grid-rows'), $('admin-rows')].forEach(function (select) {
+    [$('admin-rows')].forEach(function (select) {
       Array.prototype.forEach.call(select.options, function (option) { option.disabled = Number(option.value) < minimumRows; });
     });
     appsPerPage = Math.max(1, grid.columns * grid.rows - 2);
@@ -2951,7 +2947,9 @@
     if (s.portraitGrid) layout.grids.portrait = { columns: s.portraitGrid.columns, rows: s.portraitGrid.rows };
     else if (typeof s.columns === 'number' && typeof s.rows === 'number')
       layout.grids.portrait = { columns: Math.min(s.columns, s.rows), rows: Math.max(s.columns, s.rows) };
-    if (typeof s.keepAwake === 'boolean') layout.keepAwake = s.keepAwake;
+    if (admin && typeof s.keepAwake === 'boolean') layout.keepAwake = s.keepAwake;
+    else if (!admin && keepAwakePreference === null && typeof s.keepAwake === 'boolean') layout.keepAwake = s.keepAwake;
+    else if (!admin && keepAwakePreference !== null) layout.keepAwake = keepAwakePreference === '1';
     ['landscape', 'portrait'].forEach(function (o) {
       var source = s[o + 'Controls'] || (typeof s.speakerSlot === 'number' ? s : null),
         grid = layout.grids[o];
@@ -3535,7 +3533,6 @@
   }
   $('connect').onclick = function () {
     key = $('key').value.trim();
-    if (key.length === 12) key = key.toUpperCase();
     localStorage.setItem('tapoard-key', key);
     fallbackWake();
     refresh();
@@ -3547,7 +3544,6 @@
   $('disconnect').onclick = function () {
     setDeviceMenu(false);
     localStorage.removeItem('tapoard-key');
-    localStorage.removeItem('streamdeck-key');
     key = '';
     connected = false;
     watchStarted = false;
@@ -3615,12 +3611,6 @@
     }
     saveLayout((orientation === 'portrait' ? '縦' : '横') + '向きの枠数を変更しました。');
   }
-  $('grid-columns').onchange = function () {
-    layoutChanged('grid-columns', 'grid-rows');
-  };
-  $('grid-rows').onchange = function () {
-    layoutChanged('grid-columns', 'grid-rows');
-  };
   $('admin-columns').onchange = function () {
     layoutChanged('admin-columns', 'admin-rows');
   };
@@ -3631,7 +3621,12 @@
     layout.keepAwake = this.checked;
     if (this.checked) wake();
     else release();
-    saveLayout();
+    if (admin)
+      saveLayout();
+    else {
+      keepAwakePreference = this.checked ? '1' : '0';
+      localStorage.setItem('tapoard-keep-awake', keepAwakePreference);
+    }
   };
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
