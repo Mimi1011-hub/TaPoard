@@ -58,10 +58,19 @@ export class ClockWidget {
       const two = (value) => String(value).padStart(2, '0');
       this.time.textContent = `${two(hours)}:${two(minutes)}${this.options.showSeconds ? `:${two(seconds)}` : ''}${suffix}`;
       if (this.date) {
-        const parts = [];
-        if (this.options.showDate) parts.push(`${now.getFullYear()}/${two(now.getMonth() + 1)}/${two(now.getDate())}`);
-        if (this.options.showWeekday) parts.push(this.context.i18n.t(`clock.weekday.${now.getDay()}`));
-        this.date.textContent = parts.join(' ');
+        if (this.context.i18n.language === 'en') {
+          const date = this.context.i18n.t(`clock.month.${now.getMonth()}`)
+            + ` ${now.getDate()}, ${now.getFullYear()}`;
+          const weekday = this.context.i18n.t(`clock.weekdayShort.${now.getDay()}`);
+          this.date.textContent = this.options.showDate
+            ? `${this.options.showWeekday ? `${weekday}, ` : ''}${date}`
+            : weekday;
+        } else {
+          const parts = [];
+          if (this.options.showDate) parts.push(`${now.getFullYear()}/${two(now.getMonth() + 1)}/${two(now.getDate())}`);
+          if (this.options.showWeekday) parts.push(this.context.i18n.t(`clock.weekday.${now.getDay()}`));
+          this.date.textContent = parts.join(' ');
+        }
       }
     }
     this.schedule(now);

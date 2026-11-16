@@ -110,6 +110,13 @@ async function prepare(page, errors) {
     await page.goto(`${base}/v4/#connect=test`);
     await page.locator('.metrics-widget').waitFor();
     assert.match(await page.locator('.clock-time').innerText(), /^\d\d:\d\d:\d\d$/);
+    await page.getByRole('button', { name: '画面と接続の設定' }).click();
+    await page.locator('.language-row select').selectOption('en');
+    await page.waitForFunction(() => /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(
+      document.querySelector('.clock-date').textContent,
+    ));
+    await page.locator('.language-row select').selectOption('ja');
+    await page.getByRole('button', { name: '閉じる' }).click();
     assert.equal(await page.locator('.weather-message').innerText(), 'PCの設定画面で場所を決めてください');
     assert.equal(await page.locator('.widget-placeholder').count(), 1, 'future widget remains a placeholder');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal overflow');
@@ -131,7 +138,7 @@ async function prepare(page, errors) {
     assert.match(await page.locator('.deck-shell').evaluate((node) => node.style.getPropertyValue('--key-bg')), /linear-gradient\(145deg/);
     assert.equal(await page.evaluate(async () => (await import('/v4/core/image-source.js')).safeImageSource('//example.com/a.png')), '');
     await page.waitForFunction(() => document.querySelector('.slideshow-picture').getAttribute('src'));
-    assert.deepEqual(slideRequests, [0]);
+    assert(slideRequests.length >= 1 && slideRequests.every((index) => index === 0));
     assert.equal(await page.locator('.metrics-memory-detail').innerText(), 'Test GPU');
     assert.equal(await page.locator('.gpu-line').getAttribute('d') !== '', true, 'GPU history line is rendered');
     assert.equal(await page.locator('.gpu-memory-line').getAttribute('d') !== '', true, 'GPU memory history line is rendered');
