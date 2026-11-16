@@ -124,13 +124,6 @@ export class Inspector {
       this.changeItem({ width: size.width, height: size.height });
     });
     this.root.appendChild(this.field(this.i18n.t('inspector.size'), select));
-    const update = (values) => this.editor.updateFader(address.orientation, address.page, address.target, values);
-    this.range('inspector.faderOpacity', 'backgroundOpacity', value.backgroundOpacity ?? 100, 0, 100, '%', update);
-    const hidden = this.input('checkbox', '', (node) => update({ hideValue: node.checked }));
-    hidden.checked = !!value.hideValue;
-    this.root.appendChild(this.field(this.i18n.t('inspector.hideFaderValue'), hidden));
-    const color = this.input('color', value.iconColor || '#3569c8', (node) => update({ iconColor: node.value }));
-    this.root.appendChild(this.field(this.i18n.t('inspector.faderIconColor'), color));
   }
 
   clearRange(item) {
@@ -205,6 +198,13 @@ export class Inspector {
       this.editor.updateFader(address.orientation, address.page, address.target, { width: size.width, height: size.height });
     });
     this.root.appendChild(this.field(this.i18n.t('inspector.size'), select));
+    const update = (values) => this.editor.updateFader(address.orientation, address.page, address.target, values);
+    this.range('inspector.faderOpacity', 'backgroundOpacity', value.backgroundOpacity ?? 100, 0, 100, '%', update);
+    const hidden = this.input('checkbox', '', (node) => update({ hideValue: node.checked }));
+    hidden.checked = !!value.hideValue;
+    this.root.appendChild(this.field(this.i18n.t('inspector.hideFaderValue'), hidden));
+    const color = this.input('color', value.iconColor || '#3569c8', (node) => update({ iconColor: node.value }));
+    this.root.appendChild(this.field(this.i18n.t('inspector.faderIconColor'), color));
     const remove = el('button', 'inspector-delete', this.i18n.t('inspector.delete'));
     remove.type = 'button';
     remove.addEventListener('click', () => {
