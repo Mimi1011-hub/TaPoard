@@ -377,8 +377,8 @@ static class InputSessions
             }
             if (String.Equals(session.widgetType, "keypad", StringComparison.OrdinalIgnoreCase))
             {
-                // NumLock exists only on the 4x5 keypad; each layout accepts just its own keys.
-                if (e.type == "keyTap" && IsKeypadControl(e.control) && (e.control != "numpad-numlock" || session.widgetHeight == 5)) continue;
+                // Clear exists only on the 4x5 keypad; each layout accepts just its own keys.
+                if (e.type == "keyTap" && IsKeypadControl(e.control) && (e.control != "numpad-clear" || session.widgetHeight == 5)) continue;
                 throw new Exception(Text.Get("source.inputsessions.27"));
             }
             throw new Exception(Text.Get("source.inputsessions.28"));
@@ -418,7 +418,7 @@ static class InputSessions
         if (String.IsNullOrEmpty(control)) return false;
         if (control.Length == 8 && control.StartsWith("numpad-", StringComparison.Ordinal)
             && control[7] >= '0' && control[7] <= '9') return true;
-        return control == "numpad-enter" || control == "numpad-numlock" || control == "numpad-decimal" || control == "numpad-add"
+        return control == "numpad-enter" || control == "numpad-clear" || control == "numpad-decimal" || control == "numpad-add"
             || control == "numpad-subtract" || control == "numpad-multiply" || control == "numpad-divide";
     }
 

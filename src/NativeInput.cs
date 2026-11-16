@@ -94,7 +94,8 @@ static class NativeInput
         if (control == "shift") return 0x10;
         if (control == "alt") return 0x12;
         if (control == "numpad-enter") return 0x0D;
-        if (control == "numpad-numlock") return 0x90;
+        // The keypad's clear key sends Esc, which clears the entry in Calculator and cancels input in most apps.
+        if (control == "numpad-clear") return 0x1B;
         if (control == "numpad-multiply") return 0x6A;
         if (control == "numpad-add") return 0x6B;
         if (control == "numpad-subtract") return 0x6D;
@@ -151,7 +152,7 @@ static class NativeInput
                 native[i].type = InputKeyboard;
                 native[i].data.ki.virtualKey = VirtualKey(item.control);
                 native[i].data.ki.flags = (item.type == "keyUp" ? KeyUp : 0)
-                    | (item.control == "numpad-enter" || item.control == "numpad-divide" || item.control == "numpad-numlock" ? ExtendedKey : 0);
+                    | (item.control == "numpad-enter" || item.control == "numpad-divide" ? ExtendedKey : 0);
             }
             else
                 throw new Exception(Text.Get("source.nativeinput.4"));

@@ -633,6 +633,7 @@
   "touchpad.tapHint": "Tap: click  Two-finger tap: right-click",
   "touchpad.scrollHint": "Two-finger vertical: scroll",
   "keypad.name": "Keypad",
+  "keypad.clear": "Clear",
   "pc.viewOnly": "View-only mode  Press Ctrl+Alt+V to return",
   "pc.render": "Rendering",
   "pc.roundtrip": "PC round trip",

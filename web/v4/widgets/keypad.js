@@ -9,7 +9,7 @@ const compact = [
 ];
 
 const tall = [
-  ['Num', 'numpad-numlock', 1, 1, 1, 1, 'NumLock'], ['÷', 'numpad-divide', 2, 1], ['×', 'numpad-multiply', 3, 1], ['−', 'numpad-subtract', 4, 1],
+  ['C', 'numpad-clear', 1, 1, 1, 1, 'keypad.clear'], ['÷', 'numpad-divide', 2, 1], ['×', 'numpad-multiply', 3, 1], ['−', 'numpad-subtract', 4, 1],
   ['7', 'numpad-7', 1, 2], ['8', 'numpad-8', 2, 2], ['9', 'numpad-9', 3, 2], ['＋', 'numpad-add', 4, 2, 1, 2],
   ['4', 'numpad-4', 1, 3], ['5', 'numpad-5', 2, 3], ['6', 'numpad-6', 3, 3],
   ['1', 'numpad-1', 1, 4], ['2', 'numpad-2', 2, 4], ['3', 'numpad-3', 3, 4], ['Enter', 'numpad-enter', 4, 4, 1, 2],
@@ -31,7 +31,7 @@ export class KeypadWidget {
 
   addKey(definition) {
     const key = el('button', 'keypad-key', definition[0]); key.type = 'button';
-    key.setAttribute('aria-label', definition[6] || definition[0]); key.dataset.control = definition[1];
+    key.setAttribute('aria-label', definition[6] ? this.context.i18n.t(definition[6]) : definition[0]); key.dataset.control = definition[1];
     if (definition[2]) {
       key.style.gridColumn = `${definition[2]} / span ${definition[4] || 1}`;
       key.style.gridRow = `${definition[3]} / span ${definition[5] || 1}`;

@@ -633,6 +633,7 @@
   "touchpad.tapHint": "タップ：クリック　2本指タップ：右クリック",
   "touchpad.scrollHint": "2本指で上下：スクロール",
   "keypad.name": "テンキー",
+  "keypad.clear": "クリア",
   "pc.viewOnly": "見るだけモード　Ctrl+Alt+V で戻す",
   "pc.render": "描画",
   "pc.roundtrip": "PC との往復",

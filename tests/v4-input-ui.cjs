@@ -118,11 +118,11 @@ function eventsSince(index) { return inputRequests.slice(index).flatMap((request
     start = inputRequests.length; await wait(350); await touch('touchStart', [[px - 15, py - 20], [px + 15, py - 20]]); await touch('touchMove', [[px - 15, py + 20], [px + 15, py + 20]]); await touch('touchEnd', []); await wait(150);
     assert(eventsSince(start).some((event) => event.type === 'wheel'));
 
-    const numlock = page.locator('.keypad-key[data-control="numpad-numlock"]'); const enter = page.locator('.keypad-key[data-control="numpad-enter"]');
-    start = inputRequests.length; await numlock.click(); await enter.click(); await wait(180);
-    assert(eventsSince(start).some((event) => event.type === 'keyTap' && event.control === 'numpad-numlock'));
+    const clear = page.locator('.keypad-key[data-control="numpad-clear"]'); const enter = page.locator('.keypad-key[data-control="numpad-enter"]');
+    start = inputRequests.length; await clear.click(); await enter.click(); await wait(180);
+    assert(eventsSince(start).some((event) => event.type === 'keyTap' && event.control === 'numpad-clear'));
     assert(eventsSince(start).some((event) => event.type === 'keyTap' && event.control === 'numpad-enter'));
-    inputMode = 'busy'; await numlock.click(); await page.waitForFunction(() => document.querySelector('.keypad-widget').classList.contains('input-busy'));
+    inputMode = 'busy'; await clear.click(); await page.waitForFunction(() => document.querySelector('.keypad-widget').classList.contains('input-busy'));
     assert.match(await page.locator('.keypad-widget .input-notice').innerText(), /他端末/); await wait(2100);
     assert.equal(await page.locator('.keypad-widget').evaluate((node) => node.classList.contains('input-busy')), false);
     inputMode = 'blocked'; await enter.click(); await page.waitForFunction(() => document.querySelector('.keypad-widget').classList.contains('input-busy'));
