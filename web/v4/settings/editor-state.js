@@ -168,7 +168,8 @@ export class EditorState {
     return this.change((deck) => {
       const pages = this.orientation(orientationName, deck).pages;
       if (pages.length >= 40) return false;
-      pages.splice(Math.max(0, Math.min(pages.length, after + 1)), 0, { name: '', faders: null, items: [] });
+      const faders = { speakerHidden: true, micHidden: true };
+      pages.splice(Math.max(0, Math.min(pages.length, after + 1)), 0, { name: '', faders, items: [] });
     });
   }
 

@@ -431,6 +431,8 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await page.locator('.settings-page-input').press('Enter');
     await waitFor(() => posts.length === pagePosts + 1, 'page save');
     assert.equal(posts.at(-1).deck.landscape.pages[1].name, 'Work');
+    assert.deepEqual(posts.at(-1).deck.landscape.pages[1].faders, { speakerHidden: true, micHidden: true });
+    assert.equal(await page.locator('.preview-hit[data-kind="fader"]').count(), 0, 'a new page starts without faders');
 
     const undoPosts = posts.length;
     await page.keyboard.press('Control+Z');

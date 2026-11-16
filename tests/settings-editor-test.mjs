@@ -39,6 +39,7 @@ assert(Number.isInteger(editor.orientation('landscape').pages[0].items.at(-1).co
 assert(editor.removeItem({ orientation: 'landscape', page: 0, index: 2 }), 'removes the automatically placed item');
 
 assert(editor.addPage('landscape', 0));
+assert.deepEqual(editor.orientation('landscape').pages[1].faders, { speakerHidden: true, micHidden: true });
 assert(editor.renamePage('landscape', 1, 'Second'));
 assert.equal(editor.orientation('landscape').pages[1].name, 'Second');
 assert(editor.movePage('landscape', 1, 0));

@@ -78,7 +78,7 @@ export function reflowOrientation(state, orientation, apply) {
       }
     }
     while (!placed && orientation.pages.length < 40) {
-      orientation.pages.push({ name: '', faders: null, items: [] });
+      orientation.pages.push({ name: '', faders: { speakerHidden: true, micHidden: true }, items: [] });
       const page = orientation.pages.length - 1,
         space = state.firstSpace(orientation, page, value.item);
       if (space) {
