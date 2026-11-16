@@ -331,7 +331,7 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     await section('general');
     const general = page.locator('#settings-section-general');
     await waitFor(async () => (await general.locator('.general-about').innerText()).includes('4.0-test'), 'version');
-    assert((await general.locator('.general-about').innerText()).includes('TEST-PC'));
+    assert.equal(await general.locator('.general-about').innerText(), 'バージョン 4.0-test');
     await general.locator('input[type="checkbox"]').check();
     await waitFor(() => deck.keepAwake === true, 'keep awake saved');
     await page.locator('#settings-undo').click();
