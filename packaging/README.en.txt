@@ -1,28 +1,40 @@
-TaPoard 3.1 README
+TaPoard 4.0 README
 ==================
 
-TaPoard is a lightweight control panel for operating a Windows PC from a phone browser on your home LAN.
+TaPoard is a control panel for operating a Windows PC from a phone on a trusted home LAN.
 
 First connection
 ----------------
 
-Connect the PC and phone to the same regular Wi-Fi or LAN. Open settings from the TaPoard notification-area menu and scan the QR code. If the first QR code does not work, use the direct-IP QR code. You can also enter the displayed URL and connection key manually.
+1. Connect the PC and phone to the same regular Wi-Fi or LAN.
+2. Right-click TaPoard in the notification area and choose "Open settings".
+3. Scan a QR code in the Connection section of the settings window.
+4. If an approval request appears, compare the codes and allow it on the PC.
 
-When approval is requested, compare the six-digit number on the phone and PC, then select Allow on the PC. Remove devices you no longer use from Approved devices.
+If the QR code does not open, use the direct-IP QR code or enter the displayed URL and connection key.
 
-Using TaPoard
--------------
+How to use
+----------
 
-Add apps, URLs, text, shortcuts, audio controls, clocks, weather, PC metrics, mouse controls and slideshows from the PC settings window. Layouts, pages, icons, backgrounds, saved screens, automatic backups and purpose-built presets can be managed there. The phone does not need a separate app.
+The phone screen is for pressing the buttons and widgets already placed on it. Add, arrange, remove and configure them in the PC settings window.
 
-Connection help and safety
---------------------------
+The left side of the settings window contains Layout, Appearance, Saved, Connection, PC window and General. You can configure apps and URLs, the four action categories, VS Code actions, shortcut packs, backgrounds, looks and the PC window.
 
-Confirm that both devices use the same network. Guest Wi-Fi may block device-to-device traffic; temporarily disable a VPN when testing. Use the direct-IP code if the normal address does not open.
+Choose Automatic, Japanese or English under General. Settings from 3.1 are imported automatically when 4.0 starts for the first time.
 
-Use TaPoard only on a trusted home LAN. Do not configure router port forwarding. HTTP traffic on the LAN is not encrypted. Regenerating the connection key disconnects currently connected phones.
+If you cannot connect
+---------------------
+
+Confirm that the PC and phone use the same network. Guest Wi-Fi may block traffic between devices. Temporarily disable a VPN and try the direct-IP QR code.
+
+Set a trusted home network to Private in Windows and allow TaPoard through the firewall. Check and repair it in the Connection section of the settings window.
+
+Safety
+------
+
+Use TaPoard only on a trusted home LAN. Do not configure router port forwarding. HTTP traffic on the LAN is not encrypted. Regenerating the connection key disconnects connected phones.
 
 Uninstall
 ---------
 
-Remove TaPoard from Windows Installed apps or select Uninstall TaPoard in the Start menu.
+Remove TaPoard from Windows Installed apps or select "Uninstall TaPoard" in the Start menu.

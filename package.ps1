@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = '3.1'
+$version = '4.0-preview1'
 $releaseRoot = Join-Path $PSScriptRoot 'release'
 $stage = Join-Path $releaseRoot 'installer-payload'
 $verify = Join-Path $releaseRoot 'installer-verification'
@@ -49,7 +49,29 @@ if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 
 $extractProcess = Start-Process -FilePath $installer -ArgumentList '/extract-only',('"' + $verify + '"') -Wait -PassThru -WindowStyle Hidden
 if ($extractProcess.ExitCode -ne 0) { throw 'Installer extraction verification failed.' }
-foreach ($relative in @('TaPoard.exe','web\index.html','web\app.js','web\pc-window.html','web\pc-window.js','web\qrcode.js','web\QRCode.LICENSE.txt','web\style.css','web\manifest.webmanifest','web\icon-32.png','web\icon-180.png','web\icon-192.png','web\icon-512.png','setup-lan.ps1','remove-firewall.ps1','README.txt','README.en.txt','VERSION.txt')) {
+$requiredFiles = @(
+    'TaPoard.exe',
+    'web\v4\index.html',
+    'web\v4\settings.html',
+    'web\v4\app.js',
+    'web\v4\i18n\ja.json',
+    'web\v4\i18n\en.json',
+    'web\qrcode.js',
+    'web\QRCode.LICENSE.txt',
+    'web\nosleep.min.js',
+    'web\NoSleep.LICENSE.txt',
+    'web\manifest.webmanifest',
+    'web\icon-32.png',
+    'web\icon-180.png',
+    'web\icon-192.png',
+    'web\icon-512.png',
+    'setup-lan.ps1',
+    'remove-firewall.ps1',
+    'README.txt',
+    'README.en.txt',
+    'VERSION.txt'
+)
+foreach ($relative in $requiredFiles) {
     $expected = Join-Path $stage $relative;$actual = Join-Path $verify $relative
     $matches = $false
     for ($attempt=0; $attempt -lt 10 -and !$matches; $attempt++) {
