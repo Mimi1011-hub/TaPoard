@@ -6,6 +6,8 @@ static class InstallerText
 {
     internal static readonly Dictionary<string, string> Ja = new Dictionary<string, string>
     {
+        { "language", "言語" },
+        { "languageAuto", "自動（Windows に合わせる）" },
         { "setup", "TaPoard セットアップ" },
         { "uninstall", "TaPoard アンインストール" },
         { "log", "ログ: {0}" },
@@ -41,6 +43,8 @@ static class InstallerText
 
     internal static readonly Dictionary<string, string> En = new Dictionary<string, string>
     {
+        { "language", "Language" },
+        { "languageAuto", "Automatic (use Windows language)" },
         { "setup", "TaPoard Setup" }, { "uninstall", "Uninstall TaPoard" }, { "log", "Log: {0}" },
         { "startFailed", "TaPoard could not start, so network setup did not begin.\n\nCheck that no other copy of TaPoard is running, then run setup again.\n\nLog: {0}" },
         { "doneNoFirewall", "Installation is complete.\n\nNo firewall rule was added, so your phone may not be able to connect. You can add it later under Connection in Settings on the PC." },
@@ -69,9 +73,22 @@ static class InstallerText
         { "profileFailed", "The network type could not be checked." }, { "separator", ", " },
     };
 
+    // "auto" follows Windows. The installer's language box and the app's language.txt use the same three values.
+    internal static string Preference = "auto";
+
+    internal static void Use(string preference)
+    {
+        Preference = preference == "ja" || preference == "en" ? preference : "auto";
+    }
+
     static Dictionary<string, string> Current
     {
-        get { return CultureInfo.CurrentUICulture.Name.StartsWith("ja", StringComparison.OrdinalIgnoreCase) ? Ja : En; }
+        get
+        {
+            if (Preference == "ja") return Ja;
+            if (Preference == "en") return En;
+            return CultureInfo.CurrentUICulture.Name.StartsWith("ja", StringComparison.OrdinalIgnoreCase) ? Ja : En;
+        }
     }
 
     internal static string Get(string key, params object[] values)

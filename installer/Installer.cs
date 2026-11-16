@@ -46,6 +46,7 @@ class Installer
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        LoadInstalledLanguage();
         try
         {
             if (args.Length > 0 && String.Equals(args[0], "/uninstall", StringComparison.OrdinalIgnoreCase))
@@ -74,11 +75,43 @@ class Installer
         }
     }
 
+    // An update or uninstall starts in the language the installed TaPoard already uses.
+    static void LoadInstalledLanguage()
+    {
+        try
+        {
+            string file = Path.Combine(InstallDirectory, "data", "language.txt");
+            if (File.Exists(file)) InstallerText.Use(File.ReadAllText(file).Trim());
+        }
+        catch { }
+    }
+
+    // Shows the options. Choosing another language reopens the window in that language and keeps the ticks.
+    static InstallOptionsForm ChooseOptions()
+    {
+        var options = new InstallOptionsForm(InstallDirectory, null);
+        while (true)
+        {
+            DialogResult result = options.ShowDialog();
+            if (result == DialogResult.OK) return options;
+            if (result != DialogResult.Retry)
+            {
+                options.Dispose();
+                return null;
+            }
+            InstallerText.Use(options.LanguageChoice);
+            var reopened = new InstallOptionsForm(InstallDirectory, options);
+            options.Dispose();
+            options = reopened;
+        }
+    }
+
     static void Install()
     {
-        using (var options = new InstallOptionsForm(InstallDirectory))
+        string languageFile = Path.Combine(InstallDirectory, "data", "language.txt");
+        using (var options = ChooseOptions())
         {
-            if (options.ShowDialog() != DialogResult.OK)
+            if (options == null)
                 return;
             Log(
                 "options desktop="
@@ -94,6 +127,9 @@ class Installer
             Directory.CreateDirectory(InstallDirectory);
             ExtractPayload(InstallDirectory);
             Log("payload extracted");
+            Directory.CreateDirectory(Path.GetDirectoryName(languageFile));
+            File.WriteAllText(languageFile, InstallerText.Preference);
+            Log("language=" + InstallerText.Preference);
             string installerCopy = Path.Combine(InstallDirectory, "TaPoard-Setup.exe");
             string current = Assembly.GetExecutingAssembly().Location;
             PrepareInstallerCopy(current, installerCopy);
@@ -516,7 +552,14 @@ class InstallOptionsForm : Form
         back = new Button(),
         install = new Button(),
         cancel = new Button();
+    readonly ComboBox language = new ComboBox();
+    static readonly string[] LanguageValues = { "auto", "ja", "en" };
     bool restoringFirewall;
+
+    public string LanguageChoice
+    {
+        get { return LanguageValues[Math.Max(0, language.SelectedIndex)]; }
+    }
 
     public bool DesktopShortcut
     {
@@ -535,7 +578,7 @@ class InstallOptionsForm : Form
         get { return firewall.Checked; }
     }
 
-    public InstallOptionsForm(string installDirectory)
+    public InstallOptionsForm(string installDirectory, InstallOptionsForm previous)
     {
         Text = InstallerText.Get("setup");
         ClientSize = new Size(540, 410);
@@ -568,7 +611,41 @@ class InstallOptionsForm : Form
         cancel.Bounds = new Rectangle(424, 360, 92, 34);
         Controls.AddRange(new Control[] { next, back, install, cancel });
         CancelButton = cancel;
+        BuildLanguageBox();
+        if (previous != null)
+        {
+            restoringFirewall = true;
+            desktop.Checked = previous.DesktopShortcut;
+            startMenu.Checked = previous.StartMenuShortcut;
+            startup.Checked = previous.StartWithWindows;
+            firewall.Checked = previous.AllowFirewall;
+            restoringFirewall = false;
+        }
         ShowPage(false);
+    }
+
+    void BuildLanguageBox()
+    {
+        var label = new Label
+        {
+            Text = InstallerText.Get("language"),
+            TextAlign = ContentAlignment.MiddleRight,
+            Bounds = new Rectangle(286, 24, 64, 24),
+        };
+        language.DropDownStyle = ComboBoxStyle.DropDownList;
+        language.Bounds = new Rectangle(356, 24, 160, 24);
+        // Each language is shown in its own name so that anyone can find theirs.
+        language.Items.AddRange(new object[] { InstallerText.Get("languageAuto"), "\u65e5\u672c\u8a9e", "English" });
+        language.SelectedIndex = Math.Max(0, Array.IndexOf(LanguageValues, InstallerText.Preference));
+        language.SelectedIndexChanged += delegate
+        {
+            if (LanguageChoice == InstallerText.Preference) return;
+            DialogResult = DialogResult.Retry;
+        };
+        optionsPage.Controls.Add(label);
+        optionsPage.Controls.Add(language);
+        label.BringToFront();
+        language.BringToFront();
     }
 
     void ShowPage(bool network)
