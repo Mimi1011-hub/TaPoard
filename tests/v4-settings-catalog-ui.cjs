@@ -190,6 +190,22 @@ const waitFor = async (check, message) => {
     assert((await page.locator('.catalog-recent').innerText()).includes('コマンドパレット'));
     await shot('recent');
 
+    await page.getByRole('button', { name: /部品/ }).click();
+    await page.getByRole('button', { name: /時計・PC情報/ }).click();
+    const clock = page.locator('[data-action="widget-clock-digital-wide"]');
+    await clock.click();
+    assert.equal(await clock.locator('xpath=..').locator('.catalog-sizes button').count(), 2, 'multi-size widget shows size choices');
+    const sizeBefore = posts.length;
+    await clock.locator('xpath=..').getByRole('button', { name: '2×2' }).click();
+    await waitFor(() => posts.length === sizeBefore + 1, 'chosen widget size save');
+    assert(posts.at(-1).deck.landscape.pages[0].items.some((entry) => entry.type === 'clock' && entry.width === 2 && entry.height === 2));
+    await page.locator('.catalog-back').click();
+    await page.getByRole('button', { name: /キーボード/ }).click();
+    await page.locator('[data-action="widget-keypad"]').click();
+    assert.equal(await page.getByRole('button', { name: '4×5', exact: true }).isDisabled(), true, 'size that does not fit is disabled');
+    await page.locator('.catalog-back').focus();
+    await page.keyboard.press('Escape');
+
     await page.getByRole('button', { name: /起動・その他/ }).click();
     await page.locator('.catalog-back').click();
     assert.equal(await page.locator('.catalog-card').count(), 4, 'launch back button returns to the top categories');

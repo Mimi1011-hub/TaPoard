@@ -79,13 +79,18 @@ partial class Program
     static object PcWindowView()
     {
         lock (State.Gate)
+        {
+            PairedDevice phone = State.Config.devices.FindLast(d => d.viewportWidth > 0 && d.viewportHeight > 0);
             return new
             {
                 options = State.Config.pcWindow.PublicView(),
+                phoneWidth = phone == null ? 0 : phone.viewportWidth,
+                phoneHeight = phone == null ? 0 : phone.viewportHeight,
                 open = PcWindowService.IsOpen,
                 viewOnly = PcWindowService.ViewOnly,
                 runtimeAvailable = PcWindowService.RuntimeAvailable,
             };
+        }
     }
 
     static void SavePcWindow(Dictionary<string, object> input)

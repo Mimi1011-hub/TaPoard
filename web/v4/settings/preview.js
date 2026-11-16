@@ -21,7 +21,11 @@ export class Preview {
     this.orientation = 'landscape';
     this.pages = { landscape: 0, portrait: 0 };
     this.selected = null;
+    this.sample = null;
     this.runtimeState = {};
+    this.viewMode = 'pc';
+    this.viewRatio = 'auto';
+    this.phoneSize = null;
     this.build();
     this.editor.subscribe(() => this.render());
   }
@@ -61,7 +65,7 @@ export class Preview {
     this.render();
   }
 
-  current() { return this.editor.deck[this.orientation]; }
+  current() { return this.sample ? this.sample[this.orientation] || this.editor.deck[this.orientation] : this.editor.deck[this.orientation]; }
   page() { return Math.max(0, Math.min(this.pages[this.orientation], this.current().pages.length - 1)); }
 
   setOrientation(value) {
@@ -74,6 +78,7 @@ export class Preview {
   }
 
   setPage(value) {
+    if (this.sample) return;
     this.pages[this.orientation] = Math.max(0, Math.min(value, this.current().pages.length - 1));
     this.selected = null;
     this.render();
@@ -81,9 +86,40 @@ export class Preview {
     if (this.onTarget) this.onTarget();
   }
 
+  showSample(layouts) {
+    this.sample = layouts;
+    this.selected = null;
+    this.render();
+    this.onSelect(null);
+  }
+
+  hideSample() {
+    if (!this.sample) return;
+    this.sample = null;
+    this.selected = null;
+    this.render();
+    this.onSelect(null);
+  }
+
   updateRuntime(state) {
     this.runtimeState = state || {};
     this.deckGrid.update(this.runtimeState);
+  }
+
+  setView(mode, ratio, phoneSize) {
+    this.viewMode = mode === 'phone' ? 'phone' : 'pc';
+    this.viewRatio = ratio || 'auto';
+    this.phoneSize = phoneSize || this.phoneSize;
+    this.render();
+  }
+
+  aspect(orientation) {
+    if (this.viewMode !== 'phone') return [orientation.columns, orientation.rows];
+    let parts;
+    if (this.viewRatio === 'auto' && this.phoneSize && this.phoneSize[0] && this.phoneSize[1]) parts = this.phoneSize;
+    else parts = (this.viewRatio === 'auto' ? '19.5:9' : this.viewRatio).split(':').map(Number);
+    const wide = parts[0] >= parts[1] ? parts : [parts[1], parts[0]];
+    return this.orientation === 'portrait' ? [wide[1], wide[0]] : wide;
   }
 
   cellFromPoint(x, y) {
@@ -96,8 +132,9 @@ export class Preview {
 
   render() {
     const orientation = this.current(), page = this.page();
-    this.pages[this.orientation] = page;
-    this.screen.style.aspectRatio = `${orientation.columns} / ${orientation.rows}`;
+    if (!this.sample) this.pages[this.orientation] = page;
+    const aspect = this.aspect(orientation);
+    this.screen.style.aspectRatio = `${aspect[0]} / ${aspect[1]}`;
     this.deckGrid.render(this.grid, orientation, page, Array.from(this.editor.definitions.values()), this.runtimeState);
     this.background.update(this.editor.deck.background, this.orientation);
     this.renderOverlay(orientation, page);
@@ -107,6 +144,7 @@ export class Preview {
     clear(this.overlay);
     this.overlay.style.setProperty('--deck-columns', orientation.columns);
     this.overlay.style.setProperty('--deck-rows', orientation.rows);
+    if (this.sample) return;
     const page = orientation.pages[pageIndex], used = new Set();
     ['speaker', 'mic'].forEach((target) => {
       const value = this.editor.effectiveFader(orientation, pageIndex, target);

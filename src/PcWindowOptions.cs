@@ -15,6 +15,8 @@ class PcWindowOptions
     public int opacity { get; set; } // 30-100 %
     public bool showInfo { get; set; }
     public bool confirmClose { get; set; }
+    public string previewMode { get; set; } // pc or phone
+    public string previewRatio { get; set; } // auto, 16:9, 18:9, 19.5:9, 20:9, 4:3
 
     // Remembered window state (physical pixels).
     public int x { get; set; }
@@ -37,6 +39,8 @@ class PcWindowOptions
             opacity = 100,
             showInfo = false,
             confirmClose = true,
+            previewMode = "pc",
+            previewRatio = "auto",
             topmost = true,
         };
     }
@@ -55,6 +59,8 @@ class PcWindowOptions
         o.startTopmost = OneOf(o.startTopmost, "last", "last", "on", "off");
         o.buttonSize = OneOf(o.buttonSize, "medium", "small", "medium", "large");
         o.aspect = OneOf(o.aspect, "keep", "keep", "fill");
+        o.previewMode = OneOf(o.previewMode, "pc", "pc", "phone");
+        o.previewRatio = OneOf(o.previewRatio, "auto", "auto", "16:9", "18:9", "19.5:9", "20:9", "4:3");
         if (o.opacity == 0)
             o.opacity = 100;
         o.opacity = Math.Max(30, Math.Min(100, o.opacity));
@@ -75,6 +81,8 @@ class PcWindowOptions
         if (input.TryGetValue("opacity", out v)) opacity = Convert.ToInt32(v);
         if (input.TryGetValue("showInfo", out v)) showInfo = Convert.ToBoolean(v);
         if (input.TryGetValue("confirmClose", out v)) confirmClose = Convert.ToBoolean(v);
+        if (input.TryGetValue("previewMode", out v)) previewMode = Convert.ToString(v);
+        if (input.TryGetValue("previewRatio", out v)) previewRatio = Convert.ToString(v);
         Normalize(this);
     }
 
@@ -90,6 +98,8 @@ class PcWindowOptions
             opacity = opacity,
             showInfo = showInfo,
             confirmClose = confirmClose,
+            previewMode = previewMode,
+            previewRatio = previewRatio,
             topmost = topmost,
         };
     }

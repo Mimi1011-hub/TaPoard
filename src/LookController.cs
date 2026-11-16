@@ -21,7 +21,6 @@ sealed class LookController : ControllerBase
         api.Get("/api/icon-packs", ApiAccess.Admin, GetPacks);
         api.Get("/api/icon-packs/get", ApiAccess.Admin, GetPack);
         api.Get("/api/backups", ApiAccess.Admin, GetBackups);
-        api.Get("/api/presets", ApiAccess.Admin, delegate(ApiRequest r) { HttpIO.ReplyJson(r.stream, 200, new { presets = DeckPresets.Public() }); });
         api.Get("/api/icon-styles", ApiAccess.Admin, GetStyles);
         api.Get("/api/shortcut-packs", ApiAccess.Admin, GetShortcutPacks);
         api.Post("/api/backups/restore", ApiAccess.Admin, delegate(ApiRequest r) { RestoreBackup(r, r.input); });

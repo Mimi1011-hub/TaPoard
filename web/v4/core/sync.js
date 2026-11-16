@@ -34,6 +34,9 @@ export class SyncLoop {
     const values = [`viewId=${encodeURIComponent(this.viewId)}`];
     const ids = this.visibleIds();
     if (ids.length) values.push(`visibleIds=${encodeURIComponent(ids.join(','))}`);
+    if (this.viewId !== 'settings-window' && typeof window !== 'undefined') {
+      values.push(`viewportWidth=${window.innerWidth}`, `viewportHeight=${window.innerHeight}`);
+    }
     if (includeVersion && state && state.version) values.push(`version=${encodeURIComponent(state.version)}`);
     return `${path}${path.indexOf('?') >= 0 ? '&' : '?'}${values.join('&')}`;
   }

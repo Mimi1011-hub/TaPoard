@@ -19,6 +19,7 @@ const nodes = {
   notice: document.querySelector('#settings-notice'),
   sections: {
     layout: document.querySelector('#settings-section-layout'),
+    presets: document.querySelector('#settings-section-presets'),
     appearance: document.querySelector('#settings-section-appearance'),
     saved: document.querySelector('#settings-section-saved'),
     connection: document.querySelector('#settings-section-connection'),
@@ -44,6 +45,11 @@ i18n.init().then(() => {
   const settings = new SettingsApp({
     key, i18n, shell, nodes: Object.assign(nodes, {
       undo: document.querySelector('#settings-undo'),
+      previewTitle: document.querySelector('#settings-preview-title'),
+      presetBack: document.querySelector('#settings-preset-back'),
+      layoutTools: document.querySelector('#settings-layout-tools'),
+      previewMode: document.querySelector('#settings-preview-mode'),
+      previewRatio: document.querySelector('#settings-preview-ratio'),
       saveStatus: document.querySelector('#settings-save-status'),
       preview: document.querySelector('#settings-preview'),
       orientation: Array.from(document.querySelectorAll('[data-orientation]')),

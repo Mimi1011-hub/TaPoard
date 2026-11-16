@@ -32,6 +32,7 @@ const presets = [
   { id: 'streamer', name: `Streamer ${evil}`, note: 'For streaming', setup: 'Set the same keys.', landscape: presetLayout(5, 3), portrait: presetLayout(3, 5) },
   { id: 'simple', name: 'Simple', note: 'Just the basics', setup: '', landscape: presetLayout(4, 3), portrait: presetLayout(3, 4) },
 ];
+let customPresets = [];
 let styles = [{ id: 'style-1', name: `Old ${evil}`, created: '2026-11-01T10:05:00', count: 3, customCount: 0, color: '#14213d', color2: '', hasImage: false }];
 const backups = [{ id: 'backup-1', time: '2026/10/01 12:00', landscape: 4, portrait: 2 }];
 
@@ -65,7 +66,18 @@ const server = http.createServer(async (req, res) => {
     if (name === 'sync') return setTimeout(() => json(res, 200, state()), 30);
     if (name === 'icon-packs') return json(res, 200, { packs: [], maxPacks: 50, maxIcons: 5000 });
     if (name === 'shortcut-packs') return json(res, 200, { packs: [], maxPacks: 20, maxShortcuts: 300 });
-    if (name === 'presets') return json(res, 200, { presets });
+    if (name === 'presets') return json(res, 200, { presets: presets.concat(customPresets) });
+    if (name === 'presets/save') {
+      const layout = presetLayout(deck[body.orientation].columns, deck[body.orientation].rows);
+      customPresets.push({ id: '1234567890abcdef1234567890abcdef', name: body.name, note: '', setup: '', custom: true,
+        orientation: body.orientation, [body.orientation]: layout });
+      return json(res, 200, { ok: true });
+    }
+    if (name === 'presets/rename') {
+      customPresets.find((preset) => preset.id === body.id).name = body.name;
+      return json(res, 200, { ok: true });
+    }
+    if (name === 'presets/delete') { customPresets = customPresets.filter((preset) => preset.id !== body.id); return json(res, 200, { ok: true }); }
     if (name === 'presets/apply') {
       deck[body.orientation].pages[body.page].items = [item('preset', 'Mute', 0, 0)];
       return changed(res);
@@ -116,15 +128,24 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     await page.goto(`http://127.0.0.1:${server.address().port}/v4/settings.html#admin=test`);
     await page.locator('.preview-hit[data-kind="item"]').first().waitFor();
 
-    // An edit that is not saved yet is saved first; then the look is saved, then the preset is used.
+    // Presets have their own section; choosing one replaces the preview with a read-only sample.
     await page.locator('.preview-hit[data-kind="item"]').first().click();
     await page.locator('#settings-inspector textarea').first().fill('Edited');
     await page.locator('.settings-nav [data-section="saved"]').click();
+    assert.equal(await page.locator('#settings-section-saved .preset-tab').count(), 0, 'saved section has no presets');
+    await page.locator('.settings-nav [data-section="layout"]').click();
     await page.locator('.settings-page-tab').nth(1).locator('.settings-page-name').click();
+    await page.locator('.settings-nav [data-section="presets"]').click();
     await page.locator('.preset-tab').first().waitFor();
     assert.equal(await page.locator('.preset-tab').count(), 2);
     assert(await page.locator('.preset-tab').first().innerText().then((text) => text.includes('<img')), 'preset names are shown as text');
-    assert.equal(await page.locator('.preset-map .preset-cell').count(), 2, 'the preset page shows its button and fader');
+    await page.locator('.preset-tab').first().click();
+    assert.match(await page.locator('#settings-preview-title').innerText(), /Streamer/);
+    assert.equal(await page.locator('.preview-hit').count(), 0, 'preset sample cannot be selected or dragged');
+    assert((await page.locator('.settings-preview .deck-tile').count()) > 0, 'preset sample uses the real preview');
+    await page.locator('#settings-preset-back').click();
+    assert((await page.locator('.preview-hit').count()) > 0, 'back restores the own-page preview');
+    await page.locator('.preset-tab').first().click();
     let from = calls.length;
     await page.getByRole('button', { name: 'このページに使う' }).click();
     const dialog = page.locator('.look-dialog[open]');
@@ -149,6 +170,23 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     from = calls.length;
     await page.locator('.settings-notice-action').click();
     await waitFor(() => names(from).includes('POST page/undo') && names(from).includes('GET v3/deck'), 'PC-side undo and reload');
+
+    // Custom presets can be added, renamed and deleted.
+    await page.locator('.settings-nav [data-section="presets"]').click();
+    promptAnswer = 'My preset';
+    from = calls.length;
+    await page.getByRole('button', { name: '今のページをプリセットに追加' }).click();
+    await waitFor(() => names(from).includes('POST presets/save'), 'custom preset saved');
+    await waitFor(async () => (await page.locator('.preset-tab').count()) === 3, 'custom preset listed');
+    promptAnswer = 'Preset renamed';
+    await page.getByRole('button', { name: '名前を変える' }).last().click();
+    await waitFor(() => names(from).includes('POST presets/rename'), 'custom preset renamed');
+    assert(await page.locator('.preset-tab').last().innerText().then((text) => text.includes('Preset renamed')));
+    await page.getByRole('button', { name: '削除' }).last().click();
+    await waitFor(() => names(from).includes('POST presets/delete'), 'custom preset deleted');
+    await waitFor(async () => (await page.locator('.preset-tab').count()) === 2, 'custom preset removed');
+    promptAnswer = 'Renamed';
+    await page.locator('.settings-nav [data-section="saved"]').click();
 
     // Saved looks: listed as text, saved, renamed, used and deleted.
     await waitFor(async () => (await page.locator('.saved-row').count()) === 3, 'two looks and one backup');
@@ -191,6 +229,8 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     assert.deepEqual(calls.find((call) => call.name === 'POST backups/restore').body, { id: 'backup-1' });
 
     // The preset text follows the preview's orientation.
+    await page.locator('.settings-nav [data-section="presets"]').click();
+    await page.locator('.preset-tab').first().click();
     await page.locator('[data-orientation="portrait"]').click();
     await waitFor(async () => (await page.locator('.preset-card .saved-note').first().innerText()).includes('3×5'), 'portrait preset layout');
 

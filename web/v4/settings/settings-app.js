@@ -13,6 +13,7 @@ import { IconPicker } from './icon-picker.js';
 import { Appearance } from './appearance.js';
 import { BackgroundSettings } from './background-settings.js';
 import { Saved } from './saved.js';
+import { Presets } from './presets.js';
 import { Connect } from './connect.js';
 import { PcWindowSettings } from './pc-window-settings.js';
 import { General } from './general.js';
@@ -50,6 +51,7 @@ export class SettingsApp {
       },
       onError: (message) => this.shell.showNotice(message),
     });
+    await this.setupPreviewView();
     this.iconPicker = new IconPicker({
       editor: this.editor,
       i18n: this.i18n,
@@ -148,6 +150,19 @@ export class SettingsApp {
       onNotice: (message, action) => this.shell.showNotice(message, action),
     });
     await this.saved.start();
+    this.presets = new Presets({
+      root: this.nodes.sections.presets,
+      api: this.api,
+      editor: this.editor,
+      preview: this.preview,
+      i18n: this.i18n,
+      confirmFn: this.confirmFn,
+      promptFn: this.promptFn,
+      serverChange: this.saved.serverChange,
+      onError: (message) => this.shell.showNotice(message),
+      onPreview: (active, name) => this.presetPreview(active, name),
+    });
+    await this.presets.load();
     this.connect = new Connect({
       root: this.nodes.sections.connection,
       api: this.api,
@@ -175,14 +190,17 @@ export class SettingsApp {
       onError: (message) => this.shell.showNotice(message),
     });
     this.general.start();
-    this.preview.onTarget = () => this.saved.targetChanged();
+    this.preview.onTarget = () => this.presets.render();
     this.editor.subscribe((event) => {
-      if (event.source === 'load') this.saved.targetChanged();
+      if (event.source === 'load') this.presets.render();
     });
+    this.nodes.presetBack.addEventListener('click', () => this.presets.closePreview());
+    this.shell.sections.subscribe((section) => { if (section !== 'presets') this.presets.closePreview(); });
     this.nodes.orientation.forEach((button) =>
       button.addEventListener('click', () => {
         this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
         this.preview.setOrientation(button.dataset.orientation);
+        this.presets.render();
         this.pages.render();
         this.gridSize.render();
         this.backgroundSettings.orientationChanged();
@@ -202,6 +220,34 @@ export class SettingsApp {
     this.sync.start();
     this.documentObject.addEventListener('visibilitychange', () => this.sync.setHidden(this.documentObject.hidden));
     this.setSaveStatus('saved');
+  }
+
+  presetPreview(active, name) {
+    this.nodes.previewTitle.textContent = active
+      ? this.i18n.t('presets.previewTitle', { name })
+      : this.i18n.t('settings.preview.title');
+    this.nodes.presetBack.hidden = !active;
+    this.nodes.layoutTools.hidden = active;
+    this.nodes.undo.hidden = active;
+    this.nodes.inspector.hidden = active;
+  }
+
+  async setupPreviewView() {
+    let view = { options: { previewMode: 'pc', previewRatio: 'auto' }, phoneWidth: 0, phoneHeight: 0 };
+    try { view = await this.api.get('/api/pc-window'); } catch (error) { this.shell.showNotice(error.message); }
+    const apply = () => {
+      this.nodes.previewRatio.hidden = this.nodes.previewMode.value !== 'phone';
+      this.preview.setView(this.nodes.previewMode.value, this.nodes.previewRatio.value, [view.phoneWidth, view.phoneHeight]);
+    };
+    this.nodes.previewMode.value = view.options.previewMode || 'pc';
+    this.nodes.previewRatio.value = view.options.previewRatio || 'auto';
+    [this.nodes.previewMode, this.nodes.previewRatio].forEach((control) => control.addEventListener('change', () => {
+      apply();
+      this.api.post('/api/pc-window', {
+        previewMode: this.nodes.previewMode.value, previewRatio: this.nodes.previewRatio.value,
+      }).catch((error) => this.shell.showNotice(error.message));
+    }));
+    apply();
   }
 
   keydown(event) {

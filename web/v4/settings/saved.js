@@ -2,10 +2,9 @@ import { clear, el } from '../core/dom.js';
 import { Backups } from './backups.js';
 import { LookDialog } from './look-dialog.js';
 import { Looks } from './looks.js';
-import { Presets } from './presets.js';
 import { ServerChange } from './server-change.js';
 
-// The "saved" section: presets, saved looks and backups.
+// The "saved" section: saved looks and backups.
 export class Saved {
   constructor(options) {
     Object.assign(this, options);
@@ -26,13 +25,8 @@ export class Saved {
       dialog: new LookDialog({ i18n: this.i18n, documentObject: this.documentObject }),
     });
     this.looks.serverChange = this.serverChange;
-    this.presets = new Presets(Object.assign({ root: block(), serverChange: this.serverChange }, shared));
     this.backups = new Backups(Object.assign({ root: block(), serverChange: this.serverChange }, shared));
-    this.root.insertBefore(this.presets.root, this.looks.root);
   }
 
-  start() { return Promise.all([this.presets.load(), this.looks.load(), this.backups.load()]); }
-
-  // The preview now shows another orientation or page: the preset text names where it will go.
-  targetChanged() { this.presets.render(); }
+  start() { return Promise.all([this.looks.load(), this.backups.load()]); }
 }

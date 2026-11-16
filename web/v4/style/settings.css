@@ -118,6 +118,28 @@
   display: grid;
   gap: 7px;
 }
+.settings-catalog-entry {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.catalog-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 4px 4px;
+}
+.catalog-sizes button {
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-button);
+  cursor: pointer;
+}
+.catalog-sizes button:disabled {
+  color: var(--color-disabled);
+  cursor: default;
+}
 .settings-catalog-group {
   border: 1px solid var(--color-border);
   border-radius: 9px;
@@ -570,6 +592,22 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.preview-view-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.preview-view-field select,
+#settings-preview-ratio {
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-button);
 }
 .settings-preview-toolbar button {
   padding: 7px 11px;
@@ -1162,6 +1200,28 @@
   background: var(--color-button);
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;
+}
+.connect-kind-note {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1150px) {
+  #settings-section-connection .orientation-switch {
+    grid-template-columns: 1fr;
+  }
+  .settings-preview-toolbar {
+    gap: 6px;
+  }
+  .settings-preview-toolbar h2 {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .settings-toolbar-actions {
+    gap: 4px;
+  }
 }
 .pairing-list {
   display: grid;

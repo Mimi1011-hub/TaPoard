@@ -9,6 +9,8 @@ class PairedDevice
     public string name { get; set; }
     public string credentialHash { get; set; }
     public string created { get; set; }
+    public int viewportWidth { get; set; }
+    public int viewportHeight { get; set; }
 }
 
 class PairRequest
@@ -134,6 +136,17 @@ static class Pairing
             return false;
         string hash = Hash(auth.Substring(7));
         return s.devices.Exists(d => d.credentialHash == hash);
+    }
+
+    internal static bool UpdateViewport(Settings s, string auth, int width, int height)
+    {
+        if (width < 100 || height < 100 || width > 10000 || height > 10000 || String.IsNullOrEmpty(auth)) return false;
+        string token = auth.StartsWith("Bearer ") ? auth.Substring(7) : "";
+        PairedDevice device = s.devices.Find(d => d.credentialHash == Hash(token));
+        if (device == null || (device.viewportWidth == width && device.viewportHeight == height)) return false;
+        device.viewportWidth = width;
+        device.viewportHeight = height;
+        return true;
     }
 
     internal static void Revoke(Settings s, string id)

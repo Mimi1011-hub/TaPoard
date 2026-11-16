@@ -4,16 +4,51 @@ using System.Collections.Generic;
 sealed class PageController : ControllerBase
 {
     readonly DeckController deck;
+    readonly CustomPresets customPresets;
 
     internal PageController(AppState state, IDesktop desktop, DeckController deck) : base(state, desktop)
     {
         this.deck = deck;
+        customPresets = new CustomPresets(state.Data);
     }
     internal void Register(ApiRouter<ApiRequest> api)
     {
         api.Post("/api/page", ApiAccess.Paired, delegate(ApiRequest r) { SetPage(r, r.input); });
         api.Post("/api/page/undo", ApiAccess.Admin, UndoDeletePage);
+        api.Get("/api/presets", ApiAccess.Admin, GetPresets);
+        api.Post("/api/presets/save", ApiAccess.Admin, delegate(ApiRequest r) { SavePreset(r, r.input); });
+        api.Post("/api/presets/rename", ApiAccess.Admin, delegate(ApiRequest r) { RenamePreset(r, r.input); });
+        api.Post("/api/presets/delete", ApiAccess.Admin, delegate(ApiRequest r) { DeletePreset(r, r.input); });
         api.Post("/api/presets/apply", ApiAccess.Admin, delegate(ApiRequest r) { ApplyPreset(r, r.input); });
+    }
+
+    internal void GetPresets(ApiRequest r)
+    {
+        var result = new List<object>();
+        foreach (object preset in (IEnumerable<object>)DeckPresets.Public()) result.Add(preset);
+        foreach (CustomPreset preset in customPresets.Read()) result.Add(customPresets.Public(preset));
+        HttpIO.ReplyJson(r.stream, 200, new { presets = result });
+    }
+
+    internal void SavePreset(ApiRequest r, Dictionary<string, object> input)
+    {
+        string orientation = ReadOrientation(input);
+        int page = input.ContainsKey("page") ? Convert.ToInt32(input["page"]) : 0;
+        string name = input.ContainsKey("name") ? Convert.ToString(input["name"]) : "";
+        lock (state.Gate)
+            HttpIO.ReplyJson(r.stream, 200, new { preset = customPresets.Public(customPresets.Save(state.Config, name, orientation, page)) });
+    }
+
+    internal void RenamePreset(ApiRequest r, Dictionary<string, object> input)
+    {
+        customPresets.Rename(Convert.ToString(input["id"]), Convert.ToString(input["name"]));
+        HttpIO.ReplyJson(r.stream, 200, new { ok = true });
+    }
+
+    internal void DeletePreset(ApiRequest r, Dictionary<string, object> input)
+    {
+        customPresets.Delete(Convert.ToString(input["id"]));
+        HttpIO.ReplyJson(r.stream, 200, new { ok = true });
     }
 
     internal string ReadOrientation(Dictionary<string, object> input)
@@ -83,7 +118,9 @@ sealed class PageController : ControllerBase
             string before = IconPacks.Serializer().Serialize(state.Config);
             var candidate = IconPacks.Serializer().Deserialize<Settings>(before);
             DeckLayout.MigrateGrid(candidate);
-            int placed = DeckPresets.Apply(candidate, id, orientation, target, DeckView.NewId);
+            int placed = id != null && id.Length == 32
+                ? customPresets.Apply(candidate, id, orientation, target, DeckView.NewId)
+                : DeckPresets.Apply(candidate, id, orientation, target, DeckView.NewId);
             foreach (var a in candidate.apps)
                 if (a.orientation == orientation)
                     deck.ValidateEntry(a);

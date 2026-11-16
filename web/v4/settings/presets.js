@@ -19,55 +19,117 @@ export class Presets {
 
   side() { return this.i18n.t(`saved.side.${this.preview.orientation}`); }
 
+  sampleSide(layout) {
+    if (!layout) return null;
+    const fader = (value) => value ? Object.assign({ off: false }, value) : { row: 0, column: 0, width: 1, height: 1, off: true };
+    const items = (layout.items || []).map((item, index) => Object.assign({
+      id: `preset-${index}`,
+      iconKey: item.icon || item.iconKey || '',
+      iconColor: item.iconColor || '#3569c8',
+      fontSize: item.fontSize || 11,
+      iconScale: item.iconScale || 82,
+      labelOpacity: item.labelOpacity == null ? 45 : item.labelOpacity,
+    }, item));
+    return {
+      columns: layout.columns,
+      rows: layout.rows,
+      faders: { speaker: fader(layout.speaker), mic: fader(layout.mic) },
+      pages: [{ name: '', faders: null, items }],
+    };
+  }
+
+  showPreview(preset) {
+    if (!this.target) this.target = { orientation: this.preview.orientation, page: this.preview.page() };
+    this.preview.showSample({ landscape: this.sampleSide(preset.landscape), portrait: this.sampleSide(preset.portrait) });
+    this.onPreview(true, preset.name);
+  }
+
+  closePreview() {
+    if (!this.target) return;
+    const target = this.target;
+    this.target = null;
+    this.preview.hideSample();
+    this.preview.setOrientation(target.orientation);
+    this.preview.setPage(target.page);
+    this.onPreview(false, '');
+  }
+
   render() {
     clear(this.root);
-    this.root.appendChild(el('h3', '', this.i18n.t('presets.title')));
+    this.root.appendChild(el('h2', '', this.i18n.t('presets.title')));
+    const add = el('button', 'saved-primary', this.i18n.t('presets.addCurrent'));
+    add.type = 'button';
+    add.addEventListener('click', () => this.saveCurrent());
+    this.root.appendChild(add);
     const page = this.preview.page() + 1;
     this.root.appendChild(el('p', 'saved-note', this.i18n.t('presets.target', { side: this.side(), page })));
     if (!this.presets.length) return;
     if (!this.presets.some((preset) => preset.id === this.selected)) this.selected = this.presets[0].id;
     const tabs = el('div', 'preset-tabs');
     this.presets.forEach((preset) => {
+      if (!tabs.dataset.group || tabs.dataset.group !== String(!!preset.custom)) {
+        tabs.dataset.group = String(!!preset.custom);
+        tabs.appendChild(el('h3', '', this.i18n.t(preset.custom ? 'presets.custom' : 'presets.builtIn')));
+      }
       const tab = el('button', 'preset-tab');
       tab.type = 'button';
       tab.setAttribute('aria-pressed', String(preset.id === this.selected));
       tab.append(el('strong', '', preset.name), el('small', '', preset.note));
-      tab.addEventListener('click', () => { this.selected = preset.id; this.render(); });
+      tab.addEventListener('click', () => { this.selected = preset.id; this.render(); this.showPreview(preset); });
       tabs.appendChild(tab);
+      if (preset.custom) tabs.appendChild(this.customActions(preset));
     });
     this.root.appendChild(tabs);
     const preset = this.presets.find((value) => value.id === this.selected);
     const layout = preset[this.preview.orientation];
     const card = el('article', 'preset-card');
-    card.appendChild(el('p', 'saved-note', this.i18n.t('presets.summary', {
+    if (!layout) card.appendChild(el('p', 'saved-note', this.i18n.t('presets.otherSide', {
+      side: this.i18n.t(`saved.side.${preset.orientation}`),
+    })));
+    else card.appendChild(el('p', 'saved-note', this.i18n.t('presets.summary', {
       note: preset.note, side: this.side(), columns: layout.columns, rows: layout.rows,
     })));
-    card.appendChild(this.map(layout));
     const apply = el('button', 'saved-primary', this.i18n.t('presets.apply'));
     apply.type = 'button';
+    apply.disabled = !layout;
     apply.addEventListener('click', () => this.apply(preset, layout));
     card.appendChild(apply);
     if (preset.setup) card.appendChild(el('p', 'saved-note', preset.setup));
     card.appendChild(el('h4', '', this.i18n.t('presets.help')));
-    card.appendChild(this.help(layout));
+    if (layout) card.appendChild(this.help(layout));
     this.root.appendChild(card);
   }
 
-  // A small picture of the preset page: buttons, widgets and faders where they will go.
-  map(layout) {
-    const map = el('div', 'preset-map');
-    map.style.gridTemplateColumns = `repeat(${layout.columns}, 1fr)`;
-    map.style.gridTemplateRows = `repeat(${layout.rows}, 1fr)`;
-    map.style.aspectRatio = `${layout.columns} / ${layout.rows}`;
-    const cell = (text, kind, value) => {
-      const node = el('span', `preset-cell preset-${kind}`, text);
-      node.style.gridArea = `${value.row + 1} / ${value.column + 1} / span ${value.height} / span ${value.width}`;
-      map.appendChild(node);
-    };
-    if (layout.speaker) cell(this.i18n.t('presets.speaker'), 'fader', layout.speaker);
-    if (layout.mic) cell(this.i18n.t('presets.mic'), 'fader', layout.mic);
-    (layout.items || []).forEach((item) => cell(item.name, item.type === 'hotkey' ? 'key' : 'widget', item));
-    return map;
+  customActions(preset) {
+    const actions = el('div', 'saved-actions');
+    const rename = el('button', '', this.i18n.t('presets.rename'));
+    const remove = el('button', '', this.i18n.t('presets.delete'));
+    rename.type = 'button'; remove.type = 'button';
+    rename.addEventListener('click', async () => {
+      const name = this.promptFn(this.i18n.t('presets.namePrompt'), preset.name);
+      if (!name) return;
+      await this.api.post('/api/presets/rename', { id: preset.id, name }, 10000);
+      await this.load();
+    });
+    remove.addEventListener('click', async () => {
+      if (!this.confirmFn(this.i18n.t('presets.deleteConfirm', { name: preset.name }))) return;
+      await this.api.post('/api/presets/delete', { id: preset.id }, 10000);
+      this.selected = '';
+      this.closePreview();
+      await this.load();
+    });
+    actions.append(rename, remove);
+    return actions;
+  }
+
+  async saveCurrent() {
+    this.closePreview();
+    const name = this.promptFn(this.i18n.t('presets.namePrompt'), '');
+    if (!name) return;
+    await this.api.post('/api/presets/save', {
+      name, orientation: this.preview.orientation, page: this.preview.page(),
+    }, 10000);
+    await this.load();
   }
 
   help(layout) {
@@ -92,7 +154,10 @@ export class Presets {
   }
 
   apply(preset, layout) {
-    const orientation = this.preview.orientation, page = this.preview.page();
+    const target = this.target || { orientation: this.preview.orientation, page: this.preview.page() };
+    const orientation = target.orientation, page = target.page;
+    layout = preset[orientation];
+    this.closePreview();
     const current = this.editor.deck[orientation], count = current.pages[page].items.length;
     const values = { side: this.side(), page: page + 1, name: preset.name };
     let reason = this.i18n.t('presets.confirm', values);

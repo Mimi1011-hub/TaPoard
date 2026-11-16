@@ -94,6 +94,7 @@ export class Catalog {
   }
 
   row(value, groupLabel) {
+    const wrap = el('div', 'settings-catalog-entry');
     const row = el('button', 'settings-catalog-item');
     row.type = 'button';
     row.draggable = true;
@@ -104,11 +105,45 @@ export class Catalog {
       event.dataTransfer.effectAllowed = 'copy';
       event.dataTransfer.setData('text/x-tapoard-catalog', value.id || value.action);
     });
-    row.addEventListener('dblclick', () => this.add(value.id || value.action));
+    const action = value.id || value.action;
+    const sizes = this.sizes(action);
+    row.addEventListener('click', () => { if (sizes.length > 1) this.toggleSizes(wrap, action, sizes); });
+    row.addEventListener('dblclick', () => { if (sizes.length === 1) this.add(action); });
     row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') this.add(value.id || value.action);
+      if (event.key === 'Enter') {
+        if (sizes.length > 1) this.toggleSizes(wrap, action, sizes);
+        else this.add(action);
+      }
     });
-    return row;
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  sizes(action) {
+    const item = this.create(action);
+    const definition = item && this.editor.definitions.get(item.type);
+    return definition && definition.sizes && definition.sizes.length ? definition.sizes : ['1x1'];
+  }
+
+  toggleSizes(wrap, action, sizes) {
+    const old = wrap.querySelector('.catalog-sizes');
+    if (old) { old.remove(); return; }
+    const choices = el('div', 'catalog-sizes');
+    const orientation = this.preview.current();
+    sizes.forEach((size) => {
+      const parts = size.split('x').map(Number);
+      const button = el('button', '', size.replace('x', '×'));
+      button.type = 'button';
+      button.disabled = parts[0] > orientation.columns || parts[1] > orientation.rows;
+      button.draggable = !button.disabled;
+      button.addEventListener('click', () => this.add(action, null, size));
+      button.addEventListener('dragstart', (event) => {
+        event.dataTransfer.effectAllowed = 'copy';
+        event.dataTransfer.setData('text/x-tapoard-catalog', `${action}|${size}`);
+      });
+      choices.appendChild(button);
+    });
+    wrap.appendChild(choices);
   }
 
   renderRecent(show) {
@@ -163,7 +198,7 @@ export class Catalog {
     return null;
   }
 
-  create(action) {
+  create(action, size) {
     const data = this.value(action);
     if (!data) return null;
     if (data.keys) {
@@ -175,12 +210,20 @@ export class Catalog {
         value.iconPackItem = data.iconPackItem;
         value.customIcon = data.customIcon || '';
       }
-      return value;
+      return this.withSize(value, size);
     }
-    return catalogItem(action, this.i18n.t(data.name), data.category);
+    return this.withSize(catalogItem(action, this.i18n.t(data.name), data.category), size);
   }
 
-  async add(action, cell) {
+  withSize(item, size) {
+    if (!item || !size) return item;
+    const parts = size.split('x').map(Number);
+    item.width = parts[0]; item.height = parts[1];
+    item.size = parts[0] === parts[1] && parts[0] <= 2 ? parts[0] : 1;
+    return item;
+  }
+
+  async add(action, cell, size) {
     const target = controlFromAction(action), orientation = this.preview.current(), page = this.preview.page();
     if (target) {
       const item = Object.assign({}, orientation.faders[target], { width: orientation.faders[target].width, height: orientation.faders[target].height });
@@ -190,7 +233,7 @@ export class Catalog {
         return true;
       }
     } else {
-      let item = this.create(action);
+      let item = this.create(action, size);
       item = await this.inputDialog.ask(action, item);
       if (!item) return false;
       if (item && this.editor.addItem(this.preview.orientation, page, item, cell && cell.row, cell && cell.column)) {
@@ -213,8 +256,9 @@ export class Catalog {
   }
 
   drop(event) {
-    const action = event.dataTransfer.getData('text/x-tapoard-catalog');
-    if (!action) return;
-    event.preventDefault(); this.add(action, this.preview.cellFromPoint(event.clientX, event.clientY));
+    const value = event.dataTransfer.getData('text/x-tapoard-catalog');
+    if (!value) return;
+    const parts = value.split('|');
+    event.preventDefault(); this.add(parts[0], this.preview.cellFromPoint(event.clientX, event.clientY), parts[1]);
   }
 }

@@ -106,6 +106,10 @@ sealed class DeckController : ControllerBase
 
     DeckRuntimeState CaptureRuntime(ApiRequest r)
     {
+        int viewportWidth, viewportHeight;
+        if (!r.local && Int32.TryParse(HttpIO.QueryValue(r.target, "viewportWidth"), out viewportWidth)
+            && Int32.TryParse(HttpIO.QueryValue(r.target, "viewportHeight"), out viewportHeight)
+            && Pairing.UpdateViewport(state.Config, r.auth, viewportWidth, viewportHeight)) state.Save();
         var inputSessions = UpdateRuntimeSessions(r, true, true);
         state.TouchPhone(r.local);
         int landscapePages = DeckLayout.Pages(state.Config, "landscape");

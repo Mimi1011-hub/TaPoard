@@ -30,6 +30,7 @@
           <button type="button" class="is-active" data-section="layout">
             <span aria-hidden="true">▦</span><b data-i18n="settings.nav.layout"></b>
           </button>
+          <button type="button" data-section="presets"><span aria-hidden="true">◇</span><b data-i18n="settings.nav.presets"></b></button>
           <button type="button" data-section="appearance"><span aria-hidden="true">✦</span><b data-i18n="settings.nav.appearance"></b></button>
           <button type="button" data-section="saved"><span aria-hidden="true">▣</span><b data-i18n="settings.nav.saved"></b></button>
           <button type="button" data-section="connection"><span aria-hidden="true">⌁</span><b data-i18n="settings.nav.connection"></b></button>
@@ -39,6 +40,7 @@
         <section class="settings-workspace">
           <aside id="settings-catalog" class="settings-panel settings-catalog">
             <div id="settings-section-layout"></div>
+            <div id="settings-section-presets" hidden></div>
             <div id="settings-section-appearance" hidden></div>
             <div id="settings-section-saved" hidden></div>
             <div id="settings-section-connection" hidden></div>
@@ -47,8 +49,20 @@
           </aside>
           <section class="settings-preview-column">
             <div class="settings-preview-toolbar">
-              <h2 data-i18n="settings.preview.title"></h2>
+              <h2 id="settings-preview-title" data-i18n="settings.preview.title"></h2>
               <div class="settings-toolbar-actions">
+                <button id="settings-preset-back" type="button" data-i18n="presets.previewBack" hidden></button>
+                <label class="preview-view-field"><span data-i18n="settings.preview.view"></span>
+                  <select id="settings-preview-mode">
+                    <option value="pc" data-i18n="settings.preview.pc"></option>
+                    <option value="phone" data-i18n="settings.preview.phone"></option>
+                  </select>
+                </label>
+                <select id="settings-preview-ratio" data-i18n-label="settings.preview.ratio" hidden>
+                  <option value="auto" data-i18n="settings.preview.auto"></option>
+                  <option value="16:9">16:9</option><option value="18:9">18:9</option><option value="19.5:9">19.5:9</option>
+                  <option value="20:9">20:9</option><option value="4:3" data-i18n="settings.preview.tablet"></option>
+                </select>
                 <div class="orientation-switch">
                   <button type="button" data-orientation="landscape" class="is-active" data-i18n="settings.orientation.landscape"></button
                   ><button type="button" data-orientation="portrait" data-i18n="settings.orientation.portrait"></button>
@@ -56,7 +70,7 @@
                 <button id="settings-undo" type="button" data-i18n="settings.undo" disabled></button>
               </div>
             </div>
-            <div class="settings-layout-tools">
+            <div id="settings-layout-tools" class="settings-layout-tools">
               <div id="settings-pages" class="settings-pages"></div>
               <div id="settings-grid-size" class="settings-grid-size"></div>
             </div>

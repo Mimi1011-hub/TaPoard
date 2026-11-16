@@ -19,6 +19,7 @@ const packAdds = [];
 const imageRequests = [];
 let background = { color: '', color2: '', image: '', landscape: { fit: 'cover', x: 50, y: 50, zoom: 1 }, portrait: { fit: 'cover', x: 50, y: 50, zoom: 1 }, keys: '', dim: 0, blur: 0, keyClear: 0 };
 let packs = [];
+let pcOptions = { previewMode: 'pc', previewRatio: 'auto' };
 const faders = () => ({
   speaker: { row: 2, column: 0, width: 1, height: 1, off: false },
   mic: { row: 2, column: 1, width: 1, height: 1, off: false },
@@ -82,7 +83,8 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { profile: 'private', rulesChecked: true, httpRule: true, mdnsRule: true, scriptAvailable: true });
     }
     if (url.pathname === '/api/pc-window') {
-      return json(res, 200, { options: {}, open: false, runtimeAvailable: false });
+      if (req.method === 'POST') pcOptions = { ...pcOptions, ...JSON.parse(body || '{}') };
+      return json(res, 200, { options: pcOptions, phoneWidth: 390, phoneHeight: 844, open: false, runtimeAvailable: false });
     }
     if (url.pathname === '/api/import') return json(res, 200, { id: 'none', result: { cancelled: true } });
     if (url.pathname === '/api/devices') return json(res, 200, { devices: [] });
@@ -174,6 +176,12 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.equal(await pcSection.locator('[data-section="pc"].is-active').count(), 1, 'section=pc opens PC settings');
     await pcSection.close();
 
+    const presetSection = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 700 } });
+    await presetSection.goto(`${base}/v4/settings.html#admin=test&section=presets`);
+    await presetSection.locator('#settings-section-presets:not([hidden])').waitFor();
+    assert.equal(await presetSection.locator('[data-section="presets"].is-active').count(), 1, 'section=presets opens presets');
+    await presetSection.close();
+
     const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 700 } });
     page.setDefaultTimeout(5000);
     page.on('pageerror', (error) => errors.push(String(error)));
@@ -197,6 +205,18 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     });
     assert(glyphBounds.every((value) => value.fits), `wide preset glyphs stay inside the icon square: ${JSON.stringify(glyphBounds)}`);
 
+    const pcAspect = await page.locator('.settings-preview-screen').evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
+    await page.locator('#settings-preview-mode').selectOption('phone');
+    await page.locator('#settings-preview-ratio').selectOption('16:9');
+    const phoneAspect = await page.locator('.settings-preview-screen').evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
+    assert(phoneAspect > pcAspect, 'smartphone view changes the preview ratio');
+    await waitFor(() => pcOptions.previewMode === 'phone', 'preview view stored');
+    const phoneDragPosts = posts.length;
+    await dragToCell(page, page.locator('.preview-hit[data-kind="item"]'), 0, 1);
+    await waitFor(() => posts.length === phoneDragPosts + 1, 'smartphone-ratio drag save');
+    assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].column, 1, 'smartphone-ratio drag uses the intended cell');
+    await page.locator('#settings-preview-mode').selectOption('pc');
+
     await page.locator('.deck-button').click({ force: true });
     await page.locator('.audio-mute').first().click({ force: true });
     assert.equal(actionRequests.length, 0, 'preview button does not call action API');
@@ -206,7 +226,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     const firstGets = deckGets;
     await dragToCell(page, page.locator('.preview-hit[data-kind="item"]'), 0, 2);
     await waitFor(() => posts.length === firstPost + 1, 'drag save');
-    assert.equal(posts.at(-1).baseVersion, '1');
+    assert.equal(posts.at(-1).baseVersion, '2');
     assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].column, 2);
     await waitFor(() => deckGets > firstGets, 'GET after POST');
 
@@ -218,7 +238,9 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     const catalogPosts = posts.length;
     await page.locator('.catalog-card').filter({ hasText: /^操作/ }).click();
     await page.getByRole('button', { name: /よく使う操作/ }).click();
-    await page.locator('.settings-catalog-item[data-action="common-copy"]').dblclick();
+    let catalogEntry = page.locator('.settings-catalog-item[data-action="common-copy"]').locator('xpath=..');
+    await catalogEntry.locator('.settings-catalog-item').click();
+    await catalogEntry.getByRole('button', { name: '1×1', exact: true }).click();
     await waitFor(() => posts.length === catalogPosts + 1, 'catalog save');
     assert(posts.at(-1).deck.landscape.pages[0].items.some((value) => value.action === 'common-copy'));
     await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'catalog GET');
@@ -231,12 +253,16 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     let customPosts = posts.length;
     postDelay = 500;
     await page.locator('.settings-catalog-search').fill('カスタムキー');
-    await page.locator('.settings-catalog-item').filter({ hasText: 'カスタムキー' }).dblclick();
+    catalogEntry = page.locator('.settings-catalog-item').filter({ hasText: 'カスタムキー' }).locator('xpath=..');
+    await catalogEntry.locator('.settings-catalog-item').click();
+    await catalogEntry.getByRole('button', { name: '1×1', exact: true }).click();
     await waitFor(() => posts.length === customPosts + 1, 'custom key save starts');
     await page.locator('.deck-button').filter({ hasText: 'カスタムキー' }).click({ force: true });
     await page.getByRole('button', { name: 'このボタンを削除' }).click();
     await page.locator('.settings-catalog-search').fill('貼り付け');
-    await page.locator('.settings-catalog-item[data-action="common-paste"]').dblclick();
+    catalogEntry = page.locator('.settings-catalog-item[data-action="common-paste"]').locator('xpath=..');
+    await catalogEntry.locator('.settings-catalog-item').click();
+    await catalogEntry.getByRole('button', { name: '1×1', exact: true }).click();
     await waitFor(() => posts.length === customPosts + 2, 'replacement key save');
     const replacement = posts.at(-1).deck.landscape.pages[0].items.find((entry) => entry.action === 'common-paste');
     assert.equal(replacement.id, '', 'a replacement key does not inherit the deleted custom key ID');

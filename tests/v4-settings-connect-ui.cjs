@@ -273,6 +273,9 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     assert.equal(await page.locator('[data-kind="iphone"]').innerText(), 'スマートフォン');
     assert.equal(await page.locator('[data-kind="android"]').innerText(), '古いスマートフォン');
     assert.equal(await page.locator('.connect-kind-note').innerText(), 'ふつうはこちら');
+    const japaneseKindHeights = await page.locator('#settings-section-connection .orientation-switch button').evaluateAll((nodes) =>
+      nodes.map((node) => node.getBoundingClientRect().height));
+    assert.equal(japaneseKindHeights[0], japaneseKindHeights[1], 'Japanese phone-choice buttons have equal heights');
     assert(!(await url()).includes('connect='), 'the key is not shown as text');
     const drawn = () => page.locator('.connect-qr').evaluate((canvas) => canvas.toDataURL());
     const first = await drawn();
@@ -422,13 +425,18 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     await general.locator('select').first().selectOption('en');
     await page.waitForFunction(() => document.title === 'TaPoard Settings');
     assert.equal(last('v3/language').body.preference, 'en', 'English preference is posted');
-    for (const name of ['layout', 'appearance', 'saved', 'connection', 'pc', 'general']) {
+    for (const name of ['layout', 'presets', 'appearance', 'saved', 'connection', 'pc', 'general']) {
       await section(name);
       const visibleText = await page.locator(`#settings-section-${name}`).innerText();
       const withoutLanguageName = visibleText.replace('日本語', '');
       assert(!/[ぁ-んァ-ヶ一-龠]/.test(withoutLanguageName), `${name} has no Japanese text in English`);
       await shot(`english-${name}`);
       await noOverflow(name);
+      if (name === 'connection') {
+        const heights = await page.locator('#settings-section-connection .orientation-switch button').evaluateAll((nodes) =>
+          nodes.map((node) => node.getBoundingClientRect().height));
+        assert.equal(heights[0], heights[1], 'English phone-choice buttons have equal heights');
+      }
     }
     await page.locator('#settings-section-general select').first().selectOption('ja');
     await page.waitForFunction(() => document.title === 'TaPoard 設定');
