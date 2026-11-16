@@ -441,6 +441,7 @@
   "shortcuts.error.empty": "The pack has no usable shortcuts.",
   "shortcuts.error.save": "The shortcut pack could not be saved.",
   "catalog.desc.swipe": "Swipe vertically to adjust",
+  "catalog.desc.chooseSize": "Choose a size before placing",
   "catalog.desc.chooseSpeaker": "Choose an output",
   "catalog.desc.chooseMic": "Choose an input",
   "catalog.desc.toggle": "Toggle on or off",

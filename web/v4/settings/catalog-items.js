@@ -1,5 +1,30 @@
 import { defaultIconForAction } from './default-icon.js';
 
+const aliases = {
+  'widget-clock-digital-wide': 'widget-clock-digital',
+  'widget-wheel-vertical-tall': 'widget-wheel-vertical',
+  'widget-touchpad-tall': 'widget-touchpad-wide',
+  'widget-keypad-tall': 'widget-keypad',
+};
+
+export function canonicalCatalogAction(action) {
+  return aliases[action] || action;
+}
+
+export function catalogSizes(action, definitions) {
+  action = canonicalCatalogAction(action);
+  if (action === 'widget-clock-digital') return ['2x1', '2x2'];
+  if (action === 'widget-clock-analog') return ['2x2'];
+  if (action === 'widget-wheel-vertical') return ['1x1', '1x2'];
+  if (action === 'widget-wheel-rotary') return ['2x2'];
+  if (action === 'widget-touchpad-wide') return ['3x2', '2x3'];
+  if (action === 'widget-keypad') return ['4x4', '4x5'];
+  if (action === 'widget-weather-now' || action.indexOf('widget-metrics-') === 0 && !action.endsWith('overview')) return ['1x1'];
+  if (action === 'widget-weather-days' || action === 'widget-metrics-overview') return ['2x2'];
+  if (action.indexOf('widget-slideshow-') === 0) return (definitions.get('slideshow') || {}).sizes || ['3x3'];
+  return null;
+}
+
 const base = (name, type, category, width = 1, height = 1) => ({
   id: '',
   name,
@@ -35,6 +60,7 @@ export function controlFromAction(action) {
 }
 
 export function catalogItem(action, name, category) {
+  action = canonicalCatalogAction(action);
   const slideshow = /^widget-slideshow-([3-8])x([3-8])$/.exec(action);
   if (slideshow) {
     const value = base(name, 'slideshow', 'widget', Number(slideshow[1]), Number(slideshow[2]));
@@ -43,9 +69,8 @@ export function catalogItem(action, name, category) {
     return value;
   }
   if (action.indexOf('widget-clock-') === 0) {
-    const analog = action === 'widget-clock-analog',
-      wide = action === 'widget-clock-digital-wide';
-    const value = base(name, 'clock', 'widget', 2, wide ? 1 : 2);
+    const analog = action === 'widget-clock-analog';
+    const value = base(name, 'clock', 'widget', 2, 2);
     value.hideLabel = true;
     value.options = { style: analog ? 'analog' : 'digital', showSeconds: true, showDate: true, showWeekday: true, hour12: false };
     return value;

@@ -52,6 +52,13 @@ class WidgetRegistryTests
         clock.height = 1;
         WidgetRegistry.ValidateAndNormalize(clock);
         Check((string)clock.options["style"] == "digital" && (bool)clock.options["showSeconds"], "2x1 clock defaults are normalized");
+        var digitalSquare = Entry("clock", 2);
+        WidgetRegistry.ValidateAndNormalize(digitalSquare);
+        Check((string)digitalSquare.options["style"] == "digital", "2x2 digital clock is accepted");
+        var analogSquare = Entry("clock", 2);
+        analogSquare.options = new Dictionary<string, object> { { "style", "analog" } };
+        WidgetRegistry.ValidateAndNormalize(analogSquare);
+        Check((string)analogSquare.options["style"] == "analog", "2x2 analog clock is accepted");
         var analogWide = Entry("clock", 1);
         analogWide.width = 2;
         analogWide.height = 1;
@@ -105,6 +112,11 @@ class WidgetRegistryTests
         touchpad.height = 2;
         WidgetRegistry.ValidateAndNormalize(touchpad);
         Check((int)touchpad.options["speed"] == 5, "touchpad accepts a 3x2 rectangle");
+        var tallTouchpad = Entry("touchpad", 1);
+        tallTouchpad.width = 2;
+        tallTouchpad.height = 3;
+        WidgetRegistry.ValidateAndNormalize(tallTouchpad);
+        Check((int)tallTouchpad.options["speed"] == 5, "touchpad accepts a 2x3 rectangle");
         foreach (object wrong in new object[] { true, "5", 5.0m })
         {
             var strict = Entry("touchpad", 1);
@@ -128,6 +140,9 @@ class WidgetRegistryTests
         gpuMetric.options = new Dictionary<string, object> { { "primary", "gpu" }, { "gpuId", "luid_0x00000000_0x0000abcd" }, { "gpuName", "Test GPU" } };
         WidgetRegistry.ValidateAndNormalize(gpuMetric);
         Check((string)gpuMetric.options["gpuName"] == "Test GPU", "metrics keep the GPU name so a restart can find the same GPU");
+        var overviewMetric = Entry("metrics", 2);
+        WidgetRegistry.ValidateAndNormalize(overviewMetric);
+        Check(overviewMetric.width == 0 && overviewMetric.size == 2, "2x2 metrics are accepted");
         var legacyMetric = Entry("metrics", 1);
         legacyMetric.options = new Dictionary<string, object> { { "primary", "gpu" }, { "gpuId", "luid_0x00000000_0x0000abcd" } };
         WidgetRegistry.ValidateAndNormalize(legacyMetric);

@@ -48,6 +48,21 @@ const state = () => ({
   weather: {},
   background: {},
 });
+const validWidgetSize = (item) => {
+  if (item.type === 'clock') return item.options.style === 'analog'
+    ? item.width === 2 && item.height === 2
+    : item.width === 2 && (item.height === 1 || item.height === 2);
+  if (item.type === 'weather' || item.type === 'metrics') {
+    return item.width === item.height && (item.width === 1 || item.width === 2);
+  }
+  if (item.type === 'wheel') return item.options.style === 'rotary'
+    ? item.width === 2 && item.height === 2
+    : item.width === 1 && (item.height === 1 || item.height === 2);
+  if (item.type === 'touchpad') return item.width === 3 && item.height === 2 || item.width === 2 && item.height === 3;
+  if (item.type === 'keypad') return item.width === 4 && (item.height === 4 || item.height === 5);
+  if (item.type === 'slideshow') return item.width >= 3 && item.width <= 8 && item.height >= 3 && item.height <= 8;
+  return true;
+};
 function makePng() {
   const crc = (bytes) => {
     let value = 0xffffffff;
@@ -96,7 +111,8 @@ const server = http.createServer(async (req, res) => {
       const items = ['landscape', 'portrait'].flatMap((orientation) => body.deck[orientation].pages.flatMap((page) => page.items));
       const invalid = items.some((item) => (item.type === 'url' && !/^https?:\/\//.test(item.url || ''))
         || (item.type === 'clipboard' && !item.text)
-        || (item.type === 'audioDevice' && !item.deviceId));
+        || (item.type === 'audioDevice' && !item.deviceId)
+        || !validWidgetSize(item));
       if (invalid) return json(res, 400, { error: 'invalid custom action' });
       deck = body.deck;
       version += 1;
@@ -193,13 +209,23 @@ const waitFor = async (check, message) => {
 
     await page.getByRole('button', { name: /部品/ }).click();
     await page.getByRole('button', { name: /時計・PC情報/ }).click();
-    const clock = page.locator('[data-action="widget-clock-digital-wide"]');
+    const analog = page.locator('[data-action="widget-clock-analog"]');
+    await analog.click();
+    assert.equal(await analog.locator('xpath=..').locator('.catalog-sizes').count(), 0, 'analog clock has no size choices');
+    const analogBefore = posts.length;
+    await analog.dblclick();
+    await waitFor(() => posts.length === analogBefore + 1, 'analog clock save');
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'analog clock settled');
+    assert(posts.at(-1).deck.landscape.pages[0].items.some((entry) => entry.type === 'clock'
+      && entry.options.style === 'analog' && entry.width === 2 && entry.height === 2));
+    const clock = page.locator('[data-action="widget-clock-digital"]');
     await clock.click();
-    assert.equal(await clock.locator('xpath=..').locator('.catalog-sizes button').count(), 2, 'multi-size widget shows size choices');
+    assert.deepEqual(await clock.locator('xpath=..').locator('.catalog-sizes button').allTextContents(), ['2×1', '2×2']);
     const sizeBefore = posts.length;
-    await clock.locator('xpath=..').getByRole('button', { name: '2×2' }).click();
+    await clock.locator('xpath=..').getByRole('button', { name: '2×1' }).click();
     await waitFor(() => posts.length === sizeBefore + 1, 'chosen widget size save');
-    assert(posts.at(-1).deck.landscape.pages[0].items.some((entry) => entry.type === 'clock' && entry.width === 2 && entry.height === 2));
+    assert(posts.at(-1).deck.landscape.pages[0].items.some((entry) => entry.type === 'clock'
+      && entry.options.style === 'digital' && entry.width === 2 && entry.height === 1));
     await page.locator('.catalog-back').click();
     await page.getByRole('button', { name: /キーボード/ }).click();
     await page.locator('[data-action="widget-keypad"]').click();

@@ -20,8 +20,7 @@ export const catalogGroups = [
     id: 'info',
     category: 'widget',
     items: [
-      item('widget-clock-digital-wide', 'digitalClockWide', '2×1'),
-      item('widget-clock-digital', 'digitalClock', '2×2'),
+      item('widget-clock-digital', 'digitalClock', 'catalog.desc.chooseSize'),
       item('widget-clock-analog', 'analogClock', '2×2'),
       item('widget-weather-now', 'weatherNow', '1×1'),
       item('widget-weather-days', 'weatherDays', '2×2'),
@@ -36,15 +35,13 @@ export const catalogGroups = [
     id: 'mouse',
     category: 'widget',
     items: [
-      item('widget-wheel-vertical', 'wheelVertical', '1×1'),
-      item('widget-wheel-vertical-tall', 'wheelTall', '1×2'),
+      item('widget-wheel-vertical', 'wheelVertical', 'catalog.desc.chooseSize'),
       item('widget-wheel-rotary', 'wheelRotary', '2×2'),
-      item('widget-touchpad-wide', 'touchpadWide', '3×2'),
-      item('widget-touchpad-tall', 'touchpadTall', '2×3'),
+      item('widget-touchpad-wide', 'touchpadWide', 'catalog.desc.chooseSize'),
     ],
   },
-  { id: 'photo', category: 'widget', items: [item('widget-slideshow-3x3', 'slideshow', '3×3')] },
-  { id: 'keyboard', category: 'widget', items: [item('widget-keypad', 'keypad', '4×4'), item('widget-keypad-tall', 'keypadTall', '4×5')] },
+  { id: 'photo', category: 'widget', items: [item('widget-slideshow-3x3', 'slideshow', 'catalog.desc.chooseSize')] },
+  { id: 'keyboard', category: 'widget', items: [item('widget-keypad', 'keypad', 'catalog.desc.chooseSize')] },
   {
     id: 'common',
     items: [

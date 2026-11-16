@@ -2,13 +2,27 @@ import assert from 'node:assert/strict';
 import { catalogGroups } from '../web/v4/settings/catalog-data/index.js';
 import { catalogGroups as previousGroups } from '../web/v4/settings/catalog-data/base.js';
 import { vscode } from '../web/v4/settings/catalog-data/vscode.js';
-import { catalogItem } from '../web/v4/settings/catalog-items.js';
+import { canonicalCatalogAction, catalogItem, catalogSizes } from '../web/v4/settings/catalog-items.js';
 import { hotkeyNames } from '../web/v4/settings/details/hotkey-details.js';
 import { CatalogRecent } from '../web/v4/settings/catalog-recent.js';
 import { readShortcutPack } from '../web/v4/settings/shortcut-pack-reader.js';
 
 const ids = catalogGroups.flatMap((group) => group.items.map((item) => item.id || item.action));
 assert.equal(new Set(ids).size, ids.length, 'catalog ids are unique');
+['widget-clock-digital-wide', 'widget-wheel-vertical-tall', 'widget-touchpad-tall', 'widget-keypad-tall'].forEach((id) => {
+  assert(!ids.includes(id), `${id} is merged into its component`);
+  assert.notEqual(canonicalCatalogAction(id), id, `${id} remains readable as a recent-item alias`);
+});
+const definitions = new Map([['slideshow', { sizes: ['3x3', '3x4', '4x3'] }]]);
+assert.deepEqual(catalogSizes('widget-clock-digital', definitions), ['2x1', '2x2']);
+assert.deepEqual(catalogSizes('widget-clock-analog', definitions), ['2x2']);
+assert.deepEqual(catalogSizes('widget-weather-now', definitions), ['1x1']);
+assert.deepEqual(catalogSizes('widget-weather-days', definitions), ['2x2']);
+assert.deepEqual(catalogSizes('widget-wheel-vertical', definitions), ['1x1', '1x2']);
+assert.deepEqual(catalogSizes('widget-wheel-rotary', definitions), ['2x2']);
+assert.deepEqual(catalogSizes('widget-touchpad-wide', definitions), ['3x2', '2x3']);
+assert.deepEqual(catalogSizes('widget-keypad', definitions), ['4x4', '4x5']);
+assert.deepEqual(catalogSizes('widget-slideshow-3x3', definitions), ['3x3', '3x4', '4x3']);
 const previous = previousGroups.flatMap((group) => group.items);
 previous.forEach((old) => {
   const current = catalogGroups.flatMap((group) => group.items).find((item) => item.action === old.action);

@@ -1,6 +1,6 @@
 import { clear, el } from '../core/dom.js';
 import { catalogGroups, catalogTops } from './catalog-data/index.js';
-import { catalogItem, controlFromAction } from './catalog-items.js';
+import { canonicalCatalogAction, catalogItem, catalogSizes, controlFromAction } from './catalog-items.js';
 import { CatalogRecent } from './catalog-recent.js';
 import { CatalogView } from './catalog-view.js';
 import { CatalogInputDialog } from './catalog-input-dialog.js';
@@ -97,7 +97,6 @@ export class Catalog {
     const wrap = el('div', 'settings-catalog-entry');
     const row = el('button', 'settings-catalog-item');
     row.type = 'button';
-    row.draggable = true;
     row.dataset.action = value.id || value.action;
     row.append(el('strong', '', this.label(value)), el('small', '', this.text(value.description)));
     if (groupLabel) row.appendChild(el('small', 'catalog-item-group', groupLabel));
@@ -107,6 +106,7 @@ export class Catalog {
     });
     const action = value.id || value.action;
     const sizes = this.sizes(action);
+    row.draggable = sizes.length === 1;
     row.addEventListener('click', () => { if (sizes.length > 1) this.toggleSizes(wrap, action, sizes); });
     row.addEventListener('dblclick', () => { if (sizes.length === 1) this.add(action); });
     row.addEventListener('keydown', (event) => {
@@ -123,7 +123,7 @@ export class Catalog {
     const item = this.create(action);
     // Only widgets offer a size here; buttons are placed at 1x1 and can be resized in the details.
     const definition = item && item.category === 'widget' && this.editor.definitions.get(item.type);
-    return definition && definition.sizes && definition.sizes.length ? definition.sizes : ['1x1'];
+    return definition ? catalogSizes(action, this.editor.definitions) || ['1x1'] : ['1x1'];
   }
 
   toggleSizes(wrap, action, sizes) {
@@ -192,6 +192,7 @@ export class Catalog {
   }
 
   value(action) {
+    action = canonicalCatalogAction(action);
     for (const group of this.allGroups()) {
       const found = group.items.find((item) => (item.id || item.action) === action);
       if (found) return found;
@@ -247,7 +248,7 @@ export class Catalog {
   }
 
   used(action) {
-    this.recent.add(action);
+    this.recent.add(canonicalCatalogAction(action));
     this.renderRecent(this.level === 'top' && !this.search.value);
   }
 

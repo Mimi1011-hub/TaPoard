@@ -441,6 +441,7 @@
   "shortcuts.error.empty": "取り込めるショートカットがありません。",
   "shortcuts.error.save": "ショートカットパックを保存できませんでした。",
   "catalog.desc.swipe": "指で上下して調整",
+  "catalog.desc.chooseSize": "置く大きさを選びます",
   "catalog.desc.chooseSpeaker": "出力先を選択",
   "catalog.desc.chooseMic": "入力元を選択",
   "catalog.desc.toggle": "オン・オフを切替",
