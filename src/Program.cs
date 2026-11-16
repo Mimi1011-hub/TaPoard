@@ -248,16 +248,7 @@ partial class Program
 
     static void LoadSettings()
     {
-        State.Config = State.Store.Load(
-            delegate
-            {
-                return new Settings
-                {
-                    token = RandomKey(),
-                    apps = new List<AppEntry>(),
-                };
-            }
-        );
+        State.Config = State.Store.Load(NewSettings);
         if (String.IsNullOrWhiteSpace(State.Config.token))
             State.Config.token = RandomKey();
         if (State.Config.apps == null)
@@ -285,6 +276,19 @@ partial class Program
         }
         DeckLayout.Validate(State.Config);
         Save();
+    }
+
+    internal static Settings NewSettings()
+    {
+        return new Settings
+        {
+            token = RandomKey(),
+            apps = new List<AppEntry>(),
+            landscapeSpeakerOff = true,
+            landscapeMicOff = true,
+            portraitSpeakerOff = true,
+            portraitMicOff = true,
+        };
     }
 
     static void StartServer()
