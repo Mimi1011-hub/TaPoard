@@ -59,10 +59,60 @@ public static class DeckV3SaveTests
     {
         return Invoke(controller.SaveV3Request, Request("POST", "/api/v3/deck", new { baseVersion = version, deck = deck }));
     }
+    static Result Apply(PageController controller, string id, string orientation, int page)
+    {
+        ApiRequest request = Request("POST", "/api/presets/apply", new { id = id, orientation = orientation, page = page });
+        return Invoke(delegate(ApiRequest value) { controller.ApplyPreset(value, value.input); }, request);
+    }
     static void ExpectInvalid(DeckController controller, AppState state, DeckV3 deck, string expected, string message)
     {
         Result result = Save(controller, state.Version, deck);
         Assert(result.status == 400 && result.error.Contains(expected), message);
+    }
+
+    static void CheckPresetApply(string root, string executable)
+    {
+        string data = Path.Combine(root, "preset-checks");
+        Directory.CreateDirectory(data);
+        var state = new AppState(root, data, "test", new AppHost(new FakeKeySender(), new FakePointerInput(), new FakeAudioService(),
+            new FakeAudioDevices(), new FakeShellActions()), new FakeSettingsStore());
+        state.Config = Fixture(executable);
+        var desktop = new FakeDesktop();
+        var deck = new DeckController(state, desktop);
+        var pages = new PageController(state, desktop, deck);
+
+        Result result = Apply(pages, "streamer", "landscape", 0);
+        ReadResponse current = Read(deck);
+        Assert(result.status == 200 && current.deck.landscape.columns == 6 && current.deck.landscape.pages[0].items.Count > 0,
+            "landscape preset applies when the grid size differs");
+        Assert(current.deck.landscape.pages.Exists(page => page.items.Exists(item => item.id == "clock")),
+            "preset keeps buttons from another page");
+        result = Apply(pages, "game", "landscape", 0);
+        current = Read(deck);
+        Assert(result.status == 200 && current.deck.landscape.pages[0].items.Count > 0,
+            "landscape preset applies when the grid size matches");
+
+        DeckLayout.SetPageControls(state.Config, false, 0, new ControlLayout(), true, true);
+        result = Apply(pages, "work", "landscape", 0);
+        current = Read(deck);
+        Assert(result.status == 200 && current.deck.landscape.pages[0].faders != null
+            && !current.deck.landscape.pages[0].faders.speakerHidden, "preset replaces hidden page faders");
+
+        result = Apply(pages, "streamer", "portrait", 0);
+        current = Read(deck);
+        Assert(result.status == 200 && current.deck.portrait.columns == 3 && current.deck.portrait.rows == 6
+            && current.deck.portrait.pages[0].items.Count > 0, "portrait preset applies when the grid size differs");
+        result = Apply(pages, "game", "portrait", 0);
+        current = Read(deck);
+        Assert(result.status == 200 && current.deck.portrait.pages[0].items.Count > 0,
+            "portrait preset applies when the grid size matches");
+
+        var custom = new CustomPresets(data);
+        CustomPreset saved = custom.Save(state.Config, "Saved page", "landscape", 0);
+        result = Apply(pages, saved.id, "landscape", 1);
+        current = Read(deck);
+        Assert(result.status == 200 && current.deck.landscape.pages[1].items.Count == saved.items.Count,
+            "custom preset applies through the controller and appears in the admin deck");
     }
 
     public static int Main()
@@ -88,6 +138,7 @@ public static class DeckV3SaveTests
             var state = new AppState(root, root, "test", new AppHost(new FakeKeySender(), new FakePointerInput(), new FakeAudioService(), new FakeAudioDevices(), new FakeShellActions()), store);
             state.Config = Fixture(executable); var controller = new DeckController(state, desktop);
             var pages = new PageController(state, desktop, controller);
+            CheckPresetApply(root, executable);
 
             ReadResponse first = Read(controller); Assert(first.schemaVersion == 3 && first.deck.landscape.pages[0].items[0].path == executable, "admin deck includes private action fields");
             string originalDeck = Json.Serialize(first.deck); Result saved = Save(controller, first.version, first.deck);
