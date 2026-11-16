@@ -51,7 +51,7 @@ export class Catalog {
       this.view.showGroups(top, () => this.showTop(), (group) => this.openGroup(group), extra);
     }
     else {
-      this.view.showItems(this.path(), this.group.items, () => this.openTop(this.top), (item) => this.row(item));
+      this.view.showItems(this.path(), this.group.items, () => this.back(), (item) => this.row(item));
       if (this.top.id === 'launch' && this.launchExtra) this.list.appendChild(this.launchExtra());
     }
     this.renderRecent(this.level === 'top');

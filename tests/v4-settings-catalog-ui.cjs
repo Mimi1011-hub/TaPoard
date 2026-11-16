@@ -191,6 +191,9 @@ const waitFor = async (check, message) => {
     await shot('recent');
 
     await page.getByRole('button', { name: /起動・その他/ }).click();
+    await page.locator('.catalog-back').click();
+    assert.equal(await page.locator('.catalog-card').count(), 4, 'launch back button returns to the top categories');
+    await page.getByRole('button', { name: /起動・その他/ }).click();
     let before = posts.length;
     await page.locator('[data-action="custom-url"]').dblclick();
     await page.getByRole('dialog').getByRole('button', { name: 'キャンセル' }).click();
