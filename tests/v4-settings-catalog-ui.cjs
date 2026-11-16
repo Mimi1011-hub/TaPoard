@@ -93,12 +93,21 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { version: String(version), deck, widgetDefinitions: definitions });
     }
     if (name === 'v3/deck') {
+      const items = ['landscape', 'portrait'].flatMap((orientation) => body.deck[orientation].pages.flatMap((page) => page.items));
+      const invalid = items.some((item) => (item.type === 'url' && !/^https?:\/\//.test(item.url || ''))
+        || (item.type === 'clipboard' && !item.text)
+        || (item.type === 'audioDevice' && !item.deviceId));
+      if (invalid) return json(res, 400, { error: 'invalid custom action' });
       deck = body.deck;
       version += 1;
       posts.push(body);
       return json(res, 200, { ok: true, version: String(version), deck });
     }
     if (name === 'v3/state' || name === 'sync') return json(res, 200, state());
+    if (name === 'devices') return json(res, 200, { devices: [
+      { id: 'speaker-1', name: 'Speakers', target: 'speaker' },
+      { id: 'mic-1', name: 'Microphone', target: 'mic' },
+    ] });
     if (name === 'shortcut-packs' && req.method === 'GET') {
       return json(res, 200, { packs: shortcutPacks, maxPacks: 20, maxShortcuts: 300 });
     }
@@ -181,6 +190,52 @@ const waitFor = async (check, message) => {
     assert((await page.locator('.catalog-recent').innerText()).includes('コマンドパレット'));
     await shot('recent');
 
+    await page.getByRole('button', { name: /起動・その他/ }).click();
+    let before = posts.length;
+    await page.locator('[data-action="custom-url"]').dblclick();
+    await page.getByRole('dialog').getByRole('button', { name: 'キャンセル' }).click();
+    assert.equal(posts.length, before, 'cancel does not place a custom action');
+    await page.locator('[data-action="custom-url"]').dblclick();
+    const urlDialog = page.getByRole('dialog');
+    await urlDialog.locator('input[type="url"]').fill('not-a-url');
+    await urlDialog.getByRole('button', { name: '置く' }).click();
+    assert.match(await urlDialog.locator('.catalog-dialog-error').innerText(), /http:\/\//);
+    await urlDialog.locator('input[type="url"]').fill('https://example.com/');
+    await urlDialog.getByRole('button', { name: '置く' }).click();
+    await waitFor(() => posts.length === before + 1, 'URL action save');
+    assert(posts.at(-1).deck.landscape.pages[0].items.some((item) => item.url === 'https://example.com/'));
+    await page.locator('.deck-button').filter({ hasText: 'URLを開く' }).click({ force: true });
+    before = posts.length;
+    await page.locator('.settings-inspector input[type="url"]').fill('');
+    await page.locator('.settings-inspector input[type="url"]').blur();
+    assert.match(await page.locator('.settings-inspector .catalog-dialog-error').innerText(), /URL/);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    assert.equal(posts.length, before, 'invalid URL detail is not sent');
+    assert.equal(await page.locator('.deck-button').filter({ hasText: 'URLを開く' }).count(), 1, 'invalid detail does not remove the item');
+
+    before = posts.length;
+    await page.locator('[data-action="custom-clipboard"]').dblclick();
+    const textDialog = page.getByRole('dialog');
+    await textDialog.locator('textarea').fill('Copied text');
+    await textDialog.getByRole('button', { name: '置く' }).click();
+    await waitFor(() => posts.length === before + 1, 'clipboard action save');
+    assert(posts.at(-1).deck.landscape.pages[0].items.some((item) => item.text === 'Copied text'));
+
+    for (const action of ['custom-audio-output', 'custom-audio-input']) {
+      before = posts.length;
+      await page.locator(`[data-action="${action}"]`).dblclick();
+      const audioDialog = page.getByRole('dialog');
+      await audioDialog.locator('select').selectOption(action.endsWith('output') ? 'speaker-1' : 'mic-1');
+      await audioDialog.getByRole('button', { name: '置く' }).click();
+      await waitFor(() => posts.length === before + 1, `${action} save`);
+      const expected = action.endsWith('output') ? 'speaker-1' : 'mic-1';
+      assert(posts.at(-1).deck.landscape.pages[0].items.some((item) => item.deviceId === expected));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    assert.equal(await page.locator('.deck-button').count(), 5, 'configured custom actions remain after saving');
+    await page.locator('.catalog-back').focus();
+    await page.keyboard.press('Escape');
+
     await page.getByRole('button', { name: 'アプリ別', exact: false }).click();
     const input = page.locator('input[accept=".tpshortcuts,.json"]');
     const evil = '<img src=x onerror="window.hacked=1">';
@@ -190,8 +245,9 @@ const waitFor = async (check, message) => {
     await page.getByRole('button', { name: new RegExp(evil.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).waitFor();
     assert.equal(await page.evaluate(() => window.hacked), undefined, 'pack text is inert');
     await page.getByRole('button', { name: new RegExp(evil.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
+    before = posts.length;
     await page.locator('[data-action="pack:pack12345:0"]').dblclick();
-    await waitFor(() => posts.length === 2, 'pack shortcut save');
+    await waitFor(() => posts.length === before + 1, 'pack shortcut save');
     await page.locator('.catalog-back').click();
     await shot('groups');
     await page.locator('.catalog-pack-delete').click();

@@ -381,6 +381,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await waitFor(async () => (await page.locator('#settings-save-status').innerText()).includes('invalid deck'), '400 error');
     assert.notEqual(await page.locator('.settings-inspector textarea').first().inputValue(), 'Invalid', '400 restores saved deck');
     assert.equal(await page.locator('#settings-undo').isDisabled(), true, '400 removes rejected edits from undo history');
+    assert.match(await page.locator('#settings-notice').innerText(), /保存できなかったので元に戻しました：invalid deck/);
 
     await page.locator('.settings-inspector textarea').first().fill('Unsaved');
     await page.locator('.settings-inspector textarea').first().blur();

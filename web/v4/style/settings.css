@@ -1264,6 +1264,21 @@
   color: var(--color-text);
   background: var(--color-surface);
 }
+.catalog-input-dialog .inspector-field {
+  min-width: 0;
+}
+.catalog-input-dialog {
+  width: min(480px, calc(100% - 40px));
+}
+.catalog-input-dialog textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.catalog-dialog-error {
+  display: block;
+  min-height: 1.4em;
+  color: var(--color-danger);
+}
 .confirm-dialog::backdrop {
   background: rgba(0, 0, 0, 0.72);
 }

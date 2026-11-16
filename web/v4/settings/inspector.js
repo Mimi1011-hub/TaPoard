@@ -1,6 +1,7 @@
 import { clear, el } from '../core/dom.js';
 import { iconNode } from '../deck/icons.js';
 import { detailsFor } from './details/index.js';
+import { actionError } from './action-validation.js';
 
 const sizes = (values) =>
   values.map((value) => {
@@ -139,10 +140,18 @@ export class Inspector {
   textField(label, key, value, multiline = false) {
     const input = multiline ? el('textarea') : el('input');
     if (multiline) input.rows = 3;
-    else input.type = 'text';
+    else input.type = key === 'url' ? 'url' : 'text';
     input.value = value || '';
-    input.addEventListener('change', () => this.changeItem({ [key]: input.value }));
-    this.root.appendChild(this.field(this.i18n.t(label), input));
+    const error = el('small', 'catalog-dialog-error');
+    const kind = key === 'url' ? 'url' : key === 'text' ? 'clipboard' : '';
+    const message = () => kind ? actionError(this.i18n, kind, input.value) : '';
+    const save = () => {
+      error.textContent = message();
+      if (!error.textContent) this.changeItem({ [key]: input.value });
+    };
+    input.addEventListener('input', () => { error.textContent = message(); });
+    input.addEventListener('change', save);
+    this.root.append(this.field(this.i18n.t(label), input), error);
   }
 
   typeFields(item) {

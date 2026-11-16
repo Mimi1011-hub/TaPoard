@@ -3,6 +3,7 @@ import { catalogGroups, catalogTops } from './catalog-data/index.js';
 import { catalogItem, controlFromAction } from './catalog-items.js';
 import { CatalogRecent } from './catalog-recent.js';
 import { CatalogView } from './catalog-view.js';
+import { CatalogInputDialog } from './catalog-input-dialog.js';
 
 export class Catalog {
   constructor(options) {
@@ -16,6 +17,7 @@ export class Catalog {
     this.list = el('div', 'settings-catalog-list');
     this.recentRoot = el('div', 'catalog-recent');
     this.view = new CatalogView({ root: this.list, i18n: this.i18n });
+    this.inputDialog = new CatalogInputDialog(this);
     clear(this.root);
     this.root.append(el('h2', '', this.i18n.t('settings.catalog.title')), this.search, this.list, this.recentRoot);
     this.preview.overlay.addEventListener('dragover', (event) => this.dragOver(event));
@@ -178,7 +180,7 @@ export class Catalog {
     return catalogItem(action, this.i18n.t(data.name), data.category);
   }
 
-  add(action, cell) {
+  async add(action, cell) {
     const target = controlFromAction(action), orientation = this.preview.current(), page = this.preview.page();
     if (target) {
       const item = Object.assign({}, orientation.faders[target], { width: orientation.faders[target].width, height: orientation.faders[target].height });
@@ -188,7 +190,9 @@ export class Catalog {
         return true;
       }
     } else {
-      const item = this.create(action);
+      let item = this.create(action);
+      item = await this.inputDialog.ask(action, item);
+      if (!item) return false;
       if (item && this.editor.addItem(this.preview.orientation, page, item, cell && cell.row, cell && cell.column)) {
         this.used(action);
         return true;

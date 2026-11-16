@@ -126,6 +126,18 @@ public static class DeckV3SaveTests
             ExpectInvalid(controller, state, invalid, "40個以内", "the 41st landscape item is rejected");
             invalid = Copy(Read(controller).deck); invalid.landscape.columns = 9;
             ExpectInvalid(controller, state, invalid, "2～8", "nine columns are rejected");
+            invalid = Copy(Read(controller).deck); invalid.landscape.pages[0].items.Find(item => item.type == "url").url = "";
+            ExpectInvalid(controller, state, invalid, "URL", "an empty URL is rejected");
+            invalid = Copy(Read(controller).deck); DeckItem emptyAction = Copy(invalid.landscape.pages[0].items[0]);
+            emptyAction.id = ""; emptyAction.name = "Empty text"; emptyAction.type = "clipboard"; emptyAction.path = ""; emptyAction.text = "";
+            emptyAction.row = 1; emptyAction.column = 1; emptyAction.width = 1; emptyAction.height = 1;
+            invalid.landscape.pages[0].items.Add(emptyAction);
+            ExpectInvalid(controller, state, invalid, "テキスト", "empty clipboard text is rejected");
+            invalid = Copy(Read(controller).deck); emptyAction = Copy(invalid.landscape.pages[0].items[0]);
+            emptyAction.id = ""; emptyAction.name = "No device"; emptyAction.type = "audioDevice"; emptyAction.path = "";
+            emptyAction.deviceTarget = "speaker"; emptyAction.deviceId = null; emptyAction.row = 1; emptyAction.column = 1;
+            emptyAction.width = 1; emptyAction.height = 1; invalid.landscape.pages[0].items.Add(emptyAction);
+            ExpectInvalid(controller, state, invalid, "No device", "an audio action without a device is rejected");
 
             ReadResponse named = Read(controller); named.deck.background.color = "#ffffff"; named.deck.landscape.pages[0].name = "  配信  ";
             string background = state.Config.background.color; Result namedSave = Save(controller, named.version, named.deck);

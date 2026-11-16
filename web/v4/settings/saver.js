@@ -5,6 +5,7 @@ export class Saver {
     this.delay = options.delay === undefined ? 600 : options.delay;
     this.onStatus = options.onStatus || (() => {});
     this.onConflict = options.onConflict || (() => {});
+    this.onRejected = options.onRejected || (() => {});
     this.timer = 0;
     this.saving = false;
     this.blocked = false;
@@ -40,7 +41,10 @@ export class Saver {
         // Other errors (timeout, server busy) keep the edits; the next edit tries again.
         failed = true;
         this.failed = true;
-        if (error.status === 400) this.editor.restoreSaved();
+        if (error.status === 400) {
+          this.editor.restoreSaved();
+          this.onRejected(error.serverError || error.message);
+        }
         this.onStatus('failed', error.serverError || error.message);
       }
     } finally {

@@ -38,6 +38,7 @@ export class SettingsApp {
     this.saver = new Saver(this.api, this.editor, {
       onStatus: (status, error) => this.setSaveStatus(status, error),
       onConflict: () => this.externalConflict(),
+      onRejected: (reason) => this.shell.showNotice(this.i18n.t('settings.save.restored', { reason })),
     });
     this.preview = new Preview({
       root: this.nodes.preview,
@@ -59,8 +60,8 @@ export class SettingsApp {
       root: this.nodes.inspector,
       editor: this.editor,
       preview: this.preview,
-      i18n: this.i18n,
       api: this.api,
+      i18n: this.i18n,
       chooseSection: (section) => this.shell.chooseSection(section),
       onIcon: (selection) => this.iconPicker.open(selection),
       onError: (message) => this.shell.showNotice(message),
@@ -85,6 +86,7 @@ export class SettingsApp {
       root: this.nodes.catalog,
       editor: this.editor,
       preview: this.preview,
+      api: this.api,
       i18n: this.i18n,
       documentObject: this.documentObject,
       onError: (message) => this.shell.showNotice(message),

@@ -40,7 +40,12 @@ sealed class FakeAudioDevices : IAudioDevices
     internal readonly List<string> Calls = new List<string>();
 
     public List<AudioDeviceInfo> List() { Calls.Add("List"); return new List<AudioDeviceInfo>(); }
-    public AudioDeviceInfo Validate(string target, string id) { Calls.Add("Validate:" + target + ":" + id); return new AudioDeviceInfo(); }
+    public AudioDeviceInfo Validate(string target, string id)
+    {
+        Calls.Add("Validate:" + target + ":" + id);
+        if ((target != "speaker" && target != "mic") || String.IsNullOrWhiteSpace(id)) throw new Exception("invalid audio device");
+        return new AudioDeviceInfo { id = id, target = target, name = id };
+    }
     public void Switch(string target, string id) { Calls.Add("Switch:" + target + ":" + id); }
 }
 
