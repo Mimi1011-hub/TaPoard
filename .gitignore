@@ -32,3 +32,4 @@ network-status.txt
 .vs/
 *.tmp
 *.bak
+mono_crash.*
