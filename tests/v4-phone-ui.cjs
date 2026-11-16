@@ -7,7 +7,6 @@ const path = require('path');
 let revision = 1;
 const pageRequests = [];
 const actionRequests = [];
-const layoutRequests = [];
 const current = { landscape: 0, portrait: 0 };
 const malicious = '<img src=x onerror=window.__injected=1>';
 
@@ -81,11 +80,6 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/action') {
       actionRequests.push(JSON.parse(body));
-      json(res, 200, { ok: true });
-      return;
-    }
-    if (url.pathname === '/api/layout') {
-      layoutRequests.push(JSON.parse(body));
       json(res, 200, { ok: true });
       return;
     }
@@ -189,12 +183,10 @@ async function assertPlacement(page, id, row, column, width, height) {
     assert.deepEqual(actionRequests.at(-1), { action: 'launch', id: 'portrait-main' });
 
     await portrait.getByRole('button', { name: '画面と接続の設定' }).click();
-    const layoutCount = layoutRequests.length;
-    const writeCount = pageRequests.length + actionRequests.length + layoutRequests.length;
+    const writeCount = pageRequests.length + actionRequests.length;
     await portrait.locator('label.menu-toggle').filter({ hasText: '画面を維持' }).click();
     assert.equal(await portrait.evaluate(() => localStorage.getItem('tapoard-keep-awake')), '1');
-    assert.equal(layoutRequests.length, layoutCount, 'keep-awake never writes server layout');
-    assert.equal(pageRequests.length + actionRequests.length + layoutRequests.length, writeCount, 'keep-awake makes no server write');
+    assert.equal(pageRequests.length + actionRequests.length, writeCount, 'keep-awake makes no server write');
     const urlBeforeLanguage = portrait.url();
     await portrait.locator('.language-row select').selectOption('en');
     await portrait.waitForFunction(() => document.querySelector('.menu-header h2').textContent === 'Display & Connection');

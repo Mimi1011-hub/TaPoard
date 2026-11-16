@@ -31,14 +31,14 @@ public static class ApiRouterTests
             Action<string> open = delegate(string value) { };
             Action<string> prefix = delegate(string value) { };
             Action<string> exact = delegate(string value) { };
-            router.Get("/api/state", ApiAccess.Paired, state);
+            router.Get("/api/example", ApiAccess.Paired, state);
             router.Get("/api/admin", ApiAccess.Admin, admin);
             router.Post("/api/open", ApiAccess.Open, open);
             router.PostPrefix("/api/icon-packs/", ApiAccess.Admin, prefix);
             router.Post("/api/icon-packs/add", ApiAccess.Admin, exact);
 
-            Assert(Object.ReferenceEquals(router.Find("GET", "/api/state", false), state), "exact route is found");
-            Assert(router.Find("POST", "/api/state", false) == null, "different method is not found");
+            Assert(Object.ReferenceEquals(router.Find("GET", "/api/example", false), state), "exact route is found");
+            Assert(router.Find("POST", "/api/example", false) == null, "different method is not found");
             Assert(router.Find("GET", "/api/admin", false) == null, "admin route is hidden from paired clients");
             Assert(Object.ReferenceEquals(router.Find("GET", "/api/admin", true), admin), "admin route is found for admins");
             Assert(Object.ReferenceEquals(router.FindOpen("POST", "/api/open"), open), "open route is found by FindOpen");
@@ -46,10 +46,10 @@ public static class ApiRouterTests
             Assert(Object.ReferenceEquals(router.Find("POST", "/api/icon-packs/rename", true), prefix), "prefix route is found");
             Assert(Object.ReferenceEquals(router.Find("POST", "/api/icon-packs/add", true), exact), "exact route wins over prefix");
 
-            Reject(delegate { router.Get("/api/state", ApiAccess.Paired, state); }, "duplicate route is rejected");
+            Reject(delegate { router.Get("/api/example", ApiAccess.Paired, state); }, "duplicate route is rejected");
             List<string> description = router.Describe();
             Assert(description.Count == 5, "Describe returns every route");
-            Assert(description[0] == "GET /api/state Paired", "Describe preserves registration order");
+            Assert(description[0] == "GET /api/example Paired", "Describe preserves registration order");
             Assert(description[3] == "POST /api/icon-packs/* Admin", "Describe marks prefix routes");
 
             Console.WriteLine("PASS ApiRouterTests");

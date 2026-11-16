@@ -29,18 +29,23 @@ class AudioDeviceTests {
   var device=devices.Find(d=>d.available&&d.target=="speaker");Check(device!=null,"available output for tests");
   Check(IconPresets.ValidColor("#3569c8")&&!IconPresets.ValidColor("red;bad")&&!IconPresets.ValidColor("#3569c8\n"),"color validation");
   Check(IconPresets.Exists("headset")&&IconPresets.Exists("earbuds"),"new device icons");
-  var config=new Settings{schemaVersion=2,token="test-phone",apps=new List<AppEntry>(),columns=5,rows=3,speakerSlot=0,micSlot=1,keepAwake=true};Set("config",config);Set("admin","test-admin");
+  var config=new Settings{schemaVersion=2,token="test-phone",apps=new List<AppEntry>(),columns=5,rows=3,speakerSlot=0,micSlot=1,keepAwake=true};
+  DeckLayout.Migrate(config);DeckView.NormalizeControlSlots(config);Program.State.Config=config;Program.State.NewVersion();Set("admin","test-admin");
   Request("/api/devices","test-phone",null,404);Request("/api/devices","wrong",null,401);
   string listing=Request("/api/devices","test-admin",null,200);Check(listing.Contains(device.id),"admin lists exact endpoint IDs");
-  var app=new AppEntry{name="音声テスト",type="audioDevice",deviceTarget="speaker",deviceId=device.id,iconKey="headset",iconColor="#3569c8"};
-  Request("/api/settings","test-phone",Json.Serialize(new{apps=new[]{app}}),403);
-  app.deviceTarget="mic";Request("/api/settings","test-admin",Json.Serialize(new{apps=new[]{app}}),400);app.deviceTarget="speaker";
-  Request("/api/settings","test-admin",Json.Serialize(new{apps=new[]{app}}),200);
+  DeckV3 deck=SettingsMigration.ToV3(config).deck;
+  var item=new DeckItem{name="音声テスト",type="audioDevice",deviceTarget="speaker",deviceId=device.id,iconKey="headset",iconColor="#3569c8",row=0,column=2,width=1,height=1,fontSize=11,iconScale=82,labelOpacity=45};
+  deck.landscape.pages[0].items.Add(item);
+  string save=Json.Serialize(new{baseVersion=Program.State.Version,deck=deck});
+  Request("/api/v3/deck","test-phone",save,403);
+  item.deviceTarget="mic";Request("/api/v3/deck","test-admin",save,400);item.deviceTarget="speaker";
+  save=Json.Serialize(new{baseVersion=Program.State.Version,deck=deck});Request("/api/v3/deck","test-admin",save,200);
   var saved=Json.Deserialize<Settings>(File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data/settings.json")));
   Check(saved.apps[0].deviceId==device.id&&saved.apps[0].iconColor=="#3569c8"&&saved.token=="test-phone","device identity, color and key persist");
-  var state=Request("/api/state","test-phone",null,200);Check(state.Contains(device.id)&&state.Contains("#3569c8"),"phone receives device and icon color");
+  var state=Request("/api/v3/state","test-phone",null,200);Check(state.Contains(device.id)&&state.Contains("#3569c8"),"phone receives device and icon color");
   Request("/api/action","test-phone","{\"action\":\"launch\",\"id\":\"missing\"}",400);
-  app.deviceId="missing-device";Request("/api/settings","test-admin",Json.Serialize(new{apps=new[]{app}}),400);
+  deck=SettingsMigration.ToV3(Program.State.Config).deck;deck.landscape.pages[0].items[0].deviceId="missing-device";
+  Request("/api/v3/deck","test-admin",Json.Serialize(new{baseVersion=Program.State.Version,deck=deck}),400);
   var offline=devices.Find(d=>!d.available);if(offline!=null){bool rejected=false;try{AudioDevices.Switch(offline.target,offline.id);}catch{rejected=true;}Check(rejected,"unavailable device cannot switch");}
   // Exercise exact switching, then restore each original Windows role in all cases.
   var original=new string[2,3];for(int f=0;f<2;f++)for(int r=0;r<3;r++)original[f,r]=AudioDevices.DefaultId(f,r);

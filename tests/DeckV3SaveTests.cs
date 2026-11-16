@@ -89,10 +89,7 @@ public static class DeckV3SaveTests
 
             ReadResponse moved = Read(controller); moved.deck.landscape.pages[0].items[1].column = 2;
             Result movedSave = Save(controller, moved.version, moved.deck); Assert(movedSave.status == 200 && state.Config.apps.Find(a => a.id == "url").landscape.column == 2, "v3 save moves a button in the legacy model");
-            ApiRequest oldState = Request("GET", "/api/state", null); controller.GetState(oldState);
             ApiRequest publicState = Request("GET", "/api/v3/state", null); controller.GetV3State(publicState);
-            string oldBody = Encoding.UTF8.GetString(((MemoryStream)oldState.stream).ToArray());
-            Assert(oldBody.Contains("\"id\":\"url\"") && oldBody.Contains("\"column\":2"), "legacy state sees the saved position");
             string publicBody = Encoding.UTF8.GetString(((MemoryStream)publicState.stream).ToArray());
             Assert(publicBody.Contains("\"id\":\"url\"") && publicBody.Contains("\"column\":2"), "public v3 state sees the saved position");
 
@@ -117,17 +114,19 @@ public static class DeckV3SaveTests
             Assert(Read(controller).deck.landscape.pages[0].name == "配信", "saved page name is returned by the admin API");
             publicState = Request("GET", "/api/v3/state", null); controller.GetV3State(publicState); publicBody = Encoding.UTF8.GetString(((MemoryStream)publicState.stream).ToArray());
             Assert(publicBody.Contains("\"name\":\"配信\""), "public v3 state includes page names");
-            oldState = Request("GET", "/api/state", null); controller.GetState(oldState); oldBody = Encoding.UTF8.GetString(((MemoryStream)oldState.stream).ToArray());
-            Assert(!oldBody.Contains("\"landscapePageNames\"") && !oldBody.Contains("\"name\":\"配信\""), "legacy public state omits page names");
             invalid = Copy(Read(controller).deck); invalid.landscape.pages[0].name = new string('長', 21);
             ExpectInvalid(controller, state, invalid, "20文字以内", "a 21-character page name is rejected");
 
-            ApiRequest move = Request("POST", "/api/page/move", new { orientation = "landscape", page = 0, to = 1 }); pages.MovePage(move, move.input);
+            ReadResponse pageEdit = Read(controller);
+            PageV3 firstPage = pageEdit.deck.landscape.pages[0];
+            pageEdit.deck.landscape.pages[0] = pageEdit.deck.landscape.pages[1];
+            pageEdit.deck.landscape.pages[1] = firstPage;
+            Save(controller, pageEdit.version, pageEdit.deck);
             Assert(state.Config.landscapePageNames[0] == "作業" && state.Config.landscapePageNames[1] == "配信", "page move carries names");
-            ApiRequest delete = Request("POST", "/api/page/delete", new { orientation = "landscape", page = 0 }); pages.DeletePage(delete, delete.input);
+            pageEdit = Read(controller);
+            pageEdit.deck.landscape.pages.RemoveAt(0);
+            Save(controller, pageEdit.version, pageEdit.deck);
             Assert(state.Config.landscapePageNames.Count == 1 && state.Config.landscapePageNames[0] == "配信", "page delete removes the matching name");
-            pages.UndoDeletePage(Request("POST", "/api/page/undo", new { }));
-            Assert(state.Config.landscapePageNames[0] == "作業" && state.Config.landscapePageNames[1] == "配信", "page undo restores names");
 
             invalid = Copy(Read(controller).deck); invalid.landscape.pages[0].items[0].steps = new List<ActionStep>();
             ExpectInvalid(controller, state, invalid, "4.1", "buttons with action steps are rejected until 4.1");
@@ -141,7 +140,9 @@ public static class DeckV3SaveTests
             Assert(!publicBody.Contains("\"steps\""), "public v3 state omits future action steps");
 
             string files = Path.Combine(root, "files"); SettingsFile.Save(files, state.Config); string disk = File.ReadAllText(Path.Combine(files, SettingsFile.FileName), Encoding.UTF8);
-            Assert(disk.Contains("\"name\":\"作業\"") && disk.Contains("\"steps\":[") && !File.Exists(Path.Combine(files, SettingsFile.V2FileName)), "v3 file saves names and validated steps without writing v2");
+            Assert(disk.Contains("\"name\":\"配信\"") && disk.Contains("\"steps\":[")
+                && !File.Exists(Path.Combine(files, SettingsFile.V2FileName)),
+                "v3 file saves names and validated steps without writing v2");
             Console.WriteLine("PASS DeckV3SaveTests"); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }

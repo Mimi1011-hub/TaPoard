@@ -36,12 +36,9 @@ sealed class DeckController : ControllerBase
     internal void Register(ApiRouter<ApiRequest> api)
     {
         api.Get("/api/ping", ApiAccess.Paired, delegate(ApiRequest r) { HttpIO.Reply(r.stream, 200, HttpIO.JsonType, "{\"ok\":true}"); });
-        api.Get("/api/state", ApiAccess.Paired, GetState);
         api.Get("/api/v3/state", ApiAccess.Paired, GetV3State);
         api.Get("/api/v3/deck", ApiAccess.Admin, GetV3Deck);
         api.Get("/api/sync", ApiAccess.Paired, WaitForSync);
-        api.Get("/api/settings", ApiAccess.Admin, GetSettings);
-        api.Post("/api/settings", ApiAccess.Admin, SaveRequest);
         api.Post("/api/v3/deck", ApiAccess.Admin, SaveV3Request);
     }
 
@@ -76,66 +73,6 @@ sealed class DeckController : ControllerBase
             HttpIO.ReplyJson(r.stream, 200, new { ok = true, version = state.Version });
         }
     }
-    void SaveRequest(ApiRequest r)
-    {
-        SaveSettings(r.json);
-        HttpIO.Reply(r.stream, 200, HttpIO.JsonType, "{\"ok\":true}");
-    }
-
-    internal void GetState(ApiRequest r)
-    {
-        lock (state.Gate)
-        {
-            DeckRuntimeState runtime = CaptureRuntime(r);
-            // Skip the app list (with its icons) when the phone already has this version.
-            var apps =
-                HttpIO.QueryValue(r.target, "version") == state.Version
-                    ? null
-                    : state.Config.apps.ConvertAll(a => WidgetRegistry.PublicEntry(a));
-            HttpIO.ReplyJson(
-                r.stream,
-                200,
-                new
-                {
-                    apps = apps,
-                    // Definitions are fixed per build, so they travel only with the app list.
-                    widgetDefinitions = apps == null ? null : WidgetRegistry.PublicDefinitions(),
-                    version = runtime.version,
-                    appVersion = runtime.appVersion,
-                    revision = runtime.revision,
-                    pairingRevision = Pairing.Revision,
-                    landscapePage = runtime.landscapePage,
-                    portraitPage = runtime.portraitPage,
-                    landscapePages = runtime.landscapePages,
-                    portraitPages = runtime.portraitPages,
-                    page = runtime.landscapePage,
-                    pages = runtime.landscapePages,
-                    columns = state.Config.columns,
-                    rows = state.Config.rows,
-                    landscapeGrid = DeckView.Grid(state.Config, false),
-                    portraitGrid = DeckView.Grid(state.Config, true),
-                    keepAwake = state.Config.keepAwake,
-                    speakerSlot = state.Config.speakerSlot,
-                    micSlot = state.Config.micSlot,
-                    speakerSize = state.Config.speakerSize,
-                    micSize = state.Config.micSize,
-                    landscapeControls = DeckView.Controls(state.Config, false),
-                    portraitControls = DeckView.Controls(state.Config, true),
-                    landscapeControlPages = DeckView.ControlPages(state.Config, false),
-                    portraitControlPages = DeckView.ControlPages(state.Config, true),
-                    audio = runtime.audio,
-                    metrics = runtime.metrics,
-                    weather = runtime.weather,
-                    phoneConnected = runtime.phoneConnected,
-                    pcWindowOpen = runtime.pcWindowOpen,
-                    background = runtime.background,
-                    computer = runtime.computer,
-                    inputSessions = runtime.inputSessions,
-                }
-            );
-        }
-    }
-
     internal void GetV3State(ApiRequest r)
     {
         lock (state.Gate)
@@ -244,69 +181,6 @@ sealed class DeckController : ControllerBase
         }
     }
 
-    internal void GetSettings(ApiRequest r)
-    {
-        lock (state.Gate)
-        {
-            var inputSessions = UpdateRuntimeSessions(r, true, true);
-            int landscapePages = DeckLayout.Pages(state.Config, "landscape"),
-                portraitPages = DeckLayout.Pages(state.Config, "portrait");
-            string[] ipUrls = state.Lan.Urls(AppState.Port);
-            ConnectLinks links = ConnectLinks.Create(state.Lan.HostName, ipUrls, AppState.Port, state.Config.token);
-            string lanUrl = links.iphoneUrl.Substring(0, links.iphoneUrl.IndexOf('#'));
-            string androidUrl = links.androidUrl.Substring(0, links.androidUrl.IndexOf('#'));
-            string fragment = links.iphoneUrl.Substring(links.iphoneUrl.IndexOf('#'));
-            HttpIO.ReplyJson(
-                r.stream,
-                200,
-                new
-                {
-                    token = state.Config.token,
-                    qrUrl = androidUrl + fragment,
-                    iphoneQrUrl = lanUrl + fragment,
-                    androidQrUrl = androidUrl + fragment,
-                    apps = state.Config.apps,
-                    widgetDefinitions = WidgetRegistry.PublicDefinitions(),
-                    version = state.Version,
-                    appVersion = state.AppVersion,
-                    revision = state.Sync.Revision,
-                    pairingRevision = Pairing.Revision,
-                    landscapePage = state.LandscapePage,
-                    portraitPage = state.PortraitPage,
-                    landscapePages = landscapePages,
-                    portraitPages = portraitPages,
-                    page = state.LandscapePage,
-                    pages = landscapePages,
-                    columns = state.Config.columns,
-                    rows = state.Config.rows,
-                    landscapeGrid = DeckView.Grid(state.Config, false),
-                    portraitGrid = DeckView.Grid(state.Config, true),
-                    keepAwake = state.Config.keepAwake,
-                    speakerSlot = state.Config.speakerSlot,
-                    micSlot = state.Config.micSlot,
-                    speakerSize = state.Config.speakerSize,
-                    micSize = state.Config.micSize,
-                    landscapeControls = DeckView.Controls(state.Config, false),
-                    portraitControls = DeckView.Controls(state.Config, true),
-                    landscapeControlPages = DeckView.ControlPages(state.Config, false),
-                    portraitControlPages = DeckView.ControlPages(state.Config, true),
-                    audio = AudioControl.Read(),
-                    metrics = MetricsSampler.PublicSnapshot(),
-                    weather = WeatherService.PublicSnapshot(state.Config),
-                    weatherLocation = WeatherService.PublicLocation(state.Config),
-                    phoneConnected = state.PhoneConnected,
-                    pcWindowOpen = PcWindowService.IsOpen,
-                    background = DeckBackgrounds.Public(state.Config.background),
-                    lanUrl = lanUrl,
-                    ipUrls = ipUrls,
-                    networkStatus = state.Lan.Status,
-                    displaySubscriptionCount = DisplaySubscriptions.Current().sessions,
-                    inputSessions = inputSessions,
-                }
-            );
-        }
-    }
-
     internal InputSessions.PublicSession[] UpdateRuntimeSessions(ApiRequest r, bool renewMetrics, bool renewWeather)
     {
         string viewId = HttpIO.QueryValue(r.target, "viewId");
@@ -339,33 +213,6 @@ sealed class DeckController : ControllerBase
             || !System.Text.RegularExpressions.Regex.IsMatch(viewId, "\\A[a-zA-Z0-9_-]+\\z"))
             throw new Exception(Text.Get("source.deckcontroller.2"));
         return Pairing.Hash(r.auth ?? r.remote.ToString()) + ":" + viewId;
-    }
-
-    internal void SaveSettings(string json)
-    {
-        var next = new JavaScriptSerializer().Deserialize<Settings>(json);
-        if (next.apps == null || next.apps.Count > 80)
-            throw new Exception(Text.Get("source.deckcontroller.3"));
-        if (
-            next.apps.FindAll(a => a.orientation == "landscape").Count > 40
-            || next.apps.FindAll(a => a.orientation == "portrait").Count > 40
-        )
-            throw new Exception(Text.Get("source.deckcontroller.4"));
-        foreach (var a in next.apps)
-            ValidateEntry(a);
-        lock (state.Gate)
-        {
-            KeepGlobalServerFields(next);
-            KeepLegacyDeckFields(next);
-            KeepServerItemFields(next);
-            DeckLayout.Migrate(next);
-            DeckLayout.Validate(next);
-            var ids = new HashSet<string>();
-            foreach (var a in next.apps)
-                if (!ids.Add(a.id))
-                    throw new Exception(Text.Get("source.deckcontroller.5"));
-            CommitSettings(next, false);
-        }
     }
 
     internal void ValidateEntry(AppEntry a)
@@ -453,34 +300,6 @@ sealed class DeckController : ControllerBase
         next.weatherTimezone = state.Config.weatherTimezone;
         next.pcWindow = state.Config.pcWindow;
         next.background = state.Config.background;
-    }
-
-    internal void KeepLegacyDeckFields(Settings next)
-    {
-        next.columns = state.Config.columns;
-        next.rows = state.Config.rows;
-        next.landscapeColumns = state.Config.landscapeColumns;
-        next.landscapeRows = state.Config.landscapeRows;
-        next.portraitColumns = state.Config.portraitColumns;
-        next.portraitRows = state.Config.portraitRows;
-        next.keepAwake = state.Config.keepAwake;
-        next.speakerSlot = state.Config.speakerSlot;
-        next.micSlot = state.Config.micSlot;
-        next.speakerSize = state.Config.speakerSize;
-        next.micSize = state.Config.micSize;
-        DeckLayout.SetControls(next, false, DeckLayout.GetControls(state.Config, false));
-        DeckLayout.SetControls(next, true, DeckLayout.GetControls(state.Config, true));
-        next.landscapeControlPages = state.Config.landscapeControlPages;
-        next.portraitControlPages = state.Config.portraitControlPages;
-        next.landscapeSpeakerOff = state.Config.landscapeSpeakerOff;
-        next.landscapeMicOff = state.Config.landscapeMicOff;
-        next.portraitSpeakerOff = state.Config.portraitSpeakerOff;
-        next.portraitMicOff = state.Config.portraitMicOff;
-        next.pageCount = state.Config.pageCount;
-        next.landscapePageCount = state.Config.landscapePageCount;
-        next.portraitPageCount = state.Config.portraitPageCount;
-        next.landscapePageNames = state.Config.landscapePageNames;
-        next.portraitPageNames = state.Config.portraitPageNames;
     }
 
     internal void KeepServerItemFields(Settings next)
