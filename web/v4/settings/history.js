@@ -8,6 +8,10 @@ export class History {
     this.future = [];
     this.listeners = new Set();
     editor.subscribe((event) => {
+      if (event.source === 'restore') {
+        this.clear();
+        return;
+      }
       if (event.source !== 'edit') return;
       this.past.push(copy(event.before));
       if (this.past.length > this.limit) this.past.shift();

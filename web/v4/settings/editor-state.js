@@ -39,7 +39,8 @@ export class EditorState {
       (saved[orientation].pages || []).forEach((page, pageIndex) => {
         (page.items || []).forEach((item) => {
           const current = ((currentPages[pageIndex] && currentPages[pageIndex].items) || []).find(
-            (value) => !value.id && value.type === item.type && value.row === item.row && value.column === item.column,
+            (value) => !value.id && value.type === item.type && value.action === item.action
+              && value.row === item.row && value.column === item.column,
           );
           if (current) current.id = item.id;
         });

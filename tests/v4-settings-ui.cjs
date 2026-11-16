@@ -7,7 +7,9 @@ const path = require('path');
 let version = 1;
 let revision = 1;
 let nextPost = 0;
+let postDelay = 0;
 let deckGets = 0;
+let generatedId = 1;
 const posts = [];
 const actionRequests = [];
 const audioRequests = [];
@@ -61,9 +63,15 @@ const server = http.createServer(async (req, res) => {
     if (req.headers.authorization !== 'Bearer test') return json(res, 401, { error: 'unauthorized' });
     if (url.pathname === '/api/v3/deck' && req.method === 'GET') { deckGets += 1; return json(res, 200, response()); }
     if (url.pathname === '/api/v3/deck' && req.method === 'POST') {
-      const value = JSON.parse(body); posts.push(value);
+      const value = JSON.parse(body); posts.push(JSON.parse(JSON.stringify(value)));
       if (nextPost) { const status = nextPost; nextPost = 0; return json(res, status, { error: status === 409 ? 'conflict' : 'invalid deck' }); }
-      deck = value.deck; version += 1; revision += 1; return json(res, 200, { ok: true });
+      ['landscape', 'portrait'].forEach((orientation) => value.deck[orientation].pages.forEach((page) => page.items.forEach((entry) => {
+        if (!entry.id) entry.id = `generated-${generatedId++}`;
+      })));
+      deck = value.deck; version += 1; revision += 1;
+      const delay = postDelay; postDelay = 0;
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      return json(res, 200, { ok: true });
     }
     if (url.pathname === '/api/v3/state') return json(res, 200, state());
     if (url.pathname === '/api/v3/connect') {
@@ -207,6 +215,27 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert(filteredCatalogItems > 0 && filteredCatalogItems < allCatalogItems, 'catalog search filters items');
     await page.locator('.settings-catalog-search').fill('');
 
+    let customPosts = posts.length;
+    postDelay = 500;
+    await page.locator('.settings-catalog-search').fill('カスタムキー');
+    await page.locator('.settings-catalog-item').filter({ hasText: 'カスタムキー' }).dblclick();
+    await waitFor(() => posts.length === customPosts + 1, 'custom key save starts');
+    await page.locator('.deck-button').filter({ hasText: 'カスタムキー' }).click({ force: true });
+    await page.getByRole('button', { name: 'このボタンを削除' }).click();
+    await page.locator('.settings-catalog-search').fill('貼り付け');
+    await page.locator('.settings-catalog-item[data-action="common-paste"]').dblclick();
+    await waitFor(() => posts.length === customPosts + 2, 'replacement key save');
+    const replacement = posts.at(-1).deck.landscape.pages[0].items.find((entry) => entry.action === 'common-paste');
+    assert.equal(replacement.id, '', 'a replacement key does not inherit the deleted custom key ID');
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'replacement key GET');
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    assert.equal(await page.locator('.deck-button').filter({ hasText: '貼り付け' }).count(), 1, 'replacement key remains after save');
+    customPosts = posts.length;
+    await page.locator('#settings-undo').click();
+    await waitFor(() => posts.length === customPosts + 1, 'replacement key undo save');
+    assert.equal(await page.locator('.deck-button').filter({ hasText: '貼り付け' }).count(), 0, 'undo removes the replacement key');
+    await page.locator('.settings-catalog-search').fill('');
+
     await page.locator('.preview-hit[data-kind="item"]').first().click();
     let appearancePosts = posts.length;
     await page.getByRole('button', { name: 'アイコンを変える' }).click();
@@ -338,6 +367,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await name.fill('Invalid'); await name.blur();
     await waitFor(async () => (await page.locator('#settings-save-status').innerText()).includes('invalid deck'), '400 error');
     assert.notEqual(await page.locator('.settings-inspector textarea').first().inputValue(), 'Invalid', '400 restores saved deck');
+    assert.equal(await page.locator('#settings-undo').isDisabled(), true, '400 removes rejected edits from undo history');
 
     await page.locator('.settings-inspector textarea').first().fill('Unsaved');
     await page.locator('.settings-inspector textarea').first().blur();

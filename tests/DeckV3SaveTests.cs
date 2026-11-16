@@ -93,6 +93,25 @@ public static class DeckV3SaveTests
             string publicBody = Encoding.UTF8.GetString(((MemoryStream)publicState.stream).ToArray());
             Assert(publicBody.Contains("\"id\":\"url\"") && publicBody.Contains("\"column\":2"), "public v3 state sees the saved position");
 
+            ReadResponse customEdit = Read(controller);
+            DeckItem custom = Copy(customEdit.deck.landscape.pages[0].items[0]);
+            custom.id = ""; custom.name = "Custom F13"; custom.type = "hotkey"; custom.action = "key-custom"; custom.category = "common";
+            custom.path = ""; custom.args = ""; custom.url = ""; custom.text = ""; custom.hotkey = "F13"; custom.iconKey = "keyboard";
+            custom.row = 1; custom.column = 0; custom.width = 1; custom.height = 1;
+            customEdit.deck.landscape.pages[0].items.Add(custom);
+            Result customSave = Save(controller, customEdit.version, customEdit.deck);
+            Assert(customSave.status == 200, "a custom key can be added and saved");
+            customEdit = Read(controller);
+            customEdit.deck.landscape.pages[0].items.RemoveAll(item => item.action == "key-custom");
+            customSave = Save(controller, customEdit.version, customEdit.deck);
+            Assert(customSave.status == 200, "the custom key can be deleted and saved");
+            customEdit = Read(controller);
+            custom.name = "Custom F14"; custom.id = ""; custom.hotkey = "F14";
+            customEdit.deck.landscape.pages[0].items.Add(custom);
+            customSave = Save(controller, customEdit.version, customEdit.deck);
+            Assert(customSave.status == 200 && state.Config.apps.Exists(item => item.action == "key-custom" && item.hotkey == "F14"),
+                "a different custom key remains after the previous key was deleted");
+
             string currentVersion = state.Version; string beforeConflict = Json.Serialize(state.Config);
             Result conflict = Save(controller, "stale", Read(controller).deck);
             Assert(conflict.status == 409 && conflict.body.Contains("読み直してください") && Json.Serialize(state.Config) == beforeConflict && state.Version == currentVersion, "stale baseVersion returns 409 without changes");
