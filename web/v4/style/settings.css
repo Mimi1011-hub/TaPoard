@@ -739,6 +739,7 @@
 }
 .settings-preview {
   display: grid;
+  grid-row: 3;
   place-items: center;
   min-width: 0;
   min-height: 0;

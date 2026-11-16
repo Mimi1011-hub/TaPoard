@@ -25,8 +25,16 @@ let deck = {
   portrait: orientation(3, 4, [item('two', 'Second', 0, 0)]),
 };
 const presetLayout = (columns, rows) => ({
-  columns, rows, speaker: { row: 0, column: columns - 1, width: 1, height: 2 }, mic: null,
-  items: [{ name: 'Mute', type: 'hotkey', icon: 'mute', key: true, sends: 'Ctrl+Shift+M', description: evil, row: 0, column: 0, width: 1, height: 1 }],
+  columns, rows,
+  speaker: { row: rows - 1, column: 0, width: 2, height: 1 },
+  mic: { row: rows - 1, column: 2, width: 2, height: 1 },
+  items: [
+    { name: 'Clock', type: 'clock', style: 'digital', row: 0, column: 0, width: 2, height: 1 },
+    { name: 'Weather', type: 'weather', view: 'days', row: 0, column: 2, width: 2, height: 2 },
+    { name: 'PC', type: 'metrics', metric: 'overview', row: 1, column: 0, width: 2, height: 2 },
+    { name: 'Mute', type: 'hotkey', icon: 'mute', key: true, sends: 'Ctrl+Shift+M', description: evil,
+      row: 0, column: columns - 1, width: 1, height: 1 },
+  ],
 });
 const presets = [
   { id: 'streamer', name: `Streamer ${evil}`, note: 'For streaming', setup: 'Set the same keys.', landscape: presetLayout(5, 3), portrait: presetLayout(3, 5) },
@@ -144,6 +152,9 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     assert.match(await page.locator('#settings-preview-title').innerText(), /Streamer/);
     assert.equal(await page.locator('.preview-hit').count(), 0, 'preset sample cannot be selected or dragged');
     assert((await page.locator('.settings-preview .deck-tile').count()) > 0, 'preset sample uses the real preview');
+    const sampleBox = await page.locator('.settings-preview-screen').boundingBox();
+    assert(sampleBox.height >= 150, `preset preview keeps a useful height: ${sampleBox.height}`);
+    assert(Math.abs(sampleBox.width / sampleBox.height - 5 / 3) < 0.08, 'preset preview keeps the preset grid ratio');
     await page.locator('#settings-preset-back').click();
     assert((await page.locator('.preview-hit, .preview-empty').count()) > 0, 'back restores the own-page preview');
     await page.locator('.preset-tab').first().click();
