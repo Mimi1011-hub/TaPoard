@@ -66,6 +66,16 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/v3/deck' && req.method === 'POST') {
       const value = JSON.parse(body); posts.push(JSON.parse(JSON.stringify(value)));
       if (nextPost) { const status = nextPost; nextPost = 0; return json(res, status, { error: status === 409 ? 'conflict' : 'invalid deck' }); }
+      const invalidBox = (entry) => ['row', 'column', 'width', 'height'].some((key) => !Number.isInteger(entry[key]));
+      const invalidDeck = ['landscape', 'portrait'].some((name) => {
+        const orientation = value.deck[name];
+        const faders = (source) => Object.values(source || {}).filter((entry) => entry && typeof entry === 'object');
+        const invalidGlobalFader = faders(orientation.faders).some(invalidBox);
+        return invalidGlobalFader || orientation.pages.some((page) => {
+          return page.items.some(invalidBox) || faders(page.faders).some(invalidBox);
+        });
+      });
+      if (invalidDeck) return json(res, 400, { error: 'invalid deck' });
       ['landscape', 'portrait'].forEach((orientation) => value.deck[orientation].pages.forEach((page) => page.items.forEach((entry) => {
         if (!entry.id) entry.id = `generated-${generatedId++}`;
       })));

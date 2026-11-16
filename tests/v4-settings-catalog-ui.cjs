@@ -109,7 +109,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (name === 'v3/deck') {
       const items = ['landscape', 'portrait'].flatMap((orientation) => body.deck[orientation].pages.flatMap((page) => page.items));
-      const invalid = items.some((item) => (item.type === 'url' && !/^https?:\/\//.test(item.url || ''))
+      const placements = ['landscape', 'portrait'].flatMap((name) => {
+        const orientation = body.deck[name];
+        const faders = (value) => Object.values(value || {}).filter((entry) => entry && typeof entry === 'object');
+        const pageFaders = orientation.pages.flatMap((page) => faders(page.faders));
+        const orientationItems = orientation.pages.flatMap((page) => page.items);
+        return orientationItems.concat(faders(orientation.faders), pageFaders);
+      });
+      const invalidPlacement = placements.some((item) => ['row', 'column', 'width', 'height'].some((key) => !Number.isInteger(item[key])));
+      const invalid = invalidPlacement || items.some((item) => (item.type === 'url' && !/^https?:\/\//.test(item.url || ''))
         || (item.type === 'clipboard' && !item.text)
         || (item.type === 'audioDevice' && !item.deviceId)
         || !validWidgetSize(item));
@@ -252,6 +260,21 @@ const waitFor = async (check, message) => {
     await waitFor(() => posts.length === sizeBefore + 1, 'chosen widget size save');
     assert(posts.at(-1).deck.landscape.pages[0].items.some((entry) => entry.type === 'clock'
       && entry.options.style === 'digital' && entry.width === 2 && entry.height === 1));
+    await page.locator('.catalog-back').click();
+    await page.getByRole('button', { name: /マウス/ }).click();
+    const verticalWheel = page.locator('[data-action="widget-wheel-vertical"]');
+    let wheelPosts = posts.length;
+    await verticalWheel.click();
+    await verticalWheel.locator('xpath=..').getByRole('button', { name: '1×1', exact: true }).click();
+    await waitFor(() => posts.length === wheelPosts + 1, 'first vertical wheel save');
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'first wheel settled');
+    wheelPosts = posts.length;
+    await verticalWheel.click();
+    await verticalWheel.locator('xpath=..').getByRole('button', { name: '1×2', exact: true }).click();
+    await waitFor(() => posts.length === wheelPosts + 1, 'second vertical wheel save');
+    const wheels = posts.at(-1).deck.landscape.pages[0].items.filter((entry) => entry.type === 'wheel');
+    assert.equal(wheels.length, 2, 'two chosen-size widgets are placed');
+    assert(wheels.every((entry) => Number.isInteger(entry.row) && Number.isInteger(entry.column)), 'chosen-size positions are integers');
     await page.locator('.catalog-back').click();
     await page.getByRole('button', { name: /キーボード/ }).click();
     await page.locator('[data-action="widget-keypad"]').click();

@@ -247,7 +247,9 @@ export class Catalog {
       let item = this.create(action, size);
       item = await this.inputDialog.ask(action, item);
       if (!item) return false;
-      if (item && this.editor.addItem(this.preview.orientation, page, item, cell && cell.row, cell && cell.column)) {
+      const row = cell ? cell.row : undefined;
+      const column = cell ? cell.column : undefined;
+      if (item && this.editor.addItem(this.preview.orientation, page, item, row, column)) {
         this.used(action);
         return true;
       }

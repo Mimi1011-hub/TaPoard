@@ -33,6 +33,10 @@ assert(!editor.moveItem(address(editor, 'a'), 0, 3, 4), 'rejects out of bounds')
 assert(editor.addItem('landscape', 0, item('', 0, 0)), 'adds at first free cell');
 assert.deepEqual(editor.orientation('landscape').pages[0].items.at(-1), { ...item('', 0, 0), row: 0, column: 0 });
 assert(editor.removeItem({ orientation: 'landscape', page: 0, index: 2 }), 'removes an item');
+assert(editor.addItem('landscape', 0, item('', 0, 0), null, null), 'null position uses the first free cell');
+assert(Number.isInteger(editor.orientation('landscape').pages[0].items.at(-1).row), 'automatic row is an integer');
+assert(Number.isInteger(editor.orientation('landscape').pages[0].items.at(-1).column), 'automatic column is an integer');
+assert(editor.removeItem({ orientation: 'landscape', page: 0, index: 2 }), 'removes the automatically placed item');
 
 assert(editor.addPage('landscape', 0));
 assert(editor.renamePage('landscape', 1, 'Second'));

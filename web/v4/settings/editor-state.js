@@ -121,7 +121,7 @@ export class EditorState {
       const page = orientation.pages[pageIndex];
       if (!page || this.countItems(orientation) >= 40) return false;
       const value = copy(item);
-      const space = row === undefined ? this.firstSpace(orientation, pageIndex, value) : { row, column };
+      const space = row == null ? this.firstSpace(orientation, pageIndex, value) : { row, column };
       if (!space) return false;
       value.row = space.row;
       value.column = space.column;

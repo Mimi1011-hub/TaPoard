@@ -1,4 +1,8 @@
 // Layout checks and the automatic re-placing used by the settings editor.
+function integerBox(value) {
+  return ['row', 'column', 'width', 'height'].every((key) => Number.isInteger(value[key]));
+}
+
 export function validOrientation(state, orientation, ids) {
   if (
     !orientation ||
@@ -16,12 +20,19 @@ export function validOrientation(state, orientation, ids) {
     const used = new Set();
     for (const target of ['speaker', 'mic']) {
       const fader = state.effectiveFader(orientation, pageIndex, target);
-      if (fader && (!state.faderSizeAllowed(fader) || !state.inside(fader, orientation) || state.cells(fader).some((cell) => used.has(cell))))
+      if (
+        fader &&
+        (!integerBox(fader) ||
+          !state.faderSizeAllowed(fader) ||
+          !state.inside(fader, orientation) ||
+          state.cells(fader).some((cell) => used.has(cell)))
+      )
         return false;
       if (fader) state.cells(fader).forEach((cell) => used.add(cell));
     }
     return page.items.every((item) => {
       if (
+        !integerBox(item) ||
         (item.id && ids.has(item.id)) ||
         !state.sizeAllowed(item) ||
         !state.inside(item, orientation) ||
