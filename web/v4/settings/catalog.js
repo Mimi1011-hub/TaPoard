@@ -140,7 +140,7 @@ export class Catalog {
       button.type = 'button';
       button.disabled = parts[0] > orientation.columns || parts[1] > orientation.rows;
       button.draggable = !button.disabled;
-      button.addEventListener('click', () => this.add(action, null, size));
+      button.addEventListener('click', async () => { if (await this.add(action, null, size)) choices.remove(); });
       button.addEventListener('dragstart', (event) => {
         event.dataTransfer.effectAllowed = 'copy';
         event.dataTransfer.setData('text/x-tapoard-catalog', `${action}|${size}`);
