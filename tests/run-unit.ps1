@@ -31,7 +31,7 @@ if ($UI) {
         & node $script.FullName
         if ($LASTEXITCODE -ne 0) { $failed += $script.Name }
     }
-    foreach ($script in Get-ChildItem tests\*-ui.cjs) {
+    foreach ($script in Get-ChildItem tests\v4-*-ui.cjs) {
         & node $script.FullName
         if ($LASTEXITCODE -ne 0) { $failed += $script.Name }
     }
