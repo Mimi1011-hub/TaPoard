@@ -275,6 +275,7 @@ static class TextJa
         { "source.deckbackground.6", "背景画像が大きすぎます。" },
         { "source.deckbackground.7", "背景画像の形式が正しくありません。" },
         { "source.deckbackground.8", "背景画像の大きさが正しくありません。" },
+        { "source.deckbackground.9", "背景画像の回転は 0、90、180、270 度から選んでください。" },
         { "source.decklayoutv2.1", "ページ番号が正しくありません。" },
         { "source.decklayoutv2.2", "ボタンが重なるか枠からはみ出します。縦・横の配置を確認し、空き枠へ移動してください。" },
         { "source.decklayoutv2.3", "配置する空き枠がありません。" },

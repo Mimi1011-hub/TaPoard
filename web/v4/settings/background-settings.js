@@ -12,7 +12,7 @@ const gradients = [
   ['#0f2027', '#2c5364', 'night'], ['#ff7e5f', '#feb47b', 'sunset'], ['#f9c5d1', '#fbe3e8', 'peach'],
   ['#2193b0', '#6dd5ed', 'sea'], ['#134e5e', '#71b280', 'forest'], ['#41295a', '#2f0743', 'neon'],
 ];
-const position = () => ({ fit: 'cover', x: 50, y: 50, zoom: 1 });
+const position = () => ({ fit: 'cover', x: 50, y: 50, zoom: 1, flipX: false, flipY: false, rotate: 0 });
 const defaults = () => ({
   color: '', color2: '', image: '', imageWidth: 0, imageHeight: 0,
   landscape: position(), portrait: position(), keys: '', dim: 0, blur: 0, keyClear: 0,
@@ -121,6 +121,14 @@ export class BackgroundSettings {
         this.button(this.i18n.t('background.removeImage'), () => this.removeImage()),
         this.button(this.i18n.t('background.adjust'), () => this.beginAdjust()),
       );
+      const transforms = el('div', 'background-transform-actions');
+      transforms.append(
+        this.button(this.i18n.t('background.flipX'), () => this.transform('flipX')),
+        this.button(this.i18n.t('background.flipY'), () => this.transform('flipY')),
+        this.button(this.i18n.t('background.rotateLeft'), () => this.transform('left')),
+        this.button(this.i18n.t('background.rotateRight'), () => this.transform('right')),
+      );
+      this.root.appendChild(transforms);
       this.root.appendChild(el('p', 'background-note', this.i18n.t(`background.side.${this.preview.orientation}`)));
       this.select('background.fit', [['cover', 'background.cover'], ['contain', 'background.contain']], place.fit, (fit) => {
         this.current().fit = fit; this.change({});
@@ -159,6 +167,15 @@ export class BackgroundSettings {
     this.show(this.value);
     this.render();
     return this.save();
+  }
+
+  transform(action) {
+    const place = this.current();
+    if (action === 'flipX') place.flipX = !place.flipX;
+    if (action === 'flipY') place.flipY = !place.flipY;
+    if (action === 'left') place.rotate = (place.rotate + 270) % 360;
+    if (action === 'right') place.rotate = (place.rotate + 90) % 360;
+    this.change({});
   }
 
   // Keeps the picture and its place; colors and effects go back to the start.

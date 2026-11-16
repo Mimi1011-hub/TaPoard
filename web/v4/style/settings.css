@@ -319,6 +319,11 @@
   flex-wrap: wrap;
   gap: 4px;
 }
+.background-transform-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
 .background-swatches button {
   width: 25px;
   height: 25px;

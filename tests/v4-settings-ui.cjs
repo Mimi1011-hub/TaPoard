@@ -99,7 +99,16 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/icon-packs/add') { const value = JSON.parse(body), pack = packs.find((entry) => entry.id === value.id); pack.icons.push(...value.icons); packAdds.push(value); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/icon-packs/rename') { const value = JSON.parse(body), pack = packs.find((entry) => entry.id === value.id); Object.assign(pack, { name: value.name, author: value.author }); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/icon-packs/delete') { const value = JSON.parse(body); packs = packs.filter((entry) => entry.id !== value.id); return json(res, 200, { ok: true }); }
-    if (url.pathname === '/api/background' && req.method === 'POST') { background = { ...background, ...JSON.parse(body) }; backgroundRequests.push(background); return json(res, 200, { background }); }
+    if (url.pathname === '/api/background' && req.method === 'POST') {
+      const value = JSON.parse(body);
+      const rotations = [0, 90, 180, 270];
+      if (['landscape', 'portrait'].some((side) => value[side] && !rotations.includes(value[side].rotate || 0))) {
+        return json(res, 400, { error: 'invalid background rotation' });
+      }
+      background = { ...background, ...value };
+      backgroundRequests.push(background);
+      return json(res, 200, { background });
+    }
     if (url.pathname === '/api/background/image' && req.method === 'POST') { const value = JSON.parse(body); imageRequests.push(value); background = { ...background, image: 'image-1', imageWidth: 2000, imageHeight: 1000 }; return json(res, 200, { background }); }
     if (url.pathname === '/api/background/image' && req.method === 'GET') return json(res, 200, { data: '' });
     if (url.pathname === '/api/background/image/delete') { background = { ...background, image: '' }; return json(res, 200, { background }); }
@@ -355,19 +364,46 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await waitFor(() => imageRequests.length === 1, 'background image upload');
     assert(imageRequests[0].data.startsWith('data:image/jpeg'));
     await page.getByRole('button', { name: '完了' }).waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: '完了' }).click();
+    await waitFor(async () => (await page.getByRole('button', { name: '左右反転' }).count()) === 1, 'transform buttons shown');
+    let transformRequests = backgroundRequests.length;
+    await page.getByRole('button', { name: '左右反転' }).click();
+    await waitFor(() => backgroundRequests.length === transformRequests + 1, 'horizontal flip save');
+    assert.equal(backgroundRequests.at(-1).landscape.flipX, true);
+    transformRequests = backgroundRequests.length;
+    await page.getByRole('button', { name: '上下反転' }).click();
+    await waitFor(() => backgroundRequests.length === transformRequests + 1, 'vertical flip save');
+    assert.equal(backgroundRequests.at(-1).landscape.flipY, true);
+    transformRequests = backgroundRequests.length;
+    await page.getByRole('button', { name: '上下反転' }).click();
+    await waitFor(() => backgroundRequests.length === transformRequests + 1, 'vertical flip reset');
+    assert.equal(backgroundRequests.at(-1).landscape.flipY, false);
+    transformRequests = backgroundRequests.length;
+    await page.getByRole('button', { name: '左に回す' }).click();
+    await waitFor(() => backgroundRequests.length === transformRequests + 1, 'left rotation save');
+    assert.equal(backgroundRequests.at(-1).landscape.rotate, 270);
+    transformRequests = backgroundRequests.length;
+    await page.getByRole('button', { name: '右に回す' }).click();
+    await waitFor(() => backgroundRequests.length === transformRequests + 1, 'right rotation save');
+    assert.equal(backgroundRequests.at(-1).landscape.rotate, 0);
+    await page.getByRole('button', { name: '右に回す' }).click();
+    await waitFor(() => backgroundRequests.at(-1).landscape.rotate === 90, 'rotation for adjusted drag');
+    await page.getByRole('button', { name: 'プレビューで位置を調整' }).click();
     const screenBox = await page.locator('.settings-preview-screen').boundingBox();
     const adjustRequests = backgroundRequests.length;
+    await page.mouse.move(screenBox.x + screenBox.width / 2, screenBox.y + screenBox.height / 2);
+    await page.mouse.wheel(0, -200);
     await page.mouse.move(screenBox.x + screenBox.width / 2, screenBox.y + screenBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(screenBox.x + screenBox.width / 2 + 80, screenBox.y + screenBox.height / 2, { steps: 4 });
     await page.mouse.up();
-    await page.mouse.wheel(0, -200);
     assert.equal(posts.length, deckPostsBeforeBackground, 'adjusting the picture never moves buttons');
     await page.getByRole('button', { name: '完了' }).click();
     await waitFor(() => backgroundRequests.length === adjustRequests + 1, 'adjusted position save');
-    assert(backgroundRequests.at(-1).landscape.x < 50, 'dragging right moves the picture right');
+    assert(backgroundRequests.at(-1).landscape.y > 50,
+      `dragging right follows the picture after a 90 degree rotation: ${JSON.stringify(backgroundRequests.at(-1).landscape)}`);
     assert(backgroundRequests.at(-1).landscape.zoom > 1, 'wheel zooms in');
-    assert.equal(backgroundRequests.at(-1).portrait.x, 50, 'the other orientation keeps its own position');
+    assert.equal(backgroundRequests.at(-1).portrait.rotate || 0, 0, 'the other orientation keeps its own transform');
     await page.getByRole('button', { name: '画像を外す' }).click();
     await waitFor(async () => (await page.getByRole('button', { name: '画像を外す' }).count()) === 0, 'image removed');
 
@@ -399,7 +435,8 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     nextPost = 409;
     await page.locator('.settings-inspector textarea').first().fill('Conflict');
     await page.locator('.settings-inspector textarea').first().blur();
-    await waitFor(() => posts.length === conflictPosts + 1, '409 POST');
+    await waitFor(() => page.evaluate(() => !document.querySelector('#settings-conflict').hidden), '409 conflict shown');
+    assert.equal(posts.length, conflictPosts + 1, '409 POST');
     assert.equal(await page.evaluate(() => document.querySelector('#settings-conflict').hidden), false, '409 shows conflict band');
     await page.locator('[data-conflict="reload"]').click();
     await waitFor(() => page.evaluate(() => document.querySelector('#settings-conflict').hidden), 'conflict closes');

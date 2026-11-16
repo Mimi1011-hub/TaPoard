@@ -1,3 +1,5 @@
+import { picturePoint, pictureViewport } from '../deck/background-transform.js';
+
 // Moves and zooms the background picture on the settings preview: drag to move, wheel to zoom.
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -14,7 +16,7 @@ export function pictureLayout(position, imageWidth, imageHeight, width, height) 
 // The position after the picture point under (fromX, fromY) is brought to (toX, toY) with a new zoom.
 export function movePicture(position, size, zoom, fromX, fromY, toX, toY) {
   const before = pictureLayout(position, size.imageWidth, size.imageHeight, size.width, size.height);
-  const next = { fit: position.fit, x: position.x, y: position.y, zoom: clamp(zoom, 1, 5) };
+  const next = Object.assign({}, position, { fit: position.fit, x: position.x, y: position.y, zoom: clamp(zoom, 1, 5) });
   const after = pictureLayout(next, size.imageWidth, size.imageHeight, size.width, size.height);
   const pictureX = (fromX - before.left) / before.scale, pictureY = (fromY - before.top) / before.scale;
   if (after.overX > 0) next.x = clamp(-(toX - pictureX * after.scale) / after.overX * 100, 0, 100);
@@ -70,8 +72,9 @@ export class BackgroundAdjust {
 
   size() {
     const rect = this.preview.shell.getBoundingClientRect();
+    const view = pictureViewport(this.position(), rect.width, rect.height);
     return {
-      left: rect.left, top: rect.top, width: rect.width, height: rect.height,
+      left: rect.left, top: rect.top, screenWidth: rect.width, screenHeight: rect.height, width: view.width, height: view.height,
       imageWidth: this.value.imageWidth || rect.width, imageHeight: this.value.imageHeight || rect.height,
     };
   }
@@ -79,22 +82,25 @@ export class BackgroundAdjust {
   start(event) {
     event.preventDefault();
     const size = this.size();
-    this.point = { x: event.clientX - size.left, y: event.clientY - size.top, position: Object.assign({}, this.position()) };
+    const position = Object.assign({}, this.position());
+    const point = picturePoint(position, size.screenWidth, size.screenHeight, event.clientX - size.left, event.clientY - size.top);
+    this.point = { x: point.x, y: point.y, position };
     if (this.preview.screen.setPointerCapture) this.preview.screen.setPointerCapture(event.pointerId);
   }
 
   drag(event) {
     if (!this.point) return;
     const size = this.size(), start = this.point.position;
-    this.apply(movePicture(start, size, start.zoom, this.point.x, this.point.y, event.clientX - size.left, event.clientY - size.top));
+    const point = picturePoint(start, size.screenWidth, size.screenHeight, event.clientX - size.left, event.clientY - size.top);
+    this.apply(movePicture(start, size, start.zoom, this.point.x, this.point.y, point.x, point.y));
   }
 
   zoom(event) {
     event.preventDefault();
     const size = this.size(), position = this.position();
-    const x = event.clientX - size.left, y = event.clientY - size.top;
+    const point = picturePoint(position, size.screenWidth, size.screenHeight, event.clientX - size.left, event.clientY - size.top);
     const zoom = Math.round(position.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1) * 100) / 100;
-    this.apply(movePicture(position, size, zoom, x, y, x, y));
+    this.apply(movePicture(position, size, zoom, point.x, point.y, point.x, point.y));
   }
 
   apply(position) {

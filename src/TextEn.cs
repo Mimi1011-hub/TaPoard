@@ -275,6 +275,7 @@ static class TextEn
         { "source.deckbackground.6", "The background image is too large." },
         { "source.deckbackground.7", "The background image format is not valid." },
         { "source.deckbackground.8", "The background image dimensions are not valid." },
+        { "source.deckbackground.9", "Background rotation must be 0, 90, 180, or 270 degrees." },
         { "source.decklayoutv2.1", "The page number is not valid." },
         { "source.decklayoutv2.2", "Buttons overlap or go outside the grid. Check the portrait and landscape layouts and move them to empty spaces." },
         { "source.decklayoutv2.3", "There is no empty space to place it." },

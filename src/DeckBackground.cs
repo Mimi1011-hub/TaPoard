@@ -30,6 +30,9 @@ class BackgroundPosition
     public double x { get; set; }
     public double y { get; set; }
     public double zoom { get; set; }
+    public bool flipX { get; set; }
+    public bool flipY { get; set; }
+    public int rotate { get; set; }
 }
 
 static class DeckBackgrounds
@@ -42,12 +45,17 @@ static class DeckBackgrounds
     static BackgroundPosition CleanPosition(BackgroundPosition p)
     {
         if (p == null) p = new BackgroundPosition { x = 50, y = 50, zoom = 1 };
+        if (p.rotate != 0 && p.rotate != 90 && p.rotate != 180 && p.rotate != 270)
+            throw new Exception(Text.Get("source.deckbackground.9"));
         return new BackgroundPosition
         {
             fit = p.fit == "contain" ? "contain" : "cover",
             x = Clamp(p.x, 0, 100, 50),
             y = Clamp(p.y, 0, 100, 50),
             zoom = Clamp(p.zoom, 1, 5, 1),
+            flipX = p.flipX,
+            flipY = p.flipY,
+            rotate = p.rotate,
         };
     }
 

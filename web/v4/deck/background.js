@@ -1,14 +1,15 @@
 import { safeImageSource } from '../core/image-source.js';
 import { hexRgb, keyShade, lightness, mixRgb, rgbCss } from './color.js';
+import { backgroundTransform, pictureViewport } from './background-transform.js';
 
 function backgroundPosition(background, orientation) {
   const position = background[orientation] || {};
-  return {
+  return Object.assign({
     fit: position.fit === 'contain' ? 'contain' : 'cover',
     x: Number.isFinite(position.x) ? position.x : 50,
     y: Number.isFinite(position.y) ? position.y : 50,
     zoom: position.zoom >= 1 ? position.zoom : 1,
-  };
+  }, backgroundTransform(position));
 }
 
 export class DeckBackground {
@@ -66,18 +67,32 @@ export class DeckBackground {
     this.picture.style.backgroundImage = background.image && this.imageData ? `url("${this.imageData}")` : '';
     this.picture.style.backgroundPosition = `${position.x}% ${position.y}%`;
     this.picture.style.filter = background.blur ? `blur(${background.blur}px)` : '';
-    this.picture.style.transform = background.blur ? 'scale(1.04)' : '';
+    const width = this.target.clientWidth || 1;
+    const height = this.target.clientHeight || 1;
+    const viewport = pictureViewport(position, width, height);
+    this.picture.style.inset = 'auto';
+    this.picture.style.left = `${viewport.left}px`;
+    this.picture.style.top = `${viewport.top}px`;
+    this.picture.style.width = `${viewport.width}px`;
+    this.picture.style.height = `${viewport.height}px`;
+    const transforms = [
+      `rotate(${position.rotate}deg)`,
+      `scaleX(${position.flipX ? -1 : 1})`,
+      `scaleY(${position.flipY ? -1 : 1})`,
+    ];
+    if (background.blur) transforms.push('scale(1.04)');
+    this.picture.style.transform = transforms.join(' ');
     this.shade.style.background = background.dim ? `rgba(0,0,0,${background.dim / 100})` : 'transparent';
     if (!background.image || !this.imageData) {
       this.picture.style.backgroundSize = '';
       return;
     }
-    const width = this.target.clientWidth || 1;
-    const height = this.target.clientHeight || 1;
     const imageWidth = background.imageWidth || 1;
     const imageHeight = background.imageHeight || 1;
     const scale =
-      (position.fit === 'contain' ? Math.min(width / imageWidth, height / imageHeight) : Math.max(width / imageWidth, height / imageHeight)) *
+      (position.fit === 'contain'
+        ? Math.min(viewport.width / imageWidth, viewport.height / imageHeight)
+        : Math.max(viewport.width / imageWidth, viewport.height / imageHeight)) *
       position.zoom;
     this.picture.style.backgroundSize = `${Math.round(imageWidth * scale)}px ${Math.round(imageHeight * scale)}px`;
   }

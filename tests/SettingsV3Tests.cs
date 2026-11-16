@@ -110,8 +110,8 @@ class SettingsV3Tests
                 imageType = "png",
                 imageWidth = 800,
                 imageHeight = 600,
-                landscape = new BackgroundPosition { fit = "cover", x = 30, y = 40, zoom = 1.2 },
-                portrait = new BackgroundPosition { fit = "contain", x = 50, y = 60, zoom = 1.1 },
+                landscape = new BackgroundPosition { fit = "cover", x = 30, y = 40, zoom = 1.2, flipX = true, rotate = 90 },
+                portrait = new BackgroundPosition { fit = "contain", x = 50, y = 60, zoom = 1.1, flipY = true, rotate = 270 },
                 dim = 10,
                 blur = 2,
                 keys = "glass",
@@ -186,6 +186,9 @@ class SettingsV3Tests
         Check(!json.Contains("speakerSlot") && !json.Contains("micSlot") && !json.Contains("landscapePageCount") && !json.Contains("portraitPageCount") && !json.Contains("pageCount"), "v3 omits legacy slot and page-count fields");
         Settings roundTrip = SettingsMigration.ToV2(v3);
         Check(Comparable(roundTrip) == Comparable(source), "normalized v2 settings survive a v3 round trip");
+        Check(roundTrip.background.landscape.flipX && roundTrip.background.landscape.rotate == 90
+            && roundTrip.background.portrait.flipY && roundTrip.background.portrait.rotate == 270,
+            "background flips and rotations survive a v3 round trip");
         Check(roundTrip.landscapePageNames[0] == "配信" && roundTrip.apps[0].steps.Count == 1, "page names and action steps survive a v3 round trip");
         DeckLayout.Validate(roundTrip);
         Check(roundTrip.apps[1].size == 2, "v3 restores the legacy size field used by the web UI");

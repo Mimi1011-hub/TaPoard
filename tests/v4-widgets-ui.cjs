@@ -10,7 +10,9 @@ let weatherConfigured = false;
 let metricValue = 22;
 let pairResult = 'approved';
 let pairPolls = 0;
-const backgroundState = { color: '#123456', image: 'bg-one', imageWidth: 100, imageHeight: 50, portrait: { fit: 'cover', x: 40, y: 60, zoom: 1 }, landscape: { fit: 'cover', x: 50, y: 50, zoom: 1 }, keyClear: 20 };
+const backgroundState = { color: '#123456', image: 'bg-one', imageWidth: 100, imageHeight: 50,
+  portrait: { fit: 'cover', x: 40, y: 60, zoom: 1, flipX: true, flipY: false, rotate: 90 },
+  landscape: { fit: 'cover', x: 50, y: 50, zoom: 1, flipX: false, flipY: false, rotate: 0 }, keyClear: 20 };
 const audioRequests = [];
 const viewRequests = [];
 const slideRequests = [];
@@ -124,6 +126,7 @@ async function prepare(page, errors) {
     assert.equal(await page.locator('.widget-placeholder').count(), 1, 'future widget remains a placeholder');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal overflow');
     await page.waitForFunction(() => document.querySelector('.deck-background-picture').style.backgroundImage.includes('data:image'));
+    assert.match(await page.locator('.deck-background-picture').evaluate((node) => node.style.transform), /rotate\(90deg\).*scaleX\(-1\)/);
     assert.equal(backgroundRequests, 1, 'background image fetched once');
     assert.match(await page.locator('.deck-shell').evaluate((node) => node.style.getPropertyValue('--key-bg')), /linear-gradient\(145deg/);
     const sizeAtOne = await page.locator('.deck-background-picture').evaluate((node) => node.style.backgroundSize.split(' ').map(parseFloat));

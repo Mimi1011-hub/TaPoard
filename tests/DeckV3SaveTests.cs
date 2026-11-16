@@ -69,6 +69,17 @@ public static class DeckV3SaveTests
     {
         // The checks below compare Japanese messages.
         Text.Use("ja");
+        var oldBackground = DeckBackgrounds.Clean(new DeckBackground { color = "", landscape = new BackgroundPosition(),
+            portrait = new BackgroundPosition() }, null);
+        Assert(!oldBackground.landscape.flipX && oldBackground.landscape.rotate == 0, "old backgrounds default to no flip and no rotation");
+        var transformedBackground = DeckBackgrounds.Clean(new DeckBackground { color = "",
+            landscape = new BackgroundPosition { flipX = true, rotate = 90 }, portrait = new BackgroundPosition { flipY = true, rotate = 270 } }, null);
+        Assert(transformedBackground.landscape.flipX && transformedBackground.landscape.rotate == 90
+            && transformedBackground.portrait.flipY && transformedBackground.portrait.rotate == 270, "background transforms are preserved");
+        bool badRotation = false;
+        try { DeckBackgrounds.Clean(new DeckBackground { color = "", landscape = new BackgroundPosition { rotate = 45 } }, null); }
+        catch (Exception) { badRotation = true; }
+        Assert(badRotation, "unsupported background rotation is rejected");
         string root = Path.Combine(Path.GetTempPath(), "TaPoard-v3-save-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root);
         string executable = Path.Combine(root, "test.exe"); File.WriteAllBytes(executable, new byte[] { 1, 2, 3 });
         try
