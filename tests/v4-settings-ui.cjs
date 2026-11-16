@@ -182,6 +182,12 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.equal(await presetSection.locator('[data-section="presets"].is-active').count(), 1, 'section=presets opens presets');
     await presetSection.close();
 
+    const oldAppearance = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 700 } });
+    await oldAppearance.goto(`${base}/v4/settings.html#admin=test&section=appearance`);
+    await oldAppearance.locator('#settings-section-background:not([hidden])').waitFor();
+    assert.equal(await oldAppearance.locator('[data-section="background"].is-active').count(), 1, 'old appearance link opens background');
+    await oldAppearance.close();
+
     const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 700 } });
     page.setDefaultTimeout(5000);
     page.on('pageerror', (error) => errors.push(String(error)));
@@ -291,7 +297,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert(posts.at(-1).deck.landscape.pages[0].items[0].customIcon.length <= 60000);
     await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'custom icon GET');
 
-    await page.getByRole('button', { name: '見た目' }).click();
+    await page.getByRole('button', { name: 'アイコンパック' }).click();
     const { buildZip } = await import('../web/v4/settings/zip.js');
     const packName = 'Very Long Test Icon Pack Name That Stays On One Line Beside Its Buttons';
     const manifest = {
@@ -303,7 +309,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
       { name: 'icons.json', bytes: new TextEncoder().encode(JSON.stringify(manifest)) },
       { name: 'icons/heart.png', bytes: png },
     ]);
-    await page.locator('#settings-section-appearance input[accept*="tpicons"]').setInputFiles({
+    await page.locator('#settings-section-icon-packs input[accept*="tpicons"]').setInputFiles({
       name: 'test.tpicons',
       mimeType: 'application/zip',
       buffer: Buffer.from(await packBlob.arrayBuffer()),
@@ -334,7 +340,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'pack icon GET');
 
     const deckPostsBeforeBackground = posts.length;
-    await page.getByRole('button', { name: '見た目' }).click();
+    await page.getByRole('button', { name: '背景' }).click();
     await page.locator('.background-swatches').first().locator('button').nth(1).click();
     await waitFor(() => backgroundRequests.length === 1, 'background save');
     assert.equal(posts.length, deckPostsBeforeBackground, 'background does not save the deck');
@@ -343,7 +349,9 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(await page.locator('.background-swatches[data-kept="1"]').count(), backgroundPanel ? 1 : 0, 'sync alone does not redraw the background controls');
 
-    await page.locator('#settings-section-appearance input[accept="image/*"]').setInputFiles({ name: 'wide.png', mimeType: 'image/png', buffer: png });
+    await page.locator('#settings-section-background input[accept="image/*"]').setInputFiles({
+      name: 'wide.png', mimeType: 'image/png', buffer: png,
+    });
     await waitFor(() => imageRequests.length === 1, 'background image upload');
     assert(imageRequests[0].data.startsWith('data:image/jpeg'));
     await page.getByRole('button', { name: '完了' }).waitFor({ state: 'visible' });
@@ -366,7 +374,8 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     background = { ...background, color: '#14213d', color2: '' }; revision += 1;
     await waitFor(async () => (await page.locator('.background-swatches button[aria-pressed="true"]').getAttribute('title')) === '濃紺', 'background changed elsewhere is shown');
     assert.equal(posts.length, deckPostsBeforeBackground, 'background changes never save the deck');
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, 'appearance has no horizontal scroll at 1100px');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true,
+      'background has no horizontal scroll at 1100px');
     await page.getByRole('button', { name: '配置' }).click();
 
     const pagePosts = posts.length;

@@ -15,6 +15,7 @@ export class SettingsShell {
   }
 
   chooseSection(section) {
+    if (section === 'appearance') section = 'background';
     this.sections.choose(section);
   }
 

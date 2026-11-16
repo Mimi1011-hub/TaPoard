@@ -17,9 +17,6 @@ export class Appearance {
   }
   build() {
     clear(this.root);
-    this.root.appendChild(el('h2', '', this.i18n.t('appearance.title')));
-    this.backgroundRoot = el('section', 'appearance-block');
-    this.root.appendChild(this.backgroundRoot);
     this.packRoot = el('section', 'appearance-block');
     this.root.appendChild(this.packRoot);
     this.bulkRoot = el('section', 'appearance-block');

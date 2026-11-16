@@ -115,8 +115,8 @@ export class SettingsApp {
       onNotice: (message) => this.shell.showNotice(message),
     });
     this.catalog.launchExtra = () => this.appImport.button;
-    this.appearance = new Appearance({
-      root: this.nodes.sections.appearance,
+    this.iconPackSettings = new Appearance({
+      root: this.nodes.sections.iconPacks,
       api: this.api,
       editor: this.editor,
       preview: this.preview,
@@ -126,9 +126,9 @@ export class SettingsApp {
       promptFn: this.promptFn,
       onError: (message) => this.shell.showNotice(message),
     });
-    await this.appearance.start();
+    await this.iconPackSettings.start();
     this.backgroundSettings = new BackgroundSettings({
-      root: this.appearance.backgroundRoot,
+      root: this.nodes.sections.background,
       api: this.api,
       editor: this.editor,
       preview: this.preview,

@@ -18,7 +18,7 @@ const defaults = () => ({
   landscape: position(), portrait: position(), keys: '', dim: 0, blur: 0, keyClear: 0,
 });
 
-// The background part of the "appearance" section. Saved through /api/background, never with the deck.
+// The background section is saved through /api/background, never with the deck.
 export class BackgroundSettings {
   constructor(options) {
     Object.assign(this, options);
@@ -97,7 +97,7 @@ export class BackgroundSettings {
     if (this.adjusting) return this.renderAdjust();
     const value = this.value, place = this.current();
     clear(this.root);
-    this.root.appendChild(el('h3', '', this.i18n.t('background.title')));
+    this.root.appendChild(el('h2', '', this.i18n.t('background.title')));
     this.swatches(colors, (entry) => value.color === entry[0] && !value.color2,
       (entry) => entry[0] || 'linear-gradient(135deg,#1b1c20 50%,#2a2d35 50%)',
       (entry) => `background.colors.${entry[1]}`, (entry) => ({ color: entry[0], color2: '' }));
@@ -145,7 +145,7 @@ export class BackgroundSettings {
   renderAdjust() {
     clear(this.root);
     this.root.append(
-      el('h3', '', this.i18n.t('background.adjust')),
+      el('h2', '', this.i18n.t('background.adjust')),
       el('p', 'background-note', this.i18n.t('background.adjustHelp')),
       el('p', 'background-note', this.i18n.t(`background.side.${this.preview.orientation}`)),
       this.button(this.i18n.t('background.done'), () => this.endAdjust()),

@@ -20,7 +20,8 @@ const nodes = {
   sections: {
     layout: document.querySelector('#settings-section-layout'),
     presets: document.querySelector('#settings-section-presets'),
-    appearance: document.querySelector('#settings-section-appearance'),
+    background: document.querySelector('#settings-section-background'),
+    iconPacks: document.querySelector('#settings-section-icon-packs'),
     saved: document.querySelector('#settings-section-saved'),
     connection: document.querySelector('#settings-section-connection'),
     pc: document.querySelector('#settings-section-pc'),

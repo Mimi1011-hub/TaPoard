@@ -425,9 +425,13 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     await general.locator('select').first().selectOption('en');
     await page.waitForFunction(() => document.title === 'TaPoard Settings');
     assert.equal(last('v3/language').body.preference, 'en', 'English preference is posted');
-    for (const name of ['layout', 'presets', 'appearance', 'saved', 'connection', 'pc', 'general']) {
+    const sections = [
+      ['layout', 'layout'], ['presets', 'presets'], ['background', 'background'], ['iconPacks', 'icon-packs'],
+      ['saved', 'saved'], ['connection', 'connection'], ['pc', 'pc'], ['general', 'general'],
+    ];
+    for (const [name, id] of sections) {
       await section(name);
-      const visibleText = await page.locator(`#settings-section-${name}`).innerText();
+      const visibleText = await page.locator(`#settings-section-${id}`).innerText();
       const withoutLanguageName = visibleText.replace('日本語', '');
       assert(!/[ぁ-んァ-ヶ一-龠]/.test(withoutLanguageName), `${name} has no Japanese text in English`);
       await shot(`english-${name}`);

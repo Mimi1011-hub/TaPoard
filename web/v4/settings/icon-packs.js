@@ -96,7 +96,7 @@ export class IconPacks {
 
   render() {
     clear(this.root);
-    this.root.appendChild(el('h3', '', this.i18n.t('packs.title')));
+    this.root.appendChild(el('h2', '', this.i18n.t('packs.title')));
     const input = el('input');
     input.type = 'file';
     input.multiple = true;
