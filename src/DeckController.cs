@@ -7,7 +7,6 @@ sealed class DeckRuntimeState
     internal long revision;
     internal string version;
     internal string appVersion;
-    internal string computer;
     internal int landscapePage;
     internal int portraitPage;
     internal int landscapePages;
@@ -84,7 +83,6 @@ sealed class DeckController : ControllerBase
             response["revision"] = runtime.revision;
             response["version"] = runtime.version;
             response["appVersion"] = runtime.appVersion;
-            response["computer"] = runtime.computer;
             if (!unchanged)
             {
                 SettingsV3 settings = SettingsMigration.ToV3(state.Config);
@@ -121,7 +119,6 @@ sealed class DeckController : ControllerBase
             revision = state.Sync.Revision,
             version = state.Version,
             appVersion = state.AppVersion,
-            computer = Environment.MachineName,
             landscapePage = state.LandscapePage,
             portraitPage = state.PortraitPage,
             landscapePages = landscapePages,

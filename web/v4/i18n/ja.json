@@ -739,7 +739,7 @@
   "general.weatherUnset": "地域が未設定です。",
   "general.weatherShort": "地域名を2文字以上入力してください。",
   "general.about": "このアプリについて",
-  "general.versionComputer": "バージョン {version}・PC {computer}",
+  "general.version": "バージョン {version}",
   "import.open": "アプリや URL を追加",
   "import.instructions": "開いたウインドウにアイコンを落とすか、URL を入れてください。",
   "import.replaced": "ほかの所で追加が始まりました。",

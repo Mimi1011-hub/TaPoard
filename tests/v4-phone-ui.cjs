@@ -28,7 +28,7 @@ function item(id, name, row, column, width, height) {
 
 function state() {
   return {
-    schemaVersion: 3, revision, version: String(revision), appVersion: '4.0.0', computer: 'UI test PC',
+    schemaVersion: 3, revision, version: String(revision), appVersion: '4.0.0',
     deck: {
       keepAwake: false,
       landscape: {

@@ -739,7 +739,7 @@
   "general.weatherUnset": "No location is set.",
   "general.weatherShort": "Enter at least two characters.",
   "general.about": "About",
-  "general.versionComputer": "Version {version} · PC {computer}",
+  "general.version": "Version {version}",
   "import.open": "Add apps or URLs",
   "import.instructions": "Drop an icon into the opened window or enter a URL.",
   "import.replaced": "Import was started somewhere else.",

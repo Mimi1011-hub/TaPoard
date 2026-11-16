@@ -174,6 +174,7 @@ public static class DeckV3SaveTests
             ApiRequest publicState = Request("GET", "/api/v3/state", null); controller.GetV3State(publicState);
             string publicBody = Encoding.UTF8.GetString(((MemoryStream)publicState.stream).ToArray());
             Assert(publicBody.Contains("\"id\":\"url\"") && publicBody.Contains("\"column\":2"), "public v3 state sees the saved position");
+            Assert(!publicBody.Contains("\"computer\""), "public v3 state does not expose the computer name");
 
             ReadResponse customEdit = Read(controller);
             DeckItem custom = Copy(customEdit.deck.landscape.pages[0].items[0]);

@@ -27,9 +27,6 @@ export class General {
 
   update(state) {
     this.weather.update(state.weather);
-    this.about.textContent = this.i18n.t('general.versionComputer', {
-      version: state.appVersion || '-',
-      computer: state.computer || '-',
-    });
+    this.about.textContent = this.i18n.t('general.version', { version: state.appVersion || '-' });
   }
 }

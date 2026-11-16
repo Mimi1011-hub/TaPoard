@@ -37,7 +37,7 @@ function deckState() {
     placement('future-1', 'future', 5, 2, 1, 1),
   ];
   return {
-    schemaVersion: 3, revision, version, computer: 'Widget test', current: { portrait: 0, landscape: 0 },
+    schemaVersion: 3, revision, version, current: { portrait: 0, landscape: 0 },
     deck: {
       keepAwake: false,
       portrait: { columns: 4, rows: 6, faders, pages: [{ faders: null, items }, { faders: { speakerHidden: true, micHidden: true }, items: [] }] },

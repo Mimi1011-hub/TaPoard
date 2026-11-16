@@ -40,7 +40,6 @@ const state = () => ({
   version: String(version),
   revision: version,
   appVersion: 'test',
-  computer: 'TEST-PC',
   phoneConnected: false,
   pcWindowOpen: false,
   audio: {},
