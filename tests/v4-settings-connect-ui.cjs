@@ -269,14 +269,18 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     // Connection: the QR, devices waiting and connected, cutting every device, the firewall line.
     assert.equal(pairReads, 0, 'the device list is not read before the section is opened');
     await section('connection');
-    await waitFor(async () => (await url()) === 'http://test-pc:18781/', 'iPhone address');
+    await waitFor(async () => (await url()) === 'http://test-pc:18781/', 'phone address');
+    assert.equal(await page.locator('[data-kind="iphone"]').innerText(), 'スマートフォン');
+    assert.equal(await page.locator('[data-kind="android"]').innerText(), '古いスマートフォン');
+    assert.equal(await page.locator('.connect-kind-note').innerText(), 'ふつうはこちら');
     assert(!(await url()).includes('connect='), 'the key is not shown as text');
     const drawn = () => page.locator('.connect-qr').evaluate((canvas) => canvas.toDataURL());
     const first = await drawn();
     assert(first.length > 1000, 'the QR is drawn');
     await page.locator('[data-kind="android"]').click();
     assert.equal(await url(), 'http://192.0.2.1:18781/');
-    assert.notEqual(await drawn(), first, 'Android gets its own QR');
+    assert.match(await page.locator('.connect-kind-note').innerText(), /IP アドレスで開きます/);
+    assert.notEqual(await drawn(), first, 'older phones get the IP address QR');
     const waiting = page.locator('.pairing-list').first();
     assert((await waiting.innerText()).includes('1234') && (await waiting.innerText()).includes('<img'), 'the code and the name are shown as text');
     await waitFor(async () => (await page.locator('.firewall-status').innerText()).includes('Home'), 'firewall line');

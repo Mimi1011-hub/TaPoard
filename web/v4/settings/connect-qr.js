@@ -10,15 +10,17 @@ export class ConnectQr {
     this.root = root;
     this.tabs = el('div', 'orientation-switch');
     ['iphone', 'android'].forEach((kind) => {
-      const button = el('button', kind === this.kind ? 'is-active' : '', kind === 'iphone' ? 'iPhone' : 'Android');
+      const label = kind === 'iphone' ? 'connect.qrPhone' : 'connect.qrOlderPhone';
+      const button = el('button', kind === this.kind ? 'is-active' : '', this.i18n.t(label));
       button.type = 'button';
       button.addEventListener('click', () => this.choose(kind));
       button.dataset.kind = kind;
       this.tabs.appendChild(button);
     });
+    this.kindNote = el('p', 'settings-note connect-kind-note');
     this.canvas = el('canvas', 'connect-qr');
     this.url = el('p', 'connect-url');
-    root.append(this.tabs, this.canvas, this.url, el('p', 'settings-note', this.i18n.t('connect.qrNote')));
+    root.append(this.tabs, this.kindNote, this.canvas, this.url, el('p', 'settings-note', this.i18n.t('connect.qrNote')));
   }
 
   async load() {
@@ -35,6 +37,7 @@ export class ConnectQr {
   draw() {
     if (!this.links) return;
     const value = this.kind === 'iphone' ? this.links.iphoneUrl : this.links.androidUrl;
+    this.kindNote.textContent = this.i18n.t(this.kind === 'iphone' ? 'connect.qrPhoneNote' : 'connect.qrOlderPhoneNote');
     this.url.textContent = value.split('#')[0];
     const code = globalThis.qrcode(0, 'M');
     code.addData(value, 'Byte');
