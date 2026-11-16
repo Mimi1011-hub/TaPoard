@@ -65,5 +65,9 @@ export class Appearance {
       await this.iconPacks.bulk(this.pack.value, this.scope.value, this.preview.orientation, this.preview.page());
     });
     this.bulkRoot.append(this.pack, this.scope, apply);
+    const guide = el('button', 'icon-ai-open', this.i18n.t('iconAi.open'));
+    guide.type = 'button';
+    guide.addEventListener('click', () => this.onGuide());
+    this.bulkRoot.appendChild(guide);
   }
 }

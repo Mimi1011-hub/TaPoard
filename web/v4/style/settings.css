@@ -798,6 +798,41 @@
 .settings-preview-column {
   position: relative;
 }
+.icon-ai-open {
+  display: block;
+  margin-top: 12px;
+}
+.icon-ai-guide {
+  min-height: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+.icon-ai-steps {
+  display: grid;
+  gap: 10px;
+  padding-left: 24px;
+}
+.icon-ai-steps p {
+  margin: 0 0 6px;
+}
+.icon-ai-steps button {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-button);
+}
+.icon-ai-prompt {
+  max-height: 150px;
+  padding: 9px;
+  overflow: auto;
+  border-radius: 7px;
+  background: #0c0e12;
+  font: inherit;
+  white-space: pre-wrap;
+}
 .settings-grid-size {
   gap: 8px;
 }

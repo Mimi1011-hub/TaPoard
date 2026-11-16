@@ -58,9 +58,12 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
   if (url.pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
   if (url.pathname.startsWith('/api/')) {
-    if (url.pathname === '/api/v3/language') return json(res, 200, {
-      preference: 'ja', language: 'ja', languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
-    });
+    if (url.pathname === '/api/v3/language') {
+      const language = String(req.headers['accept-language'] || '').startsWith('en') ? 'en' : 'ja';
+      return json(res, 200, {
+        preference: language, language, languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
+      });
+    }
     if (req.headers.authorization !== 'Bearer test') return json(res, 401, { error: 'unauthorized' });
     if (url.pathname === '/api/v3/deck' && req.method === 'GET') { deckGets += 1; return json(res, 200, response()); }
     if (url.pathname === '/api/v3/deck' && req.method === 'POST') {
@@ -362,6 +365,18 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
       true,
       'pack buttons stay in the row',
     );
+    await page.getByRole('button', { name: 'AI でアイコンファイルを作る方法' }).click();
+    assert.equal(await page.locator('#settings-icon-ai-guide .icon-ai-steps li').count(), 5, 'AI icon guide shows five local steps');
+    assert.equal(await page.locator('#settings-icon-ai-guide a[href^="http"]').count(), 0, 'AI icon guide has no external link');
+    assert.match(await page.locator('.icon-ai-prompt').innerText(), /512×512/);
+    await page.getByRole('button', { name: '戻る' }).click();
+    assert.equal(await page.locator('#settings-preview').isVisible(), true, 'back returns to the layout preview');
+    const englishGuide = await browser.newPage({ locale: 'en-US', viewport: { width: 1100, height: 700 } });
+    await englishGuide.goto(`${base}/v4/settings.html#admin=test&section=iconPacks`);
+    await englishGuide.getByRole('button', { name: 'How to make icon files with AI' }).click();
+    assert.equal(await englishGuide.locator('#settings-icon-ai-guide').evaluate((node) => node.scrollWidth <= node.clientWidth), true,
+      'English AI guide fits at 1100px');
+    await englishGuide.close();
     await page.getByRole('button', { name: '配置' }).click();
     await page.locator('.preview-hit[data-kind="item"]').first().click();
     appearancePosts = posts.length;

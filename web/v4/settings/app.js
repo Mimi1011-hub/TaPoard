@@ -53,6 +53,7 @@ i18n.init().then(() => {
       previewRatio: document.querySelector('#settings-preview-ratio'),
       gridAdvice: document.querySelector('#settings-grid-advice'),
       gridWarning: document.querySelector('#settings-grid-warning'),
+      iconGuide: document.querySelector('#settings-icon-ai-guide'),
       saveStatus: document.querySelector('#settings-save-status'),
       preview: document.querySelector('#settings-preview'),
       orientation: Array.from(document.querySelectorAll('[data-orientation]')),

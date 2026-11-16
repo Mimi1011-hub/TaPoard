@@ -22,6 +22,7 @@ import { ShortcutPacks } from './shortcut-packs.js';
 import { ConfirmDialog } from './confirm-dialog.js';
 import { clear, el } from '../core/dom.js';
 import { gridShape, recommendedGrids } from './phone-grid-advice.js';
+import { IconAiGuide } from './icon-ai-guide.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -127,8 +128,15 @@ export class SettingsApp {
       confirmFn: this.confirmFn,
       promptFn: this.promptFn,
       onError: (message) => this.shell.showNotice(message),
+      onGuide: () => this.showIconGuide(true),
     });
     await this.iconPackSettings.start();
+    this.iconAiGuide = new IconAiGuide({
+      root: this.nodes.iconGuide,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
+      onNotice: (message) => this.shell.showNotice(message),
+    });
     this.backgroundSettings = new BackgroundSettings({
       root: this.nodes.sections.background,
       api: this.api,
@@ -196,8 +204,12 @@ export class SettingsApp {
     this.editor.subscribe((event) => {
       if (event.source === 'load') this.presets.render();
     });
-    this.nodes.presetBack.addEventListener('click', () => this.presets.closePreview());
+    this.nodes.presetBack.addEventListener('click', () => {
+      if (this.iconGuideActive) this.showIconGuide(false);
+      else this.presets.closePreview();
+    });
     this.shell.sections.subscribe((section) => { if (section !== 'presets') this.presets.closePreview(); });
+    this.shell.sections.subscribe((section) => { if (section !== 'iconPacks') this.showIconGuide(false); });
     this.nodes.orientation.forEach((button) =>
       button.addEventListener('click', () => {
         this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
@@ -226,12 +238,24 @@ export class SettingsApp {
   }
 
   presetPreview(active, name) {
+    if (active) this.showIconGuide(false);
     this.nodes.previewTitle.textContent = active
       ? this.i18n.t('presets.previewTitle', { name })
       : this.i18n.t('settings.preview.title');
     this.nodes.presetBack.hidden = !active;
     this.nodes.layoutTools.hidden = active;
     this.nodes.undo.hidden = active;
+    this.nodes.inspector.hidden = active;
+  }
+
+  showIconGuide(active) {
+    this.iconGuideActive = !!active;
+    if (active) this.iconAiGuide.render();
+    this.nodes.previewTitle.textContent = active ? this.i18n.t('iconAi.title') : this.i18n.t('settings.preview.title');
+    this.nodes.presetBack.hidden = !active;
+    this.nodes.layoutTools.hidden = active;
+    this.nodes.preview.hidden = active;
+    this.nodes.iconGuide.hidden = !active;
     this.nodes.inspector.hidden = active;
   }
 
