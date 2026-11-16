@@ -17,14 +17,8 @@ partial class Program
     // Files under web\ that are served without authentication.
     static readonly HashSet<string> PublicFiles = new HashSet<string>
     {
-        "/",
-        "/settings",
-        "/pc-window",
-        "/pc-window.js",
-        "/app.js",
         "/qrcode.js",
         "/nosleep.min.js",
-        "/style.css",
         "/manifest.webmanifest",
         "/icon-32.png",
         "/icon-180.png",
@@ -69,6 +63,11 @@ partial class Program
                 var r = ReadRequest(c);
                 if (r == null)
                     return;
+                if (r.method == "GET" && r.path == "/")
+                {
+                    Redirect(r.stream, "/v4/");
+                    return;
+                }
                 if (r.method == "GET" && PublicFiles.Contains(r.path))
                 {
                     ServeFile(r.stream, r.path);
@@ -139,10 +138,7 @@ partial class Program
 
     static void ServeFile(Stream s, string path)
     {
-        string file =
-            path == "/" || path == "/settings" ? "index.html"
-            : path == "/pc-window" ? "pc-window.html"
-            : path.Substring(1);
+        string file = path.Substring(1);
         string type =
             file.EndsWith("js") ? "application/javascript"
             : file.EndsWith("css") ? "text/css"
@@ -153,6 +149,11 @@ partial class Program
             HttpIO.ReplyBytes(s, 200, type, File.ReadAllBytes(Path.Combine(Root, "web", file)));
         else
             HttpIO.Reply(s, 200, type, File.ReadAllText(Path.Combine(Root, "web", file)));
+    }
+
+    static void Redirect(Stream stream, string location)
+    {
+        WriteResponse(stream, 302, "text/plain; charset=utf-8", new byte[0], "Location: " + location + "\r\n");
     }
 
     static void ServeV4File(Stream s, string file)

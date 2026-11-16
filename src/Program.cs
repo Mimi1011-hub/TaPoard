@@ -335,7 +335,7 @@ partial class Program
             null,
             delegate
             {
-                OpenLegacySettings();
+                OpenSettingsInBrowser();
             }
         );
         menu.Items.Add(
@@ -364,7 +364,7 @@ partial class Program
     {
         if (!PcWindowService.RuntimeAvailable)
         {
-            OpenLegacySettings();
+            OpenSettingsInBrowser();
             return;
         }
         ui.BeginInvoke(new MethodInvoker(delegate
@@ -386,8 +386,9 @@ partial class Program
         }));
     }
 
-    static void OpenLegacySettings()
+    static void OpenSettingsInBrowser()
     {
-        State.Host.Shell.OpenUrl("http://127.0.0.1:" + AppState.Port + "/settings#" + admin);
+        string url = "http://127.0.0.1:" + AppState.Port + "/v4/settings.html#admin=" + Uri.EscapeDataString(admin);
+        State.Host.Shell.OpenUrl(url);
     }
 }
