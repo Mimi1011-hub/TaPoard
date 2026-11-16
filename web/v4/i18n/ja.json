@@ -343,6 +343,7 @@
   "catalog.search": "名前や操作で検索",
   "catalog.noResults": "見つかりませんでした",
   "catalog.noSpace": "置ける空きがありません",
+  "catalog.faderExists": "このページには同じフェーダーがすでにあります。今あるフェーダーを選びました。",
   "catalog.group.audio": "音量・マイク",
   "catalog.group.audioFaders": "音量フェーダー",
   "catalog.note.audioFaders": "スピーカーとマイクの音量調整",

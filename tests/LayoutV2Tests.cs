@@ -113,6 +113,12 @@ class LayoutV2Tests
             DeckLayout.Validate(pages);
         }
         Check(true, "4x1, 3x2 and 4x2 faders validate");
+        var vertical = Fixture();
+        DeckLayout.Migrate(vertical);
+        vertical.landscapeSpeaker = new ControlPlacement { row = 0, column = 0, width = 1, height = 3 };
+        vertical.landscapeMic = new ControlPlacement { row = 0, column = 1, width = 2, height = 3 };
+        DeckLayout.Validate(vertical);
+        Check(true, "1x3 and 2x3 vertical faders validate");
         pages.landscapeControlPages[0].speaker = new ControlPlacement { row = 1, column = 0, width = 5, height = 1 };
         Reject(delegate { DeckLayout.Validate(pages); }, "a 5x1 fader is rejected");
         pages.landscapeControlPages[0].speaker = new ControlPlacement { row = 1, column = 1, width = 4, height = 2 };

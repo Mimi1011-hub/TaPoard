@@ -3,6 +3,25 @@ export class FaderEditor {
   constructor(editor) {
     this.editor = editor;
   }
+  place(orientationName, page, target, width, height, row, column) {
+    return this.editor.change((deck) => {
+      const orientation = this.editor.orientation(orientationName, deck);
+      const pageValue = orientation.pages[page];
+      if (!pageValue || !['speaker', 'mic'].includes(target) || this.editor.effectiveFader(orientation, page, target)) return false;
+      pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
+      pageValue.faders[target] = Object.assign({}, orientation.faders[target], { row, column, width, height, off: undefined });
+      pageValue.faders[`${target}Hidden`] = false;
+    });
+  }
+  remove(orientationName, page, target) {
+    return this.editor.change((deck) => {
+      const orientation = this.editor.orientation(orientationName, deck);
+      const pageValue = orientation.pages[page];
+      if (!pageValue || !this.editor.effectiveFader(orientation, page, target)) return false;
+      pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
+      pageValue.faders[`${target}Hidden`] = true;
+    });
+  }
   move(orientationName, page, target, row, column) {
     return this.editor.change((deck) => {
       const orientation = this.editor.orientation(orientationName, deck),

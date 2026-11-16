@@ -78,6 +78,16 @@ const dirty = appearance.dirty;
 appearance.setBackground({ color: '#000000' });
 assert.equal(appearance.dirty, dirty, 'background does not mark the deck dirty');
 
+const faderEditor = new EditorState(response());
+const faderHistory = new History(faderEditor);
+assert(faderEditor.placeFader('landscape', 0, 'speaker', 1, 3, 0, 3), 'places a vertical fader on only the current page');
+assert.equal(faderEditor.orientation('landscape').pages[0].faders.speaker.height, 3);
+assert(!faderEditor.placeFader('landscape', 0, 'speaker', 1, 1, 0, 2), 'rejects a second speaker fader on the page');
+assert(faderEditor.removeFader('landscape', 0, 'speaker'), 'removes the fader from the current page');
+assert.equal(faderEditor.effectiveFader(faderEditor.orientation('landscape'), 0, 'speaker'), null);
+assert(faderHistory.undo(), 'fader removal is undoable');
+assert.equal(faderEditor.effectiveFader(faderEditor.orientation('landscape'), 0, 'speaker').height, 3);
+
 // Shortcuts get the same starting icon and category as in 3.x.
 const { catalogItem } = await import('../web/v4/settings/catalog-items.js');
 const { defaultIconForAction, effectiveIconKey } = await import('../web/v4/settings/default-icon.js');

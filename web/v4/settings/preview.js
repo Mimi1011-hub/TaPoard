@@ -199,6 +199,12 @@ export class Preview {
     this.onSelect(this.selected);
   }
 
+  selectFader(target) {
+    this.selected = { kind: 'fader', orientation: this.orientation, page: this.page(), target };
+    this.renderOverlay(this.current(), this.page());
+    this.onSelect(this.selected);
+  }
+
   canDrop(hit, cell) {
     const data = this.data(hit);
     return data.kind === 'item'
@@ -230,8 +236,10 @@ export class Preview {
   }
 
   removeSelected() {
-    if (!this.selected || this.selected.kind !== 'item') return false;
-    const removed = this.editor.removeItem(this.selected);
+    if (!this.selected) return false;
+    const removed = this.selected.kind === 'item'
+      ? this.editor.removeItem(this.selected)
+      : this.editor.removeFader(this.selected.orientation, this.selected.page, this.selected.target);
     if (removed) { this.selected = null; this.onSelect(null); }
     return removed;
   }

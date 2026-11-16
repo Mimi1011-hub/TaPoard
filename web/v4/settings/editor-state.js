@@ -1,5 +1,6 @@
 import { reflowOrientation, validOrientation } from './deck-rules.js';
 import { FaderEditor } from './fader-editor.js';
+import { faderSizes } from './fader-sizes.js';
 
 const copy = (value) => JSON.parse(JSON.stringify(value));
 
@@ -216,6 +217,12 @@ export class EditorState {
   moveFader(...args) {
     return this.faderEditor.move(...args);
   }
+  placeFader(...args) {
+    return this.faderEditor.place(...args);
+  }
+  removeFader(...args) {
+    return this.faderEditor.remove(...args);
+  }
   canMoveFader(...args) {
     return this.faderEditor.canMove(...args);
   }
@@ -278,7 +285,7 @@ export class EditorState {
     return ['landscape', 'portrait'].every((name) => this.validateOrientation(deck[name], ids));
   }
   faderSizeAllowed(value) {
-    return ['1x1', '2x2', '3x1', '4x1', '3x2', '4x2'].indexOf(`${value.width}x${value.height}`) >= 0;
+    return faderSizes.indexOf(`${value.width}x${value.height}`) >= 0;
   }
   validateOrientation(orientation, ids) {
     return validOrientation(this, orientation, ids);

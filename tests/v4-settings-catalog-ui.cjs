@@ -208,6 +208,32 @@ const waitFor = async (check, message) => {
     await shot('recent');
 
     await page.getByRole('button', { name: /部品/ }).click();
+    await page.getByRole('button', { name: /音量フェーダー/ }).click();
+    const speakerFader = page.locator('[data-action="control-speaker-fader"]');
+    await speakerFader.click();
+    assert((await speakerFader.locator('xpath=..').locator('.catalog-sizes button').allTextContents()).includes('1×3'));
+    let faderPosts = posts.length;
+    await speakerFader.locator('xpath=..').getByRole('button', { name: '1×3', exact: true }).click();
+    await waitFor(() => posts.length === faderPosts + 1, 'speaker fader save');
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'speaker fader settled');
+    await page.locator('.preview-hit[data-kind="fader"][data-target="speaker"]').click();
+    assert.equal(await page.getByText('このページで隠す').count(), 0, 'fader details have no hide checkbox');
+    faderPosts = posts.length;
+    await page.getByRole('button', { name: 'このボタンを削除' }).click();
+    await waitFor(() => posts.length === faderPosts + 1, 'speaker fader delete save');
+    assert.equal(await page.locator('.preview-hit[data-kind="fader"][data-target="speaker"]').count(), 0);
+    await page.locator('#settings-undo').click();
+    await waitFor(() => posts.length === faderPosts + 2, 'speaker fader delete undo');
+    await waitFor(async () => (await page.locator('.preview-hit[data-kind="fader"][data-target="speaker"]').count()) === 1,
+      'speaker fader returns after undo');
+    await waitFor(async () => (await page.locator('#settings-save-status').innerText()) === '保存しました', 'fader undo settled');
+    faderPosts = posts.length;
+    await speakerFader.click();
+    await speakerFader.locator('xpath=..').getByRole('button', { name: '1×1', exact: true }).click();
+    assert.equal(posts.length, faderPosts, 'a second speaker fader is not saved');
+    assert.match(await page.locator('#settings-notice').innerText(), /すでにあります/);
+    assert.equal(await page.locator('.preview-hit[data-target="speaker"].is-selected').count(), 1, 'existing fader is selected');
+    await page.locator('.catalog-back').click();
     await page.getByRole('button', { name: /時計・PC情報/ }).click();
     const analog = page.locator('[data-action="widget-clock-analog"]');
     await analog.click();

@@ -343,6 +343,7 @@
   "catalog.search": "Search items",
   "catalog.noResults": "No matching items",
   "catalog.noSpace": "There is no room for this item",
+  "catalog.faderExists": "This page already has that fader. The existing fader was selected.",
   "catalog.group.audio": "Audio & microphone",
   "catalog.group.audioFaders": "Volume faders",
   "catalog.note.audioFaders": "Speaker and microphone levels",

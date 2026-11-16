@@ -2,6 +2,7 @@ import { clear, el } from '../core/dom.js';
 import { iconNode } from '../deck/icons.js';
 import { detailsFor } from './details/index.js';
 import { actionError } from './action-validation.js';
+import { faderSizes } from './fader-sizes.js';
 
 const sizes = (values) =>
   values.map((value) => {
@@ -184,13 +185,8 @@ export class Inspector {
       (page.faders && page.faders[address.target]) ||
       orientation.faders[address.target];
     this.root.appendChild(el('h3', '', this.i18n.t(`inspector.fader.${address.target}`)));
-    const hidden = this.input('checkbox', '', (node) =>
-      this.editor.updateFader(address.orientation, address.page, address.target, { hidden: node.checked }),
-    );
-    hidden.checked = !!(page.faders && page.faders[`${address.target}Hidden`]);
-    this.root.appendChild(this.field(this.i18n.t('inspector.fader.hidden'), hidden));
     const select = el('select');
-    sizes(['1x1', '2x2', '3x1', '4x1', '3x2', '4x2']).forEach((size) => {
+    sizes(faderSizes).forEach((size) => {
       const option = el('option', '', `${size.width} × ${size.height}`);
       option.value = size.value;
       option.disabled = !this.editor.canUpdateFader(address.orientation, address.page, address.target, { width: size.width, height: size.height });
@@ -202,6 +198,12 @@ export class Inspector {
       this.editor.updateFader(address.orientation, address.page, address.target, { width: size.width, height: size.height });
     });
     this.root.appendChild(this.field(this.i18n.t('inspector.size'), select));
+    const remove = el('button', 'inspector-delete', this.i18n.t('inspector.delete'));
+    remove.type = 'button';
+    remove.addEventListener('click', () => {
+      if (this.preview.removeSelected()) this.select(null);
+    });
+    this.root.appendChild(remove);
   }
 
   changeItem(values) {

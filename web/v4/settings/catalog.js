@@ -4,6 +4,7 @@ import { canonicalCatalogAction, catalogItem, catalogSizes, controlFromAction } 
 import { CatalogRecent } from './catalog-recent.js';
 import { CatalogView } from './catalog-view.js';
 import { CatalogInputDialog } from './catalog-input-dialog.js';
+import { faderSizes } from './fader-sizes.js';
 
 export class Catalog {
   constructor(options) {
@@ -106,9 +107,10 @@ export class Catalog {
     });
     const action = value.id || value.action;
     const sizes = this.sizes(action);
-    row.draggable = sizes.length === 1;
+    const fader = Boolean(controlFromAction(action));
+    row.draggable = sizes.length === 1 || fader;
     row.addEventListener('click', () => { if (sizes.length > 1) this.toggleSizes(wrap, action, sizes); });
-    row.addEventListener('dblclick', () => { if (sizes.length === 1) this.add(action); });
+    row.addEventListener('dblclick', () => { if (sizes.length === 1 || fader) this.add(action); });
     row.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         if (sizes.length > 1) this.toggleSizes(wrap, action, sizes);
@@ -120,6 +122,7 @@ export class Catalog {
   }
 
   sizes(action) {
+    if (controlFromAction(action)) return faderSizes;
     const item = this.create(action);
     // Only widgets offer a size here; buttons are placed at 1x1 and can be resized in the details.
     const definition = item && item.category === 'widget' && this.editor.definitions.get(item.type);
@@ -228,9 +231,15 @@ export class Catalog {
   async add(action, cell, size) {
     const target = controlFromAction(action), orientation = this.preview.current(), page = this.preview.page();
     if (target) {
-      const item = Object.assign({}, orientation.faders[target], { width: orientation.faders[target].width, height: orientation.faders[target].height });
+      if (this.editor.effectiveFader(orientation, page, target)) {
+        this.preview.selectFader(target);
+        this.onError(this.i18n.t('catalog.faderExists'));
+        return false;
+      }
+      const parts = (size || '1x1').split('x').map(Number);
+      const item = { width: parts[0], height: parts[1] };
       const space = cell || this.editor.firstSpace(orientation, page, item);
-      if (space && this.editor.moveFader(this.preview.orientation, page, target, space.row, space.column)) {
+      if (space && this.editor.placeFader(this.preview.orientation, page, target, item.width, item.height, space.row, space.column)) {
         this.used(action);
         return true;
       }
