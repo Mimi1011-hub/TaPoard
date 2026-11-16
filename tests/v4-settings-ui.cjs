@@ -102,10 +102,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/sync') return setTimeout(() => json(res, 200, state()), 30);
     if (url.pathname === '/api/action') { actionRequests.push(body); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/audio') { audioRequests.push(body); return json(res, 200, { ok: true, audio: state().audio }); }
-    if (url.pathname === '/api/icon-packs' && req.method === 'GET') return json(res, 200, { packs: packs.map((pack) => ({ id: pack.id, name: pack.name, author: pack.author, count: pack.icons.length, mapped: pack.icons.filter((icon) => icon.key).length })), maxPacks: 50, maxIcons: 5000 });
+    if (url.pathname === '/api/icon-packs' && req.method === 'GET') return json(res, 200, { packs: packs.map((pack) => ({ id: pack.id, name: pack.name, author: pack.author, source: pack.source, count: pack.icons.length, mapped: pack.icons.filter((icon) => icon.key).length })), maxPacks: 50, maxIcons: 5000 });
     if (url.pathname === '/api/shortcut-packs' && req.method === 'GET') return json(res, 200, { packs: [], maxPacks: 20, maxShortcuts: 300 });
     if (url.pathname === '/api/icon-packs/get') { const pack = packs.find((value) => value.id === url.searchParams.get('id')); return json(res, pack ? 200 : 404, pack || { error: 'missing' }); }
-    if (url.pathname === '/api/icon-packs/create') { const value = JSON.parse(body), pack = { id: `pack-${packs.length + 1}`, name: value.name, author: value.author, icons: [] }; packs.push(pack); packCreates.push(value); return json(res, 200, { id: pack.id }); }
+    if (url.pathname === '/api/icon-packs/create') { const value = JSON.parse(body), pack = { id: `pack-${packs.length + 1}`, name: value.name, author: value.author, source: value.source, icons: [] }; packs.push(pack); packCreates.push(value); return json(res, 200, { id: pack.id }); }
     if (url.pathname === '/api/icon-packs/add') { const value = JSON.parse(body), pack = packs.find((entry) => entry.id === value.id); pack.icons.push(...value.icons); packAdds.push(value); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/icon-packs/rename') { const value = JSON.parse(body), pack = packs.find((entry) => entry.id === value.id); Object.assign(pack, { name: value.name, author: value.author }); return json(res, 200, { ok: true }); }
     if (url.pathname === '/api/icon-packs/delete') { const value = JSON.parse(body); packs = packs.filter((entry) => entry.id !== value.id); return json(res, 200, { ok: true }); }
@@ -334,6 +334,8 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
       buffer: Buffer.from(await packBlob.arrayBuffer()),
     });
     await waitFor(() => packCreates.length === 1 && packAdds.length === 1, 'pack import');
+    assert.equal(packCreates[0].source, 'file');
+    assert.equal(await page.getByText('パックファイルから読み込んだもの', { exact: true }).count(), 1);
     const packRow = page.locator('.pack-row').filter({ hasText: packName });
     await packRow.waitFor({ timeout: 15000 });
     assert.equal(await packRow.locator('strong').getAttribute('title'), packName, 'full pack name is available as a tooltip');

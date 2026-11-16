@@ -25,6 +25,7 @@ class IconPack
     public string name { get; set; }
     public string author { get; set; }
     public string created { get; set; }
+    public string source { get; set; }
     public List<IconPackItem> icons { get; set; }
 }
 
@@ -101,7 +102,8 @@ static class IconPacks
                     result.Add(new Dictionary<string, object>
                     {
                         { "id", pack.id }, { "name", pack.name }, { "author", pack.author ?? "" },
-                        { "created", pack.created ?? "" }, { "count", pack.icons.Count }, { "mapped", mapped },
+                        { "created", pack.created ?? "" }, { "source", pack.source == "images" ? "images" : "file" },
+                        { "count", pack.icons.Count }, { "mapped", mapped },
                     });
                 }
                 catch { }
@@ -116,7 +118,7 @@ static class IconPacks
         lock (Gate) return Read(data, id);
     }
 
-    internal static string Create(string data, string name, string author)
+    internal static string Create(string data, string name, string author, string source)
     {
         lock (Gate)
         {
@@ -127,6 +129,7 @@ static class IconPacks
                 name = CleanText(name, Text.Get("source.iconpacks.6")),
                 author = CleanText(author, ""),
                 created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                source = source == "images" ? "images" : "file",
                 icons = new List<IconPackItem>(),
             };
             Write(data, pack);

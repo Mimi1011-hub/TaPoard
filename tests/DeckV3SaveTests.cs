@@ -134,6 +134,14 @@ public static class DeckV3SaveTests
         string executable = Path.Combine(root, "test.exe"); File.WriteAllBytes(executable, new byte[] { 1, 2, 3 });
         try
         {
+            string imagePack = IconPacks.Create(root, "Pictures", "", "images");
+            var imageSummary = IconPacks.List(root).Find(value => Convert.ToString(value["id"]) == imagePack);
+            Assert(Convert.ToString(imageSummary["source"]) == "images", "icon packs remember picture imports");
+            IconPack oldPack = IconPacks.Get(root, imagePack);
+            oldPack.source = null;
+            File.WriteAllText(Path.Combine(IconPacks.Folder(root), imagePack + ".json"), IconPacks.Serializer().Serialize(oldPack), new UTF8Encoding(false));
+            imageSummary = IconPacks.List(root).Find(value => Convert.ToString(value["id"]) == imagePack);
+            Assert(Convert.ToString(imageSummary["source"]) == "file", "old icon packs default to pack-file imports");
             var store = new FakeSettingsStore(); var desktop = new FakeDesktop();
             var state = new AppState(root, root, "test", new AppHost(new FakeKeySender(), new FakePointerInput(), new FakeAudioService(), new FakeAudioDevices(), new FakeShellActions()), store);
             state.Config = Fixture(executable); var controller = new DeckController(state, desktop);

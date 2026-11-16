@@ -43,6 +43,7 @@ export async function readPackSource(files) {
     const images = files.filter((file) => imageType(file.name));
     if (!images.length) throw new Error('type');
     return {
+      source: 'images',
       name: base(images[0].name),
       author: '',
       icons: images.map((blob) => ({ name: base(blob.name), key: guessPresetKey(blob.name), group: '', tags: '', blob })),
@@ -82,6 +83,7 @@ export async function readPackSource(files) {
     );
   if (!icons.length) throw new Error('icons');
   return {
+    source: 'file',
     name: String((manifest && manifest.name) || base(archive.name)).slice(0, 80),
     author: String((manifest && manifest.author) || '').slice(0, 80),
     icons,

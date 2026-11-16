@@ -297,6 +297,12 @@
   border-radius: 7px;
   background: var(--color-button);
 }
+.pack-source-heading {
+  margin: 16px 0 7px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+}
 .pack-row {
   display: grid;
   gap: 4px;

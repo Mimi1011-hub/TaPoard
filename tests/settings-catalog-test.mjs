@@ -6,6 +6,7 @@ import { canonicalCatalogAction, catalogItem, catalogSizes } from '../web/v4/set
 import { hotkeyNames } from '../web/v4/settings/details/hotkey-details.js';
 import { CatalogRecent } from '../web/v4/settings/catalog-recent.js';
 import { readShortcutPack } from '../web/v4/settings/shortcut-pack-reader.js';
+import { readPackSource } from '../web/v4/settings/icon-pack-reader.js';
 
 const ids = catalogGroups.flatMap((group) => group.items.map((item) => item.id || item.action));
 assert.equal(new Set(ids).size, ids.length, 'catalog ids are unique');
@@ -60,6 +61,8 @@ assert.equal(skipped.skipped, 1);
 assert.equal(skipped.shortcuts.length, 1);
 await assert.rejects(() => readShortcutPack(file(source({ shortcuts: Array.from({ length: 301 }, () => ({ name: 'A', keys: 'A' })) }))));
 await assert.rejects(() => readShortcutPack(file(source({ name: 'x'.repeat(61) }))));
+const pictureSource = await readPackSource([{ name: 'star.png' }]);
+assert.equal(pictureSource.source, 'images');
 
 const values = new Map();
 const storage = { getItem: (key) => values.get(key) || null, setItem: (key, value) => values.set(key, value) };

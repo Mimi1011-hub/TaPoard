@@ -48,7 +48,7 @@ export class IconPacks {
       this.progress(this.i18n.t('packs.reading'));
       const source = await readPackSource(files);
       if (source.icons.length > this.maxIcons) throw new Error('limit');
-      id = (await this.api.post('/api/icon-packs/create', { name: source.name, author: source.author }, 10000)).id;
+      id = (await this.api.post('/api/icon-packs/create', { name: source.name, author: source.author, source: source.source }, 10000)).id;
       let batch = [], size = 0;
       const flush = async () => {
         if (batch.length) await this.api.post('/api/icon-packs/add', { id, icons: batch }, 30000);
@@ -110,7 +110,16 @@ export class IconPacks {
     this.root.appendChild(el('p', 'saved-note', this.i18n.t('packs.note', { packs: this.packs.length, max: this.maxPacks })));
     this.progressNode = el('p', 'pack-progress');
     this.root.appendChild(this.progressNode);
-    this.packs.forEach((pack) => {
+    const renderGroup = (key, packs) => {
+      if (!packs.length) return;
+      this.root.appendChild(el('h3', 'pack-source-heading', this.i18n.t(key)));
+      packs.forEach((pack) => this.renderPack(pack));
+    };
+    renderGroup('packs.fromFiles', this.packs.filter((pack) => pack.source !== 'images'));
+    renderGroup('packs.fromPictures', this.packs.filter((pack) => pack.source === 'images'));
+  }
+
+  renderPack(pack) {
       const row = el('div', 'pack-row');
       const note = pack.author
         ? this.i18n.t('packs.countAuthor', { count: pack.count, author: pack.author })
@@ -125,7 +134,6 @@ export class IconPacks {
       );
       row.append(name, el('small', '', note), actions);
       this.root.appendChild(row);
-    });
   }
 
   async change(action, body) {

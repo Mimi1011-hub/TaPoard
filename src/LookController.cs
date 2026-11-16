@@ -89,8 +89,9 @@ sealed class LookController : ControllerBase
         string id = input.TryGetValue("id", out raw) ? Convert.ToString(raw) : null;
         string name = input.TryGetValue("name", out raw) ? Convert.ToString(raw) : null;
         string author = input.TryGetValue("author", out raw) ? Convert.ToString(raw) : null;
+        string source = input.TryGetValue("source", out raw) ? Convert.ToString(raw) : null;
         if (action == "create")
-            HttpIO.ReplyJson(r.stream, 200, new { ok = true, id = IconPacks.Create(state.Data, name, author) });
+            HttpIO.ReplyJson(r.stream, 200, new { ok = true, id = IconPacks.Create(state.Data, name, author, source) });
         else if (action == "add")
         {
             var request = IconPacks.Serializer().Deserialize<IconPackAddRequest>(json);
