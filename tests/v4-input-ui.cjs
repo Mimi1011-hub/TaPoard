@@ -27,7 +27,13 @@ function state() {
     item('touch-1', 'touchpad', 2, 0, 3, 2, { speed: 5, acceleration: false, tapToClick: true, twoFingerScroll: true }),
     item('clock-1', 'clock', 2, 3, 2, 1), item('keypad-1', 'keypad', 4, 0, 4, 5),
   ];
-  const orientation = { columns: 5, rows: 9, faders: { speaker: { off: true }, mic: { off: true } }, pages: [{ faders: null, items }, { faders: null, items: [item('clock-2', 'clock', 0, 0, 2, 1)] }] };
+  const second = [item('keypad-2', 'keypad', 0, 0, 4, 4), item('clock-2', 'clock', 4, 0, 2, 1)];
+  const orientation = {
+    columns: 5,
+    rows: 9,
+    faders: { speaker: { off: true }, mic: { off: true } },
+    pages: [{ faders: null, items }, { faders: null, items: second }],
+  };
   return { schemaVersion: 3, revision: 1, version: 'input-one', current: { portrait: 0, landscape: 0 }, deck: { keepAwake: false, portrait: orientation, landscape: orientation },
     widgetDefinitions: ['wheel', 'touchpad', 'keypad', 'clock'].map((type) => ({ type, displayOnly: true })), inputSessions: sessions(), audio: {}, metrics: {}, weather: {}, background: null };
 }
@@ -82,6 +88,16 @@ function eventsSince(index) { return inputRequests.slice(index).flatMap((request
     const page = await context.newPage(); page.on('pageerror', (error) => errors.push(String(error)));
     await page.goto(`${base}/v4/#connect=test`); await page.locator('.wheel-widget').first().waitFor();
     await page.waitForFunction(() => document.querySelectorAll('.keypad-key').length === 17);
+    const keypadFive = await page.locator('[data-widget-id="keypad-1"]').boundingBox();
+    const keyFive = await page.locator('[data-widget-id="keypad-1"] .keypad-key').first().boundingBox();
+    assert(keyFive.height >= keypadFive.height / 5 * 0.8, '4x5 keypad keys fill their rows');
+    await page.getByRole('button', { name: '次のページ' }).click();
+    await page.locator('[data-widget-id="keypad-2"]').waitFor();
+    const keypadFour = await page.locator('[data-widget-id="keypad-2"]').boundingBox();
+    const keyFour = await page.locator('[data-widget-id="keypad-2"] .keypad-key').first().boundingBox();
+    assert(keyFour.height >= keypadFour.height / 4 * 0.8, '4x4 keypad keys fill their rows');
+    await page.getByRole('button', { name: '前のページ' }).click();
+    await page.locator('[data-widget-id="keypad-1"]').waitFor();
     assert(views.some((view) => view.visibleIds.includes('wheel-v') && view.visibleIds.includes('touch-1') && !view.visibleIds.includes('clock-1')));
 
     let start = inputRequests.length;

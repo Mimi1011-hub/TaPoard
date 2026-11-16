@@ -649,6 +649,8 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  justify-items: stretch;
   gap: 5px;
   padding: 6px;
   background: linear-gradient(145deg, #171b25, #08090d);
