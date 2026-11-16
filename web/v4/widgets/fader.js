@@ -120,8 +120,15 @@ export class FaderWidget {
     catch (error) { this.failed(error); }
   }
 
+  // The PC answers with only this fader's device filled in, so the other device's values are kept.
   apply(result) {
-    if (result && result.audio) this.context.patch({ audio: Object.assign({}, (this.context.state().audio || {}), result.audio), revision: result.revision });
+    if (!result || !result.audio) return;
+    const prefix = this.target === 'mic' ? 'mic' : 'speaker';
+    const audio = Object.assign({}, this.context.state().audio || {});
+    ['Volume', 'Muted', 'Available'].forEach((name) => {
+      audio[`${prefix}${name}`] = result.audio[`${prefix}${name}`];
+    });
+    this.context.patch({ audio, revision: result.revision });
   }
 
   failed(error) {

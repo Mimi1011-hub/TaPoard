@@ -21,7 +21,10 @@ function placement(id, type, row, column, width, height, options) {
 }
 
 function deckState() {
-  const faders = { speaker: { row: 0, column: 0, width: 1, height: 2 }, mic: { off: true } };
+  const faders = {
+    speaker: { row: 0, column: 0, width: 1, height: 2 },
+    mic: { row: 0, column: 1, width: 1, height: 2 },
+  };
   const items = [
     placement('clock-1', 'clock', 0, 1, 2, 1, { showSeconds: true }),
     placement('metrics-1', 'metrics', 1, 1, 2, 2),
@@ -35,15 +38,15 @@ function deckState() {
     schemaVersion: 3, revision, version, computer: 'Widget test', current: { portrait: 0, landscape: 0 },
     deck: {
       keepAwake: false,
-      portrait: { columns: 4, rows: 6, faders, pages: [{ faders: null, items }, { faders: { speakerHidden: true }, items: [] }] },
-      landscape: { columns: 6, rows: 4, faders, pages: [{ faders: null, items }, { faders: { speakerHidden: true }, items: [] }] },
+      portrait: { columns: 4, rows: 6, faders, pages: [{ faders: null, items }, { faders: { speakerHidden: true, micHidden: true }, items: [] }] },
+      landscape: { columns: 6, rows: 4, faders, pages: [{ faders: null, items }, { faders: { speakerHidden: true, micHidden: true }, items: [] }] },
     },
     widgetDefinitions: [
       { type: 'clock', displayOnly: true }, { type: 'metrics', displayOnly: true }, { type: 'weather', displayOnly: true },
       { type: 'slideshow', displayOnly: true }, { type: 'wheel', displayOnly: true },
       { type: 'future', displayOnly: true },
     ],
-    audio: { speakerVolume: 20, speakerMuted: false, speakerAvailable: true, micAvailable: false },
+    audio: { speakerVolume: 20, speakerMuted: false, speakerAvailable: true, micVolume: 42, micMuted: true, micAvailable: true },
     metrics: { active: true, cpuSupported: true, cpuAvailable: true, cpuPercent: metricValue, memoryAvailable: true, memoryPercent: 44, memoryUsedBytes: 4294967296, memoryTotalBytes: 8589934592,
       history: [{ cpuPercent: 10, memoryPercent: 40, gpus: [{ id: 'gpu-1', utilizationPercent: 30, memoryPercent: 20 }] }, { cpuPercent: metricValue, memoryPercent: 44, gpus: [{ id: 'gpu-1', utilizationPercent: 50, memoryPercent: 25 }] }],
       gpus: [{ id: 'gpu-1', name: 'Test GPU', utilizationPercent: 50, utilizationAvailable: true, memoryAvailable: true, memoryUsedBytes: 2147483648, memoryTotalBytes: 4294967296 }] },
@@ -73,7 +76,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/sync') { setTimeout(() => json(res, 200, { revision, version }), 100); return; }
     if (url.pathname === '/api/audio') {
       const value = JSON.parse(body); audioRequests.push(value);
-      const audio = value.toggleMute ? { speakerMuted: true } : { speakerVolume: 5 };
+      const audio = value.toggleMute ? { speakerMuted: true } : { speakerVolume: 5, speakerAvailable: true };
       json(res, 200, { revision, audio }); return;
     }
     if (url.pathname === '/api/view') { viewRequests.push(JSON.parse(body)); json(res, 200, { ok: true }); return; }
@@ -169,6 +172,8 @@ async function prepare(page, errors) {
     await page.getByRole('button', { name: 'スピーカーのミュート切替' }).click();
     await new Promise((resolve) => setTimeout(resolve, 50));
     assert.deepEqual(audioRequests.at(-1), { target: 'speaker', toggleMute: true });
+    assert.equal(await page.locator('.mic .fader-value').innerText(), '42%', 'speaker response keeps microphone volume');
+    assert.equal(await page.locator('.mic').evaluate((node) => node.classList.contains('muted')), true, 'speaker response keeps microphone mute');
     await page.getByRole('button', { name: '次のページ' }).click();
     await page.waitForFunction(() => document.querySelectorAll('.widget-tile').length === 0);
     assert(viewRequests.some((entry) => entry.visibleIds.length === 0), 'empty page announces no widgets');
