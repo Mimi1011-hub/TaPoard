@@ -1724,15 +1724,16 @@ sealed class PcBar : Control
                 else if (item == hover)
                     back = item.id == "close" ? Color.FromArgb(196, 43, 28) : Color.FromArgb(42, 44, 51);
                 if (active && back.IsEmpty)
-                    back = Color.FromArgb(36, 52, 98);
+                    back = Color.FromArgb(53, 105, 200);
+                else if (IsToggle(item.id) && back.IsEmpty)
+                    back = Color.FromArgb(34, 36, 43);
                 if (!back.IsEmpty)
                     using (var b = new SolidBrush(back))
                         g.FillRectangle(b, item.bounds);
-                if (active)
-                    using (var accent = new SolidBrush(Color.FromArgb(110, 150, 255)))
-                        g.FillRectangle(accent, item.bounds.X + item.bounds.Width / 4, item.bounds.Bottom - Math.Max(2, (int)(2 * UiScale)),
-                            item.bounds.Width / 2, Math.Max(2, (int)(2 * UiScale)));
-                using (var fg = new SolidBrush(active ? Color.FromArgb(150, 182, 255) : Color.FromArgb(222, 224, 230)))
+                if (IsToggle(item.id) && !active)
+                    using (var border = new Pen(Color.FromArgb(75, 80, 94)))
+                        g.DrawRectangle(border, item.bounds.X, item.bounds.Y, item.bounds.Width - 1, item.bounds.Height - 1);
+                using (var fg = new SolidBrush(active ? Color.White : Color.FromArgb(222, 224, 230)))
                     g.DrawString(active ? item.activeGlyph : item.glyph, glyphFont, fg, item.bounds, center);
             }
             foreach (var item in nav)
@@ -1757,6 +1758,11 @@ sealed class PcBar : Control
                     Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap })
                     g.DrawString(pageName, pageFont, fg, pageNameBounds, ellipsis);
         }
+    }
+
+    static bool IsToggle(string id)
+    {
+        return id == "info" || id == "viewonly" || id == "topmost" || id == "fullscreen";
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
@@ -1855,7 +1861,13 @@ sealed class PcBar : Control
 
     internal ContextMenuStrip BuildMenu()
     {
-        var menu = new ContextMenuStrip { Font = new Font("Yu Gothic UI", 14 * UiScale, GraphicsUnit.Pixel), ShowImageMargin = false };
+        var menu = new ContextMenuStrip
+        {
+            Font = new Font("Yu Gothic UI", 14 * UiScale, GraphicsUnit.Pixel),
+            ShowImageMargin = false,
+            BackColor = Color.FromArgb(34, 36, 43),
+            ForeColor = Color.FromArgb(232, 234, 240),
+        };
         foreach (var item in nav)
         {
             string id = item.id;
@@ -1867,7 +1879,14 @@ sealed class PcBar : Control
         foreach (var item in items)
         {
             string id = item.id;
-            var entry = new ToolStripMenuItem(item.tip) { Checked = owner.IsActive(id), CheckOnClick = false };
+            bool active = owner.IsActive(id);
+            var entry = new ToolStripMenuItem(item.tip)
+            {
+                Checked = active,
+                CheckOnClick = false,
+                BackColor = active ? Color.FromArgb(53, 105, 200) : Color.FromArgb(34, 36, 43),
+                ForeColor = active ? Color.White : Color.FromArgb(232, 234, 240),
+            };
             entry.Click += delegate { owner.Command(id); };
             menu.Items.Add(entry);
         }
