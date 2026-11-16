@@ -257,6 +257,7 @@
 }
 .appearance-block {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   padding: 12px 0;
   border-bottom: 1px solid var(--color-border);
@@ -276,16 +277,20 @@
 }
 .pack-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 4px;
-  align-items: center;
+  min-width: 0;
   padding: 6px 0;
 }
 .pack-row strong,
 .pack-row small {
-  grid-column: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 .background-swatches {
   display: flex;

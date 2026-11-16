@@ -230,15 +230,41 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
 
     await page.getByRole('button', { name: '見た目' }).click();
     const { buildZip } = await import('../web/v4/settings/zip.js');
-    const manifest = { format: 'tapoard-icons', name: 'Test Pack', icons: [{ file: 'icons/heart.png', name: 'Pack Heart', key: 'heart' }] };
-    const packBlob = buildZip([{ name: 'icons.json', bytes: new TextEncoder().encode(JSON.stringify(manifest)) }, { name: 'icons/heart.png', bytes: png }]);
-    await page.locator('#settings-section-appearance input[accept*="tpicons"]').setInputFiles({ name: 'test.tpicons', mimeType: 'application/zip', buffer: Buffer.from(await packBlob.arrayBuffer()) });
+    const packName = 'Very Long Test Icon Pack Name That Stays On One Line Beside Its Buttons';
+    const manifest = {
+      format: 'tapoard-icons',
+      name: packName,
+      icons: [{ file: 'icons/heart.png', name: 'Pack Heart', key: 'heart' }],
+    };
+    const packBlob = buildZip([
+      { name: 'icons.json', bytes: new TextEncoder().encode(JSON.stringify(manifest)) },
+      { name: 'icons/heart.png', bytes: png },
+    ]);
+    await page.locator('#settings-section-appearance input[accept*="tpicons"]').setInputFiles({
+      name: 'test.tpicons',
+      mimeType: 'application/zip',
+      buffer: Buffer.from(await packBlob.arrayBuffer()),
+    });
     await waitFor(() => packCreates.length === 1 && packAdds.length === 1, 'pack import');
+    const packRow = page.locator('.pack-row').filter({ hasText: packName });
+    await packRow.waitFor({ timeout: 15000 });
+    assert.equal(await packRow.locator('strong').getAttribute('title'), packName, 'full pack name is available as a tooltip');
+    assert.equal(
+      await packRow.locator('strong').evaluate((node) => getComputedStyle(node).whiteSpace),
+      'nowrap',
+      'long pack name stays on one line',
+    );
+    assert.equal(await packRow.evaluate((node) => node.scrollWidth <= node.clientWidth), true, 'pack row does not overflow');
+    assert.equal(
+      await packRow.locator('.pack-actions').evaluate((node) => node.scrollWidth <= node.clientWidth),
+      true,
+      'pack buttons stay in the row',
+    );
     await page.getByRole('button', { name: '配置' }).click();
     await page.locator('.preview-hit[data-kind="item"]').first().click();
     appearancePosts = posts.length;
     await page.getByRole('button', { name: 'アイコンを変える' }).click();
-    await page.getByRole('button', { name: 'Test Pack' }).click();
+    await page.getByRole('button', { name: packName }).click();
     await page.locator('.icon-choice').filter({ hasText: 'Pack Heart' }).click();
     await waitFor(() => posts.length === appearancePosts + 1, 'pack icon save');
     assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].iconPack, 'pack-1');

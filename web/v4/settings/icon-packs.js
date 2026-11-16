@@ -115,12 +115,15 @@ export class IconPacks {
       const note = pack.author
         ? this.i18n.t('packs.countAuthor', { count: pack.count, author: pack.author })
         : this.i18n.t('packs.count', { count: pack.count });
-      row.append(el('strong', '', pack.name), el('small', '', note));
-      row.append(
+      const name = el('strong', '', pack.name);
+      name.title = pack.name;
+      const actions = el('div', 'pack-actions');
+      actions.append(
         this.button('packs.rename', () => this.rename(pack)),
         this.button('packs.export', () => this.export(pack)),
         this.button('packs.delete', () => this.remove(pack)),
       );
+      row.append(name, el('small', '', note), actions);
       this.root.appendChild(row);
     });
   }
