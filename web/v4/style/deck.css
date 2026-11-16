@@ -270,6 +270,10 @@
 .audio-fader.muted .audio-mute {
   color: var(--color-danger);
 }
+.audio-mute svg {
+  width: 24px;
+  height: 24px;
+}
 .audio-fader.unavailable {
   opacity: 0.45;
 }

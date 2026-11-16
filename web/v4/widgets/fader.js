@@ -1,5 +1,31 @@
 import { el } from '../core/dom.js';
 
+const svgNamespace = 'http://www.w3.org/2000/svg';
+
+function faderIcon(target, documentObject) {
+  const svg = documentObject.createElementNS(svgNamespace, 'svg');
+  const add = (name, values) => {
+    const node = documentObject.createElementNS(svgNamespace, name);
+    Object.keys(values).forEach((key) => node.setAttribute(key, values[key]));
+    svg.appendChild(node);
+  };
+  svg.setAttribute('viewBox', '0 0 48 48');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2.6');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  if (target === 'mic') {
+    add('rect', { x: '17', y: '6', width: '14', height: '25', rx: '7' });
+    add('path', { d: 'M11 24a13 13 0 0 0 26 0M24 37v6m-7 0h14' });
+  } else {
+    add('path', { d: 'M8 19h8l10-8v26l-10-8H8z' });
+    add('path', { d: 'M33 18c3 3 3 9 0 12m5-17c6 6 6 16 0 22' });
+  }
+  return svg;
+}
+
 export class FaderWidget {
   constructor(context) {
     this.context = context;
@@ -18,7 +44,8 @@ export class FaderWidget {
     this.horizontal = (item.width || 1) > (item.height || 1);
     node.classList.add('audio-fader');
     if (this.horizontal) node.classList.add('horizontal');
-    this.mute = el('button', 'audio-mute', this.target === 'mic' ? '♩' : '◖');
+    this.mute = el('button', 'audio-mute');
+    this.mute.appendChild(faderIcon(this.target, node.ownerDocument));
     this.mute.type = 'button';
     this.mute.setAttribute('aria-label', this.context.i18n.t(this.target === 'mic' ? 'fader.micMute' : 'fader.speakerMute'));
     this.track = el('div', `fader-track${this.horizontal ? ' horizontal-track' : ''}`);

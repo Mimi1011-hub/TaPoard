@@ -161,6 +161,9 @@ async function prepare(page, errors) {
     assert(viewRequests.some((entry) => entry.visibleIds.includes('metrics-1')), 'visible widgets are announced');
 
     const track = page.locator('.speaker .fader-track');
+    assert.equal(await page.locator('.speaker .audio-mute svg path').count(), 2, 'speaker mute uses the line icon');
+    assert.equal(await page.locator('.mic .audio-mute svg rect').count(), 1, 'microphone mute uses the line icon');
+    assert.equal(await page.locator('.speaker .audio-mute').innerText(), '', 'fader mute does not use a clipped text glyph');
     const box = await track.boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height - 2); await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2, box.y + 2, { steps: 12 });
