@@ -115,7 +115,9 @@ export class IconPacks {
       this.root.appendChild(el('h3', 'pack-source-heading', this.i18n.t(key)));
       packs.forEach((pack) => this.renderPack(pack));
     };
-    renderGroup('packs.fromFiles', this.packs.filter((pack) => pack.source !== 'images'));
+    const files = this.packs.filter((pack) => pack.source !== 'images');
+    renderGroup('packs.tapoardIcons', files.filter((pack) => pack.author === 'TaPoard'));
+    renderGroup('packs.otherFiles', files.filter((pack) => pack.author !== 'TaPoard'));
     renderGroup('packs.fromPictures', this.packs.filter((pack) => pack.source === 'images'));
   }
 

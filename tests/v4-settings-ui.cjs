@@ -322,6 +322,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     const manifest = {
       format: 'tapoard-icons',
       name: packName,
+      author: 'TaPoard',
       icons: [{ file: 'icons/heart.png', name: 'Pack Heart', key: 'heart' }],
     };
     const packBlob = buildZip([
@@ -335,7 +336,9 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     });
     await waitFor(() => packCreates.length === 1 && packAdds.length === 1, 'pack import');
     assert.equal(packCreates[0].source, 'file');
-    assert.equal(await page.getByText('パックファイルから読み込んだもの', { exact: true }).count(), 1);
+    assert.equal(await page.getByText('TaPoard のアイコン', { exact: true }).count(), 1);
+    assert.equal(await page.getByText('そのほかのパック', { exact: true }).count(), 0);
+    assert.equal(await page.getByText('画像から作ったもの', { exact: true }).count(), 0);
     const packRow = page.locator('.pack-row').filter({ hasText: packName });
     await packRow.waitFor({ timeout: 15000 });
     assert.equal(await packRow.locator('strong').getAttribute('title'), packName, 'full pack name is available as a tooltip');
