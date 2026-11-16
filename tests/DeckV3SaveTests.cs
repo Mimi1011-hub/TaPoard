@@ -149,6 +149,18 @@ public static class DeckV3SaveTests
             Assert(true, "read-save-read preserves the v3 deck");
             Assert(state.Config.apps[0].icon == "server-icon", "server-derived executable icon is preserved");
 
+            ReadResponse styledFader = Read(controller);
+            styledFader.deck.landscape.faders.speaker.backgroundOpacity = 60;
+            styledFader.deck.landscape.faders.speaker.hideValue = true;
+            styledFader.deck.landscape.faders.speaker.iconColor = "#b53846";
+            Result styledSave = Save(controller, styledFader.version, styledFader.deck);
+            FaderV3 savedFader = Read(controller).deck.landscape.faders.speaker;
+            Assert(styledSave.status == 200 && savedFader.backgroundOpacity == 60 && savedFader.hideValue
+                && savedFader.iconColor == "#b53846", "fader appearance saves and returns through the admin deck");
+            DeckV3 invalidFader = Copy(Read(controller).deck);
+            invalidFader.landscape.faders.speaker.backgroundOpacity = 101;
+            ExpectInvalid(controller, state, invalidFader, "スピーカー", "fader opacity outside zero to one hundred is rejected");
+
             ReadResponse moved = Read(controller); moved.deck.landscape.pages[0].items[1].column = 2;
             Result movedSave = Save(controller, moved.version, moved.deck); Assert(movedSave.status == 200 && state.Config.apps.Find(a => a.id == "url").landscape.column == 2, "v3 save moves a button in the legacy model");
             ApiRequest publicState = Request("GET", "/api/v3/state", null); controller.GetV3State(publicState);

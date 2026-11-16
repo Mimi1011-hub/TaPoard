@@ -24,7 +24,7 @@ function placement(id, type, row, column, width, height, options) {
 
 function deckState() {
   const faders = {
-    speaker: { row: 0, column: 0, width: 1, height: 2 },
+    speaker: { row: 0, column: 0, width: 1, height: 2, backgroundOpacity: 60, iconColor: '#b53846' },
     mic: { row: 0, column: 1, width: 1, height: 2 },
   };
   const items = [
@@ -161,6 +161,8 @@ async function prepare(page, errors) {
     assert(viewRequests.some((entry) => entry.visibleIds.includes('metrics-1')), 'visible widgets are announced');
 
     const track = page.locator('.speaker .fader-track');
+    assert.equal(await page.locator('.speaker').evaluate((node) => node.style.getPropertyValue('--key-alpha')), '0.6');
+    assert.equal(await page.locator('.speaker .audio-mute').evaluate((node) => getComputedStyle(node).color), 'rgb(181, 56, 70)');
     assert.equal(await page.locator('.speaker .audio-mute svg path').count(), 2, 'speaker mute uses the line icon');
     assert.equal(await page.locator('.mic .audio-mute svg rect').count(), 1, 'microphone mute uses the line icon');
     assert.equal(await page.locator('.speaker .audio-mute').innerText(), '', 'fader mute does not use a clipped text glyph');

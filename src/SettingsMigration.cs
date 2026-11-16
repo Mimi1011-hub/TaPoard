@@ -96,6 +96,9 @@ static class SettingsMigration
             width = placement.width,
             height = placement.height,
             off = off,
+            backgroundOpacity = placement.backgroundOpacity,
+            hideValue = placement.hideValue,
+            iconColor = placement.iconColor,
         };
     }
 
@@ -219,7 +222,11 @@ static class SettingsMigration
 
     static ControlPlacement Placement(FaderV3 source)
     {
-        return new ControlPlacement { row = source.row, column = source.column, width = source.width, height = source.height };
+        return new ControlPlacement
+        {
+            row = source.row, column = source.column, width = source.width, height = source.height,
+            backgroundOpacity = source.backgroundOpacity, hideValue = source.hideValue, iconColor = source.iconColor,
+        };
     }
 
     internal static AppEntry ToApp(DeckItem item, bool portrait, int page)

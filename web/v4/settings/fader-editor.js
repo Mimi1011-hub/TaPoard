@@ -51,7 +51,9 @@ export class FaderEditor {
       if (!pageValue || !['speaker', 'mic'].includes(target)) return false;
       pageValue.faders = pageValue.faders || { speaker: null, mic: null, speakerHidden: false, micHidden: false };
       if (Object.prototype.hasOwnProperty.call(values, 'hidden')) pageValue.faders[`${target}Hidden`] = !!values.hidden;
-      if (values.width || values.height) {
+      const changesFader = ['width', 'height', 'backgroundOpacity', 'hideValue', 'iconColor']
+        .some((key) => Object.prototype.hasOwnProperty.call(values, key));
+      if (changesFader) {
         const current = this.editor.effectiveFader(orientation, page, target) || orientation.faders[target];
         pageValue.faders[target] = Object.assign({}, current, values, { hidden: undefined, off: undefined });
       }

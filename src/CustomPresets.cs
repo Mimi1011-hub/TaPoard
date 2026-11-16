@@ -150,7 +150,11 @@ sealed class CustomPresets
         if (mic ? page.micHidden : page.speakerHidden) return null;
         ControlPlacement own = mic ? page.mic : page.speaker;
         if (own == null) return shared.off ? null : Copy(shared);
-        return new FaderV3 { row = own.row, column = own.column, width = own.width, height = own.height };
+        return new FaderV3
+        {
+            row = own.row, column = own.column, width = own.width, height = own.height,
+            backgroundOpacity = own.backgroundOpacity, hideValue = own.hideValue, iconColor = own.iconColor,
+        };
     }
 
     string Name(string name)

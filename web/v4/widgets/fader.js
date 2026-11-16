@@ -44,8 +44,11 @@ export class FaderWidget {
     this.horizontal = (item.width || 1) > (item.height || 1);
     node.classList.add('audio-fader');
     if (this.horizontal) node.classList.add('horizontal');
+    const opacity = item.backgroundOpacity == null ? 100 : Math.max(0, Math.min(100, item.backgroundOpacity));
+    node.dataset.keyClear = String(100 - opacity);
     this.mute = el('button', 'audio-mute');
     this.mute.appendChild(faderIcon(this.target, node.ownerDocument));
+    if (item.iconColor) this.mute.style.color = item.iconColor;
     this.mute.type = 'button';
     this.mute.setAttribute('aria-label', this.context.i18n.t(this.target === 'mic' ? 'fader.micMute' : 'fader.speakerMute'));
     this.track = el('div', `fader-track${this.horizontal ? ' horizontal-track' : ''}`);
@@ -56,6 +59,7 @@ export class FaderWidget {
     this.thumb = el('span', 'fader-thumb');
     this.track.append(this.level, this.thumb);
     this.label = el('span', 'fader-value');
+    this.label.hidden = !!item.hideValue;
     node.append(this.mute, this.track, this.label);
     if (this.context.preview) { this.update(state); return; }
     this.onMute = (event) => { event.stopPropagation(); this.context.feedback.tap(true); this.sendMute(); };

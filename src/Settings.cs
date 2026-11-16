@@ -104,4 +104,7 @@ class ControlPlacement
     public int column { get; set; }
     public int width { get; set; }
     public int height { get; set; }
+    public int? backgroundOpacity { get; set; }
+    public bool hideValue { get; set; }
+    public string iconColor { get; set; }
 }

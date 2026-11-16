@@ -81,7 +81,11 @@ static class DeckV3Validator
 
     static ControlPlacement Placement(FaderV3 source)
     {
-        return new ControlPlacement { row = source.row, column = source.column, width = source.width, height = source.height };
+        return new ControlPlacement
+        {
+            row = source.row, column = source.column, width = source.width, height = source.height,
+            backgroundOpacity = source.backgroundOpacity, hideValue = source.hideValue, iconColor = source.iconColor,
+        };
     }
 
     static ControlPlacement Effective(PageFadersV3 page, ControlPlacement shared, bool off, bool mic)
@@ -96,6 +100,11 @@ static class DeckV3Validator
     static void RequireFader(ControlPlacement placement, OrientationV3 orientation, string label)
     {
         if (!DeckLayout.ControlFits(placement, orientation.columns, orientation.rows))
+            throw new Exception(Text.Get("source.deckv3validator.26", label));
+        if (placement.backgroundOpacity.HasValue
+            && (placement.backgroundOpacity.Value < 0 || placement.backgroundOpacity.Value > 100))
+            throw new Exception(Text.Get("source.deckv3validator.26", label));
+        if (!string.IsNullOrEmpty(placement.iconColor) && !IconPresets.ValidColor(placement.iconColor))
             throw new Exception(Text.Get("source.deckv3validator.26", label));
     }
 

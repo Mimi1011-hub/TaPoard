@@ -45,6 +45,9 @@ class FaderV3
     public int width { get; set; }
     public int height { get; set; }
     public bool off { get; set; }
+    public int? backgroundOpacity { get; set; }
+    public bool hideValue { get; set; }
+    public string iconColor { get; set; }
 }
 
 class PageV3

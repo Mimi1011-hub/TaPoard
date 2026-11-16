@@ -54,7 +54,8 @@ export class DeckGrid {
   renderFaders(container, shared, override, state) {
     ['speaker', 'mic'].forEach((kind) => {
       const hidden = override && override[kind === 'speaker' ? 'speakerHidden' : 'micHidden'];
-      const placement = override && override[kind] ? override[kind] : shared && shared[kind];
+      const own = override && override[kind];
+      const placement = own ? Object.assign({}, shared && shared[kind], own) : shared && shared[kind];
       const sharedOff = shared && shared[kind] && shared[kind].off;
       if (!placement || hidden || sharedOff || placement.off) return;
       this.mountWidget(container, Object.assign({}, placement, { target: kind }), faderTypes[kind], state, kind);

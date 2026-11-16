@@ -92,6 +92,9 @@ assert(faderEditor.removeFader('landscape', 0, 'speaker'), 'removes the fader fr
 assert.equal(faderEditor.effectiveFader(faderEditor.orientation('landscape'), 0, 'speaker'), null);
 assert(faderHistory.undo(), 'fader removal is undoable');
 assert.equal(faderEditor.effectiveFader(faderEditor.orientation('landscape'), 0, 'speaker').height, 3);
+assert(faderEditor.updateFader('landscape', 0, 'speaker', { backgroundOpacity: 60, hideValue: true, iconColor: '#b53846' }));
+const styledFader = faderEditor.effectiveFader(faderEditor.orientation('landscape'), 0, 'speaker');
+assert.deepEqual([styledFader.backgroundOpacity, styledFader.hideValue, styledFader.iconColor], [60, true, '#b53846']);
 
 // Shortcuts get the same starting icon and category as in 3.x.
 const { catalogItem } = await import('../web/v4/settings/catalog-items.js');
