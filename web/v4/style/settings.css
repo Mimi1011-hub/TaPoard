@@ -803,6 +803,7 @@
   margin-top: 12px;
 }
 .icon-ai-guide {
+  grid-row: 3;
   min-height: 0;
   padding: 14px;
   overflow: auto;

@@ -367,6 +367,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     );
     await page.getByRole('button', { name: 'AI でアイコンファイルを作る方法' }).click();
     assert.equal(await page.locator('#settings-icon-ai-guide .icon-ai-steps li').count(), 5, 'AI icon guide shows five local steps');
+    assert((await page.locator('#settings-icon-ai-guide').evaluate((node) => node.getBoundingClientRect().height)) > 150, 'AI icon guide uses the preview height');
     assert.equal(await page.locator('#settings-icon-ai-guide a[href^="http"]').count(), 0, 'AI icon guide has no external link');
     assert.match(await page.locator('.icon-ai-prompt').innerText(), /512×512/);
     await page.getByRole('button', { name: '戻る' }).click();

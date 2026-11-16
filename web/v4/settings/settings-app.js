@@ -20,8 +20,7 @@ import { General } from './general.js';
 import { AppImport } from './app-import.js';
 import { ShortcutPacks } from './shortcut-packs.js';
 import { ConfirmDialog } from './confirm-dialog.js';
-import { clear, el } from '../core/dom.js';
-import { gridShape, recommendedGrids } from './phone-grid-advice.js';
+import { presetPreview, renderPhoneAdvice, setupPreviewView, showIconGuide } from './preview-view.js';
 import { IconAiGuide } from './icon-ai-guide.js';
 
 export class SettingsApp {
@@ -237,75 +236,15 @@ export class SettingsApp {
     this.setSaveStatus('saved');
   }
 
-  presetPreview(active, name) {
-    if (active) this.showIconGuide(false);
-    this.nodes.previewTitle.textContent = active
-      ? this.i18n.t('presets.previewTitle', { name })
-      : this.i18n.t('settings.preview.title');
-    this.nodes.presetBack.hidden = !active;
-    this.nodes.layoutTools.hidden = active;
-    this.nodes.undo.hidden = active;
-    this.nodes.inspector.hidden = active;
-  }
+  presetPreview(active, name) { presetPreview(this, active, name); }
 
-  showIconGuide(active) {
-    this.iconGuideActive = !!active;
-    if (active) this.iconAiGuide.render();
-    this.nodes.previewTitle.textContent = active ? this.i18n.t('iconAi.title') : this.i18n.t('settings.preview.title');
-    this.nodes.presetBack.hidden = !active;
-    this.nodes.layoutTools.hidden = active;
-    this.nodes.preview.hidden = active;
-    this.nodes.iconGuide.hidden = !active;
-    this.nodes.inspector.hidden = active;
-  }
 
-  async setupPreviewView() {
-    let view = { options: { previewMode: 'pc', previewRatio: 'auto' }, phoneWidth: 0, phoneHeight: 0 };
-    try { view = await this.api.get('/api/pc-window'); } catch (error) { this.shell.showNotice(error.message); }
-    this.phonePreviewSize = [view.phoneWidth, view.phoneHeight];
-    const automatic = this.nodes.previewRatio.querySelector('option[value="auto"]');
-    automatic.textContent = view.phoneWidth && view.phoneHeight
-      ? this.i18n.t('settings.preview.autoPhoneSize', { width: view.phoneWidth, height: view.phoneHeight })
-      : this.i18n.t('settings.preview.autoPhone');
-    const apply = () => {
-      const phone = this.nodes.previewMode.value === 'phone';
-      this.nodes.previewRatio.hidden = !phone;
-      this.preview.setView(this.nodes.previewMode.value, this.nodes.previewRatio.value, [view.phoneWidth, view.phoneHeight]);
-      this.renderPhoneAdvice(phone, this.phonePreviewSize);
-    };
-    this.nodes.previewMode.value = view.options.previewMode || 'pc';
-    this.nodes.previewRatio.value = view.options.previewRatio || 'auto';
-    [this.nodes.previewMode, this.nodes.previewRatio].forEach((control) => control.addEventListener('change', () => {
-      apply();
-      this.api.post('/api/pc-window', {
-        previewMode: this.nodes.previewMode.value, previewRatio: this.nodes.previewRatio.value,
-      }).catch((error) => this.shell.showNotice(error.message));
-    }));
-    apply();
-    this.editor.subscribe(() => this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize));
-  }
+  showIconGuide(active) { showIconGuide(this, active); }
 
-  renderPhoneAdvice(phone, phoneSize) {
-    clear(this.nodes.gridAdvice);
-    this.nodes.gridAdvice.hidden = !phone;
-    this.nodes.gridWarning.hidden = true;
-    if (!phone) return;
-    const orientation = this.preview.orientation;
-    const ratio = this.nodes.previewRatio.value;
-    this.nodes.gridAdvice.appendChild(el('span', '', this.i18n.t('settings.preview.recommended')));
-    recommendedGrids(ratio, phoneSize, orientation).forEach((grid) => {
-      const button = el('button', '', `${grid.columns} × ${grid.rows}`);
-      button.type = 'button';
-      button.addEventListener('click', () => this.gridSize.set(grid.columns, grid.rows));
-      this.nodes.gridAdvice.appendChild(button);
-    });
-    const current = this.editor.deck[orientation];
-    const shape = gridShape(ratio, phoneSize, orientation, current.columns, current.rows);
-    if (shape) {
-      this.nodes.gridWarning.textContent = this.i18n.t(`settings.preview.${shape}Cells`);
-      this.nodes.gridWarning.hidden = false;
-    }
-  }
+
+  setupPreviewView() { return setupPreviewView(this); }
+
+  renderPhoneAdvice(phone, phoneSize) { renderPhoneAdvice(this, phone, phoneSize); }
 
   keydown(event) {
     if (event.key === 'Delete' && !/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) {
