@@ -62,9 +62,10 @@ export class ClockWidget {
           const date = this.context.i18n.t(`clock.month.${now.getMonth()}`)
             + ` ${now.getDate()}, ${now.getFullYear()}`;
           const weekday = this.context.i18n.t(`clock.weekdayShort.${now.getDay()}`);
-          this.date.textContent = this.options.showDate
-            ? `${this.options.showWeekday ? `${weekday}, ` : ''}${date}`
-            : weekday;
+          const parts = [];
+          if (this.options.showWeekday) parts.push(weekday);
+          if (this.options.showDate) parts.push(date);
+          this.date.textContent = parts.join(', ');
         } else {
           const parts = [];
           if (this.options.showDate) parts.push(`${now.getFullYear()}/${two(now.getMonth() + 1)}/${two(now.getDate())}`);

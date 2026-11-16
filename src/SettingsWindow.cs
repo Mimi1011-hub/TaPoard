@@ -65,7 +65,7 @@ sealed class SettingsWindow : Form
 
     internal void ShowSection(string section)
     {
-        if (!webStarted) return;
+        if (!webStarted || !System.Text.RegularExpressions.Regex.IsMatch(section ?? "", "\\A[a-z]+\\z")) return;
         web.ExecuteScript("window.dispatchEvent(new CustomEvent('tapoard-section',{detail:'" + section + "'}));");
     }
 
