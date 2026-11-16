@@ -49,8 +49,8 @@ static class ShortcutPacks
     static string Text(string value, int limit, bool required, string label)
     {
         value = (value ?? "").Trim();
-        if (required && value.Length == 0) throw new Exception(label + global::Text.Get("source.shortcutpacks.2"));
-        if (value.Length > limit) throw new Exception(label + global::Text.Get("source.shortcutpacks.3") + limit + global::Text.Get("source.shortcutpacks.4"));
+        if (required && value.Length == 0) throw new Exception(global::Text.Get("source.shortcutpacks.2", label));
+        if (value.Length > limit) throw new Exception(global::Text.Get("source.shortcutpacks.3", label, limit));
         return value;
     }
 
@@ -100,11 +100,11 @@ static class ShortcutPacks
         lock (Gate)
         {
             if (List(data).Count >= MaxPacks)
-                throw new Exception(global::Text.Get("source.shortcutpacks.7") + MaxPacks + global::Text.Get("source.shortcutpacks.8"));
+                throw new Exception(global::Text.Get("source.shortcutpacks.7", MaxPacks));
             if (input.shortcuts == null || input.shortcuts.Count == 0)
                 throw new Exception(global::Text.Get("source.shortcutpacks.9"));
             if (input.shortcuts.Count > MaxShortcuts)
-                throw new Exception(global::Text.Get("source.shortcutpacks.10") + MaxShortcuts + global::Text.Get("source.shortcutpacks.11"));
+                throw new Exception(global::Text.Get("source.shortcutpacks.10", MaxShortcuts));
             var clean = new ShortcutPack
             {
                 id = Guid.NewGuid().ToString("N"),
@@ -118,9 +118,9 @@ static class ShortcutPacks
             foreach (ShortcutPackItem item in input.shortcuts)
             {
                 string name = Text(item == null ? null : item.name, 80, true, global::Text.Get("source.shortcutpacks.15"));
-                string keys = Text(item.keys, 80, true, name + global::Text.Get("source.shortcutpacks.16"));
+                string keys = Text(item.keys, 80, true, global::Text.Get("source.shortcutpacks.16", name));
                 try { ShortcutKeys.ParseCombo(keys); }
-                catch { throw new Exception(name + global::Text.Get("source.shortcutpacks.17")); }
+                catch { throw new Exception(global::Text.Get("source.shortcutpacks.17", name)); }
                 clean.shortcuts.Add(new ShortcutPackItem
                 {
                     name = name,

@@ -29,8 +29,17 @@ public static class TextTests
                 Assert(!Regex.IsMatch(value, "[ぁ-んァ-ヶ一-龠]"), "English has no Japanese text");
             Text.Use("en");
             Assert(Text.Language == "en" && Text.Preference == "en", "English is selected");
+            Assert(Text.Get("source.actionsteps.2", 2) == "Step 2 is not valid.", "English sentences are built from one text");
+            Assert(WidgetRegistry.Require("clock").label == "Clock", "widget names follow the language");
+            Assert(DeckPresets.All[0].name == "Streaming", "preset names follow the language");
             Text.Use("ja");
             Assert(Text.Language == "ja" && Text.Preference == "ja", "Japanese is selected");
+            Assert(WidgetRegistry.Require("clock").label == "\u6642\u8a08", "widget names change with the language");
+            Assert(DeckPresets.All[0].name == "\u914d\u4fe1\u8005", "preset names change with the language");
+            foreach (Dictionary<string, string> values in new[] { TextJa.Values, TextEn.Values })
+                foreach (string value in values.Values)
+                    if (Placeholders(value) > 0)
+                        String.Format(value, "a", "b", "c");
             Text.Use("auto");
             string expected = CultureInfo.CurrentUICulture.Name.StartsWith("ja", StringComparison.OrdinalIgnoreCase) ? "ja" : "en";
             Assert(Text.Language == expected && Text.Preference == "auto", "auto follows Windows");

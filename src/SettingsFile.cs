@@ -67,7 +67,7 @@ static class SettingsFile
         }
         catch (Exception e)
         {
-            throw new Exception(label + Text.Get("source.settingsfile.9"), e);
+            throw new Exception(Text.Get("source.settingsfile.9", label), e);
         }
     }
 

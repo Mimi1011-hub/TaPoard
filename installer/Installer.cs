@@ -680,7 +680,7 @@ class InstallOptionsForm : Form
             Text = profile,
             Location = new Point(27, 60),
             Size = new Size(486, 40),
-            ForeColor = profile.Contains(InstallerText.Get("publicWord")) ? Color.Firebrick : Color.DarkGreen,
+            ForeColor = NetworkProfile.FoundPublic ? Color.Firebrick : Color.DarkGreen,
             Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Bold),
         });
         networkPage.Controls.Add(new Label
@@ -709,6 +709,9 @@ class InstallOptionsForm : Form
 // Reads the category of the connected networks (NLM_NETWORK_CATEGORY: 0 public, 1 private, 2 domain).
 static class NetworkProfile
 {
+    // True when the last Describe call found a network set to Public.
+    internal static bool FoundPublic;
+
     internal static string Describe()
     {
         try
@@ -728,6 +731,7 @@ static class NetworkProfile
                 else
                     otherNames += (otherNames.Length > 0 ? InstallerText.Get("separator") : "") + name;
             }
+            FoundPublic = publicNames.Length > 0;
             if (publicNames.Length > 0)
                 return InstallerText.Get("publicProfile", publicNames);
             if (otherNames.Length > 0)

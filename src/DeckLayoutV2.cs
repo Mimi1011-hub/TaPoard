@@ -453,7 +453,7 @@ static class DeckLayout
     {
         if (s.pageCount < 1 || s.pageCount > MaxPages || s.landscapePageCount < 1 || s.landscapePageCount > MaxPages || s.portraitPageCount < 1 || s.portraitPageCount > MaxPages) throw new Exception(Text.Get("source.decklayoutv2.9"));
         if (!GridCountValid(s.landscapeColumns) || !GridCountValid(s.landscapeRows) || !GridCountValid(s.portraitColumns) || !GridCountValid(s.portraitRows)) throw new Exception(Text.Get("source.decklayoutv2.10"));
-        foreach (bool portrait in new[] { false, true }) if (!ControlsValid(s, portrait)) throw new Exception((portrait ? Text.Get("source.decklayoutv2.11") : Text.Get("source.decklayoutv2.12")) + Text.Get("source.decklayoutv2.13"));
+        foreach (bool portrait in new[] { false, true }) if (!ControlsValid(s, portrait)) throw new Exception(Text.Get("source.decklayoutv2.13", Text.Get(portrait ? "source.decklayoutv2.11" : "source.decklayoutv2.12")));
         foreach (var app in s.apps)
         {
             WidgetRegistry.ValidateDimensions(app);

@@ -112,7 +112,7 @@ sealed class WebView2Host
                     return;
                 if (hr < 0 || environment == IntPtr.Zero)
                 {
-                    done(Text.Get("source.webview2host.3") + hr.ToString("X8") + "）。");
+                    done(Text.Get("source.webview2host.3", hr.ToString("X8")));
                     return;
                 }
                 var controllerDone = Callback.Completed(
@@ -120,7 +120,7 @@ sealed class WebView2Host
                     {
                         if (hr2 < 0 || created == IntPtr.Zero)
                         {
-                            done(Text.Get("source.webview2host.4") + hr2.ToString("X8") + "）。");
+                            done(Text.Get("source.webview2host.4", hr2.ToString("X8")));
                             return;
                         }
                         if (closed)
@@ -137,12 +137,12 @@ sealed class WebView2Host
                 );
                 int started = Slot<CreateController>(environment, EnvironmentCreateController)(environment, parent, controllerDone);
                 if (started < 0)
-                    done(Text.Get("source.webview2host.5") + started.ToString("X8") + "）。");
+                    done(Text.Get("source.webview2host.5", started.ToString("X8")));
             }
         );
         int result = create(true, 0, userDataFolder, IntPtr.Zero, environmentDone);
         if (result < 0)
-            done(Text.Get("source.webview2host.6") + result.ToString("X8") + "）。");
+            done(Text.Get("source.webview2host.6", result.ToString("X8")));
     }
 
     void ConfigureSettings()

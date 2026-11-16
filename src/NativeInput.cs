@@ -47,7 +47,7 @@ static class NativeInput
         int sent;
         lock (SendSync) sent = Executor(events);
         if (sent != events.Length)
-            throw new Exception(Text.Get("source.nativeinput.1") + sent + "/" + events.Length + "）。");
+            throw new Exception(Text.Get("source.nativeinput.1", sent, events.Length));
     }
 
     internal static void KeyTap(byte key)

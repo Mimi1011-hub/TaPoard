@@ -67,6 +67,8 @@ public static class DeckV3SaveTests
 
     public static int Main()
     {
+        // The checks below compare Japanese messages.
+        Text.Use("ja");
         string root = Path.Combine(Path.GetTempPath(), "TaPoard-v3-save-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root);
         string executable = Path.Combine(root, "test.exe"); File.WriteAllBytes(executable, new byte[] { 1, 2, 3 });
         try

@@ -28,51 +28,51 @@ static class DeckV3Validator
     static void ValidateOrientation(OrientationV3 orientation, bool portrait, HashSet<string> ids)
     {
         string direction = portrait ? Text.Get("source.deckv3validator.3") : Text.Get("source.deckv3validator.4");
-        if (orientation == null) throw new Exception(direction + Text.Get("source.deckv3validator.5"));
+        if (orientation == null) throw new Exception(Text.Get("source.deckv3validator.5", direction));
         if (orientation.columns < 2 || orientation.columns > 8 || orientation.rows < 2 || orientation.rows > 8)
-            throw new Exception(direction + Text.Get("source.deckv3validator.6"));
+            throw new Exception(Text.Get("source.deckv3validator.6", direction));
         if (orientation.pages == null || orientation.pages.Count < 1 || orientation.pages.Count > DeckLayout.MaxPages)
-            throw new Exception(direction + Text.Get("source.deckv3validator.7"));
+            throw new Exception(Text.Get("source.deckv3validator.7", direction));
         int totalItems = 0;
         foreach (PageV3 page in orientation.pages) if (page != null && page.items != null) totalItems += page.items.Count;
-        if (totalItems > 40) throw new Exception(direction + Text.Get("source.deckv3validator.8"));
+        if (totalItems > 40) throw new Exception(Text.Get("source.deckv3validator.8", direction));
         if (orientation.faders == null || orientation.faders.speaker == null || orientation.faders.mic == null)
-            throw new Exception(direction + Text.Get("source.deckv3validator.9"));
+            throw new Exception(Text.Get("source.deckv3validator.9", direction));
         ControlPlacement sharedSpeaker = Placement(orientation.faders.speaker);
         ControlPlacement sharedMic = Placement(orientation.faders.mic);
-        RequireFader(sharedSpeaker, orientation, direction + Text.Get("source.deckv3validator.10"));
-        RequireFader(sharedMic, orientation, direction + Text.Get("source.deckv3validator.11"));
-        if (Overlap(sharedSpeaker, sharedMic)) throw new Exception(direction + Text.Get("source.deckv3validator.12"));
+        RequireFader(sharedSpeaker, orientation, Text.Get("source.deckv3validator.10", direction));
+        RequireFader(sharedMic, orientation, Text.Get("source.deckv3validator.11", direction));
+        if (Overlap(sharedSpeaker, sharedMic)) throw new Exception(Text.Get("source.deckv3validator.12", direction));
         for (int pageIndex = 0; pageIndex < orientation.pages.Count; pageIndex++)
         {
             PageV3 page = orientation.pages[pageIndex];
-            string pageLabel = direction + " " + (pageIndex + 1) + Text.Get("source.deckv3validator.13");
-            if (page == null) throw new Exception(pageLabel + Text.Get("source.deckv3validator.14"));
+            string pageLabel = Text.Get("source.deckv3validator.13", direction, pageIndex + 1);
+            if (page == null) throw new Exception(Text.Get("source.deckv3validator.14", pageLabel));
             try { page.name = PageNames.Normalize(page.name); }
-            catch (Exception error) { throw new Exception(pageLabel + Text.Get("source.deckv3validator.15") + error.Message); }
+            catch (Exception error) { throw new Exception(Text.Get("source.deckv3validator.15", pageLabel, error.Message)); }
             ControlPlacement speaker = Effective(page.faders, sharedSpeaker, orientation.faders.speaker.off, false);
             ControlPlacement mic = Effective(page.faders, sharedMic, orientation.faders.mic.off, true);
-            if (speaker != null) RequireFader(speaker, orientation, pageLabel + Text.Get("source.deckv3validator.16"));
-            if (mic != null) RequireFader(mic, orientation, pageLabel + Text.Get("source.deckv3validator.17"));
-            if (Overlap(speaker, mic)) throw new Exception(pageLabel + Text.Get("source.deckv3validator.18"));
+            if (speaker != null) RequireFader(speaker, orientation, Text.Get("source.deckv3validator.16", pageLabel));
+            if (mic != null) RequireFader(mic, orientation, Text.Get("source.deckv3validator.17", pageLabel));
+            if (Overlap(speaker, mic)) throw new Exception(Text.Get("source.deckv3validator.18", pageLabel));
             bool[,] used = new bool[orientation.rows, orientation.columns];
             Mark(used, speaker); Mark(used, mic);
             foreach (DeckItem item in page.items ?? new List<DeckItem>())
             {
                 string name = item == null || String.IsNullOrWhiteSpace(item.name) ? Text.Get("source.deckv3validator.19") : item.name.Trim();
-                string label = pageLabel + Text.Get("source.deckv3validator.20") + name + "』";
-                if (item == null) throw new Exception(label + Text.Get("source.deckv3validator.21"));
-                if (!String.IsNullOrEmpty(item.id) && !ids.Add(item.id)) throw new Exception(label + Text.Get("source.deckv3validator.22"));
-                if (item.steps != null) throw new Exception(label + Text.Get("source.deckv3validator.23"));
+                string label = Text.Get("source.deckv3validator.20", pageLabel, name);
+                if (item == null) throw new Exception(Text.Get("source.deckv3validator.21", label));
+                if (!String.IsNullOrEmpty(item.id) && !ids.Add(item.id)) throw new Exception(Text.Get("source.deckv3validator.22", label));
+                if (item.steps != null) throw new Exception(Text.Get("source.deckv3validator.23", label));
                 AppEntry entry = SettingsMigration.ToApp(item, portrait, pageIndex);
                 try { WidgetRegistry.ValidateDimensions(entry); }
                 catch (Exception error) { throw new Exception(label + ": " + error.Message); }
                 if (item.row < 0 || item.column < 0 || item.row + item.height > orientation.rows || item.column + item.width > orientation.columns)
-                    throw new Exception(label + Text.Get("source.deckv3validator.24"));
+                    throw new Exception(Text.Get("source.deckv3validator.24", label));
                 for (int row = item.row; row < item.row + item.height; row++)
                     for (int column = item.column; column < item.column + item.width; column++)
                     {
-                        if (used[row, column]) throw new Exception(label + Text.Get("source.deckv3validator.25"));
+                        if (used[row, column]) throw new Exception(Text.Get("source.deckv3validator.25", label));
                         used[row, column] = true;
                     }
             }
@@ -96,7 +96,7 @@ static class DeckV3Validator
     static void RequireFader(ControlPlacement placement, OrientationV3 orientation, string label)
     {
         if (!DeckLayout.ControlFits(placement, orientation.columns, orientation.rows))
-            throw new Exception(label + Text.Get("source.deckv3validator.26"));
+            throw new Exception(Text.Get("source.deckv3validator.26", label));
     }
 
     static bool Overlap(ControlPlacement a, ControlPlacement b)
@@ -115,7 +115,9 @@ static class DeckV3Validator
     static string Location(AppEntry entry)
     {
         bool portrait = entry.orientation == "portrait"; TilePosition position = DeckLayout.Position(entry, portrait);
-        return (portrait ? Text.Get("source.deckv3validator.27") : Text.Get("source.deckv3validator.28")) + " " + ((position == null ? 0 : position.page) + 1) + Text.Get("source.deckv3validator.29") + (entry.name ?? Text.Get("source.deckv3validator.30")) + "』";
+        string direction = Text.Get(portrait ? "source.deckv3validator.27" : "source.deckv3validator.28");
+        int page = (position == null ? 0 : position.page) + 1;
+        return Text.Get("source.deckv3validator.29", direction, page, entry.name ?? Text.Get("source.deckv3validator.30"));
     }
 
     static string Positions(Settings settings)

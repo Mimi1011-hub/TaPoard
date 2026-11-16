@@ -17,6 +17,9 @@ class StartApp
 
 static class StartApps
 {
+    // "アンインストール": Japanese Start menu entries to skip, whatever language TaPoard shows.
+    const string JapaneseUninstall = "\u30a2\u30f3\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb";
+
     internal const string Prefix = "shell:AppsFolder\\";
     static readonly Dictionary<string, string> IconCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -51,7 +54,7 @@ static class StartApps
                 string id = Convert.ToString(item.GetType().InvokeMember("Path", BindingFlags.GetProperty, null, item, null));
                 if (String.IsNullOrWhiteSpace(name) || !IsStartApp(Prefix + id) || !seen.Add(id)) continue;
                 // Uninstallers and help files clutter the list.
-                if (name.IndexOf("uninstall", StringComparison.OrdinalIgnoreCase) >= 0 || name.Contains(Text.Get("source.startapps.1"))) continue;
+                if (name.IndexOf("uninstall", StringComparison.OrdinalIgnoreCase) >= 0 || name.Contains(JapaneseUninstall)) continue;
                 result.Add(new StartApp { name = name.Length > 80 ? name.Substring(0, 80) : name, id = id });
             }
         }

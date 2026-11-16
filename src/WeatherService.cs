@@ -134,7 +134,9 @@ static class WeatherService
     }
 
     // Open-Meteo only matches official Japanese names, so "札幌" finds nothing but "札幌市" does.
-    static readonly string[] JapaneseSuffixes = { global::Text.Get("source.weatherservice.1"), global::Text.Get("source.weatherservice.2"), global::Text.Get("source.weatherservice.3"), global::Text.Get("source.weatherservice.4") };
+    // These are place-name endings to match, not display text: 市 都 府 県, and 区 町 村.
+    static readonly string[] JapaneseSuffixes = { "\u5e02", "\u90fd", "\u5e9c", "\u770c" };
+    static readonly string[] JapaneseEndings = { "\u533a", "\u753a", "\u6751" };
 
     internal static WeatherLocationResult[] Search(string query)
     {
@@ -162,12 +164,12 @@ static class WeatherService
         foreach (char c in query) if (c >= 0x3040 && c <= 0x9FFF) { japanese = true; break; }
         if (!japanese) return false;
         string last = query.Substring(query.Length - 1);
-        return System.Array.IndexOf(JapaneseSuffixes, last) < 0 && last != global::Text.Get("source.weatherservice.6") && last != global::Text.Get("source.weatherservice.7") && last != global::Text.Get("source.weatherservice.8");
+        return System.Array.IndexOf(JapaneseSuffixes, last) < 0 && System.Array.IndexOf(JapaneseEndings, last) < 0;
     }
 
     static List<WeatherLocationResult> SearchOnce(string query)
     {
-        string url = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=ja&format=json&name=" + Uri.EscapeDataString(query);
+        string url = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=" + global::Text.Language + "&format=json&name=" + Uri.EscapeDataString(query);
         var root = Json.DeserializeObject(Downloader(url)) as Dictionary<string, object>;
         var result = new List<WeatherLocationResult>();
         object raw;

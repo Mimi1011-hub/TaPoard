@@ -25,9 +25,9 @@ static class ActionSteps
         for (int i = 0; i < steps.Count; i++)
         {
             ActionStep step = steps[i];
-            if (step == null) throw new Exception((i + 1) + Text.Get("source.actionsteps.2"));
+            if (step == null) throw new Exception(Text.Get("source.actionsteps.2", i + 1));
             if (step.delayMs < 0 || step.delayMs > 10000)
-                throw new Exception((i + 1) + Text.Get("source.actionsteps.3"));
+                throw new Exception(Text.Get("source.actionsteps.3", i + 1));
             var entry = new AppEntry
             {
                 type = step.type, action = step.action, category = step.category,
@@ -35,7 +35,7 @@ static class ActionSteps
                 hotkey = step.hotkey, deviceId = step.deviceId, deviceTarget = step.deviceTarget,
             };
             try { ValidateEntryAction(entry, ResolveAudio, false); }
-            catch (Exception error) { throw new Exception((i + 1) + Text.Get("source.actionsteps.4") + error.Message); }
+            catch (Exception error) { throw new Exception(Text.Get("source.actionsteps.4", i + 1, error.Message)); }
         }
     }
 

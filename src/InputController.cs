@@ -181,7 +181,8 @@ sealed class InputController : ControllerBase
             state.Host.AudioDevices.Switch(app.deviceTarget, app.deviceId);
             lock (state.Gate)
                 state.Signal();
-            return (app.deviceTarget == "mic" ? Text.Get("source.inputcontroller.10") : Text.Get("source.inputcontroller.11")) + Text.Get("source.inputcontroller.12") + app.deviceName + Text.Get("source.inputcontroller.13");
+            string target = Text.Get(app.deviceTarget == "mic" ? "source.inputcontroller.10" : "source.inputcontroller.11");
+            return Text.Get("source.inputcontroller.12", target, app.deviceName);
         }
         if (DeckView.IsType(app, "hotkey"))
         {

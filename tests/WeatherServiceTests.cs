@@ -13,6 +13,8 @@ class WeatherServiceTests
 
     static void Main()
     {
+        // The checks below compare Japanese messages.
+        Text.Use("ja");
         string directory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "weather-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         var changed = new ManualResetEvent(false);

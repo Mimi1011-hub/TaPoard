@@ -4,7 +4,8 @@ using System.Collections.Generic;
 class WidgetDefinition
 {
     internal string type;
-    internal string label;
+    internal string labelKey;
+    internal string label { get { return Text.Get(labelKey); } }
     internal string[] sizes;
     internal bool displayOnly;
 }
@@ -17,18 +18,18 @@ static class WidgetRegistry
     static Dictionary<string, WidgetDefinition> CreateDefinitions()
     {
         var result = new Dictionary<string, WidgetDefinition>(StringComparer.OrdinalIgnoreCase);
-        Add(result, "app", Text.Get("source.widgetregistry.1"), new[] { "1x1", "2x2" }, false);
-        Add(result, "hotkey", Text.Get("source.widgetregistry.2"), new[] { "1x1", "2x2" }, false);
+        Add(result, "app", "source.widgetregistry.1", new[] { "1x1", "2x2" }, false);
+        Add(result, "hotkey", "source.widgetregistry.2", new[] { "1x1", "2x2" }, false);
         Add(result, "url", "URL", new[] { "1x1", "2x2" }, false);
-        Add(result, "clipboard", Text.Get("source.widgetregistry.3"), new[] { "1x1", "2x2" }, false);
-        Add(result, "audioDevice", Text.Get("source.widgetregistry.4"), new[] { "1x1", "2x2" }, false);
-        Add(result, "clock", Text.Get("source.widgetregistry.5"), new[] { "2x1", "2x2" }, true);
-        Add(result, "weather", Text.Get("source.widgetregistry.6"), new[] { "1x1", "2x2" }, true);
-        Add(result, "metrics", Text.Get("source.widgetregistry.7"), new[] { "1x1", "2x2" }, true);
-        Add(result, "wheel", Text.Get("source.widgetregistry.8"), new[] { "1x1", "1x2", "2x2" }, true);
-        Add(result, "touchpad", Text.Get("source.widgetregistry.9"), new[] { "3x2", "2x3" }, true);
-        Add(result, "keypad", Text.Get("source.widgetregistry.10"), new[] { "4x4", "4x5" }, true);
-        Add(result, "slideshow", Text.Get("source.widgetregistry.11"), SlideshowSizes(), true);
+        Add(result, "clipboard", "source.widgetregistry.3", new[] { "1x1", "2x2" }, false);
+        Add(result, "audioDevice", "source.widgetregistry.4", new[] { "1x1", "2x2" }, false);
+        Add(result, "clock", "source.widgetregistry.5", new[] { "2x1", "2x2" }, true);
+        Add(result, "weather", "source.widgetregistry.6", new[] { "1x1", "2x2" }, true);
+        Add(result, "metrics", "source.widgetregistry.7", new[] { "1x1", "2x2" }, true);
+        Add(result, "wheel", "source.widgetregistry.8", new[] { "1x1", "1x2", "2x2" }, true);
+        Add(result, "touchpad", "source.widgetregistry.9", new[] { "3x2", "2x3" }, true);
+        Add(result, "keypad", "source.widgetregistry.10", new[] { "4x4", "4x5" }, true);
+        Add(result, "slideshow", "source.widgetregistry.11", SlideshowSizes(), true);
         return result;
     }
 
@@ -56,7 +57,7 @@ static class WidgetRegistry
             new WidgetDefinition
             {
                 type = type,
-                label = label,
+                labelKey = label,
                 sizes = sizes,
                 displayOnly = displayOnly,
             }
@@ -217,7 +218,7 @@ static class WidgetRegistry
         int width = DeckLayout.Width(app), height = DeckLayout.Height(app);
         string key = width + "x" + height;
         if (Array.IndexOf(definition.sizes, key) < 0)
-            throw new Exception(definition.label + Text.Get("source.widgetregistry.23") + key + Text.Get("source.widgetregistry.24"));
+            throw new Exception(Text.Get("source.widgetregistry.23", definition.label, key));
     }
 
     static string EnumValue(Dictionary<string, object> source, string name, string fallback, string[] allowed)
@@ -225,7 +226,7 @@ static class WidgetRegistry
         object raw;
         string value = source.TryGetValue(name, out raw) ? raw as string : fallback;
         if (value == null || Array.IndexOf(allowed, value) < 0)
-            throw new Exception(name + Text.Get("source.widgetregistry.25"));
+            throw new Exception(Text.Get("source.widgetregistry.25", name));
         return value;
     }
 
@@ -235,7 +236,7 @@ static class WidgetRegistry
         if (!source.TryGetValue(name, out raw))
             return fallback;
         if (!(raw is bool))
-            throw new Exception(name + Text.Get("source.widgetregistry.26"));
+            throw new Exception(Text.Get("source.widgetregistry.26", name));
         return (bool)raw;
     }
 
@@ -246,13 +247,13 @@ static class WidgetRegistry
             return fallback;
         // Same strictness as BooleanValue: JSON integers only, never true or "50".
         if (!(raw is int || raw is long))
-            throw new Exception(name + Text.Get("source.widgetregistry.27"));
+            throw new Exception(Text.Get("source.widgetregistry.27", name));
         long number = Convert.ToInt64(raw);
         if (number < Int32.MinValue || number > Int32.MaxValue)
-            throw new Exception(name + Text.Get("source.widgetregistry.28"));
+            throw new Exception(Text.Get("source.widgetregistry.28", name));
         int value = (int)number;
         if (value < minimum || value > maximum)
-            throw new Exception(name + Text.Get("source.widgetregistry.29"));
+            throw new Exception(Text.Get("source.widgetregistry.29", name));
         return value;
     }
 
@@ -263,7 +264,7 @@ static class WidgetRegistry
             return fallback;
         string value = raw as string;
         if (value == null || value.Length > maximum)
-            throw new Exception(name + Text.Get("source.widgetregistry.30"));
+            throw new Exception(Text.Get("source.widgetregistry.30", name));
         return value;
     }
 

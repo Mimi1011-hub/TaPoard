@@ -55,6 +55,8 @@ class SettingsV2Tests
 
     static int Main()
     {
+        // The checks below compare Japanese messages.
+        Text.Use("ja");
         string root = Path.Combine(Path.GetTempPath(), "TaPoard-settings-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try

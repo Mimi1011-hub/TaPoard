@@ -25,7 +25,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-powershell.exe -NoProfile -Command "$n=[IO.File]::ReadAllText((Join-Path (Get-Location) 'network.json'),[Text.Encoding]::UTF8)|ConvertFrom-Json; $label=if((Get-UICulture).Name -like 'ja*'){'phoneで開くURL: '}else{'Open on your phone: '}; Write-Host ''; Write-Host ($label+'http://'+$n.hostName+':18781/') -ForegroundColor Cyan"
+powershell.exe -NoProfile -Command "$n=[IO.File]::ReadAllText((Join-Path (Get-Location) 'network.json'),[Text.Encoding]::UTF8)|ConvertFrom-Json; $label=if((Get-UICulture).Name -like 'ja*'){'スマートフォンで開くURL: '}else{'Open on your phone: '}; Write-Host ''; Write-Host ($label+'http://'+$n.hostName+':18781/') -ForegroundColor Cyan"
 echo.
 if "%LANGUAGE%"=="ja" (echo セットアップが完了しました。ブラウザのTaPoard設定画面を確認してください。) else (echo Setup is complete. Check TaPoard settings in the browser.)
 pause

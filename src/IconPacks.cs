@@ -120,7 +120,7 @@ static class IconPacks
     {
         lock (Gate)
         {
-            if (List(data).Count >= MaxPacks) throw new Exception(Text.Get("source.iconpacks.4") + MaxPacks + Text.Get("source.iconpacks.5"));
+            if (List(data).Count >= MaxPacks) throw new Exception(Text.Get("source.iconpacks.4", MaxPacks));
             var pack = new IconPack
             {
                 id = Guid.NewGuid().ToString("N"),
@@ -141,7 +141,7 @@ static class IconPacks
         lock (Gate)
         {
             var pack = Read(data, id);
-            if (pack.icons.Count + icons.Count > MaxIcons) throw new Exception(Text.Get("source.iconpacks.8") + MaxIcons + Text.Get("source.iconpacks.9"));
+            if (pack.icons.Count + icons.Count > MaxIcons) throw new Exception(Text.Get("source.iconpacks.8", MaxIcons));
             long chars = 0;
             foreach (var icon in pack.icons) chars += (icon.data ?? "").Length;
             foreach (var icon in icons) if (icon != null) chars += (icon.data ?? "").Length;

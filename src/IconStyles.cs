@@ -157,11 +157,11 @@ static class IconStyles
     {
         lock (Gate)
         {
-            if (ReadAll(data).Count >= MaxStyles) throw new Exception(Text.Get("source.iconstyles.4") + MaxStyles + Text.Get("source.iconstyles.5"));
+            if (ReadAll(data).Count >= MaxStyles) throw new Exception(Text.Get("source.iconstyles.4", MaxStyles));
             var style = new IconStyle
             {
                 id = Guid.NewGuid().ToString("N"),
-                name = CleanName(name, DateTime.Now.ToString("M/d H:mm") + Text.Get("source.iconstyles.6")),
+                name = CleanName(name, Text.Get("source.iconstyles.6", DateTime.Now.ToString("M/d H:mm"))),
                 created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                 buttons = new List<IconStyleButton>(),
             };
