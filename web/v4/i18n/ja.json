@@ -26,6 +26,7 @@
   "settings.page.default": "ページ {number}",
   "settings.page.add": "ページを追加",
   "settings.page.menu": "ページの操作",
+  "settings.page.list": "ページ一覧",
   "settings.page.rename": "名前を変える",
   "settings.page.previous": "前へ",
   "settings.page.next": "後ろへ",

@@ -4,6 +4,7 @@ export class Pages {
   constructor(options) {
     Object.assign(this, options);
     this.menu = null;
+    this.list = null;
     this.editor.subscribe(() => this.render());
     this.render();
   }
@@ -14,9 +15,11 @@ export class Pages {
 
   render() {
     clear(this.root);
+    const tabs = el('div', 'settings-page-tabs');
     this.pages().forEach((page, index) => {
       const wrap = el('div', `settings-page-tab${index === this.current() ? ' is-active' : ''}`);
-      const button = el('button', 'settings-page-name', page.name || this.i18n.t('settings.page.default', { number: index + 1 }));
+      const label = page.name ? `${index + 1} ${page.name}` : String(index + 1);
+      const button = el('button', 'settings-page-name', label);
       button.type = 'button'; button.draggable = true;
       button.addEventListener('click', () => this.choose(index));
       button.addEventListener('dblclick', () => this.rename(wrap, index));
@@ -27,16 +30,23 @@ export class Pages {
       const more = el('button', 'settings-page-more', '…');
       more.type = 'button'; more.setAttribute('aria-label', this.i18n.t('settings.page.menu'));
       more.addEventListener('click', () => this.openMenu(wrap, index));
-      wrap.append(button, more); this.root.appendChild(wrap);
+      wrap.append(button, more); tabs.appendChild(wrap);
     });
+    this.root.appendChild(tabs);
     const add = el('button', 'settings-page-add', '+');
     add.type = 'button'; add.setAttribute('aria-label', this.i18n.t('settings.page.add'));
     add.addEventListener('click', () => this.add());
-    this.root.appendChild(add);
+    const list = el('button', 'settings-page-list-button', '☰');
+    list.type = 'button'; list.setAttribute('aria-label', this.i18n.t('settings.page.list'));
+    list.addEventListener('click', () => this.openList());
+    this.root.append(add, list);
+    const active = tabs.querySelector('.is-active');
+    if (active) tabs.scrollLeft = Math.max(0, active.offsetLeft - (tabs.clientWidth - active.offsetWidth) / 2);
   }
 
   choose(index) {
     this.closeMenu();
+    this.closeList();
     this.preview.setPage(index);
     Array.from(this.root.querySelectorAll('.settings-page-tab')).forEach((node, page) => node.classList.toggle('is-active', page === index));
   }
@@ -91,7 +101,35 @@ export class Pages {
     wrap.appendChild(menu); this.menu = menu;
   }
 
+  openList() {
+    if (this.list) return this.closeList();
+    this.closeMenu();
+    const panel = el('div', 'settings-page-list');
+    this.pages().forEach((page, index) => {
+      const row = el('div', 'settings-page-list-row');
+      const label = page.name ? `${index + 1} ${page.name}` : String(index + 1);
+      const choose = el('button', 'settings-page-list-name', `${label} · ${page.items.length}`);
+      choose.type = 'button'; choose.addEventListener('click', () => this.choose(index));
+      const action = (key, run, disabled) => {
+        const button = el('button', '', this.i18n.t(key));
+        button.type = 'button'; button.disabled = !!disabled;
+        button.addEventListener('click', () => { this.closeList(); run(); });
+        row.appendChild(button);
+      };
+      row.appendChild(choose);
+      const wrap = this.root.querySelectorAll('.settings-page-tab')[index];
+      action('settings.page.rename', () => this.rename(wrap, index));
+      action('settings.page.previous', () => this.move(index, index - 1), index === 0);
+      action('settings.page.next', () => this.move(index, index + 1), index === this.pages().length - 1);
+      action('settings.page.delete', () => this.remove(index), this.pages().length === 1);
+      panel.appendChild(row);
+    });
+    this.root.appendChild(panel);
+    this.list = panel;
+  }
+
   closeMenu() { if (this.menu) this.menu.remove(); this.menu = null; }
+  closeList() { if (this.list) this.list.remove(); this.list = null; }
   move(from, to) { if (this.editor.movePage(this.orientation(), from, to)) { this.preview.setPage(to); this.render(); } }
   remove(index) {
     if (!this.confirmFn(this.i18n.t('settings.page.confirmDelete'))) return;

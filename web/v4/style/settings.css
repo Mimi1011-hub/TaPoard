@@ -634,9 +634,15 @@
   gap: 10px;
 }
 .settings-pages {
+  position: relative;
   display: flex;
   min-width: 0;
   align-items: center;
+  gap: 5px;
+}
+.settings-page-tabs {
+  display: flex;
+  min-width: 0;
   gap: 5px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -644,7 +650,7 @@
 .settings-page-tab {
   position: relative;
   display: flex;
-  min-width: 0;
+  min-width: 92px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-button);
@@ -660,6 +666,40 @@
   padding: 5px 8px;
   background: transparent;
   cursor: pointer;
+}
+.settings-page-list-button {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-button);
+  cursor: pointer;
+}
+.settings-page-list {
+  position: absolute;
+  z-index: 35;
+  top: calc(100% + 5px);
+  right: 0;
+  display: grid;
+  max-height: 55vh;
+  padding: 6px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+.settings-page-list-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) repeat(4, auto);
+  gap: 3px;
+}
+.settings-page-list-row button {
+  padding: 6px;
+  white-space: nowrap;
+}
+.settings-page-list-name {
+  text-align: left;
 }
 .settings-page-name {
   max-width: 105px;
