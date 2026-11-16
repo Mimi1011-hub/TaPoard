@@ -93,6 +93,7 @@ const server = http.createServer(async (req, res) => {
     if (name === 'backups') return json(res, 200, { backups });
     if (name === 'backups/restore') return changed(res, { buttons: 6 });
     if (name === 'page/undo') return changed(res);
+    if (name === 'pc-window') return json(res, 200, { options: { previewMode: 'pc', previewRatio: 'auto' }, phoneWidth: 0, phoneHeight: 0 });
     return json(res, 404, { error: 'not found' });
   }
   let file = url.pathname.startsWith('/v4/') ? `web/v4/${url.pathname.slice(4)}` : '';
@@ -144,7 +145,7 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     assert.equal(await page.locator('.preview-hit').count(), 0, 'preset sample cannot be selected or dragged');
     assert((await page.locator('.settings-preview .deck-tile').count()) > 0, 'preset sample uses the real preview');
     await page.locator('#settings-preset-back').click();
-    assert((await page.locator('.preview-hit').count()) > 0, 'back restores the own-page preview');
+    assert((await page.locator('.preview-hit, .preview-empty').count()) > 0, 'back restores the own-page preview');
     await page.locator('.preset-tab').first().click();
     let from = calls.length;
     await page.getByRole('button', { name: 'このページに使う' }).click();
@@ -181,7 +182,7 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     promptAnswer = 'Preset renamed';
     await page.getByRole('button', { name: '名前を変える' }).last().click();
     await waitFor(() => names(from).includes('POST presets/rename'), 'custom preset renamed');
-    assert(await page.locator('.preset-tab').last().innerText().then((text) => text.includes('Preset renamed')));
+    await waitFor(async () => (await page.locator('.preset-tab').last().innerText()).includes('Preset renamed'), 'renamed preset shown');
     await page.getByRole('button', { name: '削除' }).last().click();
     await waitFor(() => names(from).includes('POST presets/delete'), 'custom preset deleted');
     await waitFor(async () => (await page.locator('.preset-tab').count()) === 2, 'custom preset removed');

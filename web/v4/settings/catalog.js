@@ -121,7 +121,8 @@ export class Catalog {
 
   sizes(action) {
     const item = this.create(action);
-    const definition = item && this.editor.definitions.get(item.type);
+    // Only widgets offer a size here; buttons are placed at 1x1 and can be resized in the details.
+    const definition = item && item.category === 'widget' && this.editor.definitions.get(item.type);
     return definition && definition.sizes && definition.sizes.length ? definition.sizes : ['1x1'];
   }
 

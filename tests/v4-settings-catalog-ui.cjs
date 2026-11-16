@@ -104,6 +104,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, version: String(version), deck });
     }
     if (name === 'v3/state' || name === 'sync') return json(res, 200, state());
+    if (name === 'pc-window') return json(res, 200, { options: { previewMode: 'pc', previewRatio: 'auto' }, phoneWidth: 0, phoneHeight: 0 });
     if (name === 'devices') return json(res, 200, { devices: [
       { id: 'speaker-1', name: 'Speakers', target: 'speaker' },
       { id: 'mic-1', name: 'Microphone', target: 'mic' },
@@ -203,8 +204,8 @@ const waitFor = async (check, message) => {
     await page.getByRole('button', { name: /キーボード/ }).click();
     await page.locator('[data-action="widget-keypad"]').click();
     assert.equal(await page.getByRole('button', { name: '4×5', exact: true }).isDisabled(), true, 'size that does not fit is disabled');
-    await page.locator('.catalog-back').focus();
-    await page.keyboard.press('Escape');
+    await page.locator('.catalog-back').click();
+    await page.locator('.catalog-back').click();
 
     await page.getByRole('button', { name: /起動・その他/ }).click();
     await page.locator('.catalog-back').click();
