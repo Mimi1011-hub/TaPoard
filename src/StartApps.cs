@@ -144,7 +144,8 @@ static class StartApps
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
-    static extern void SHCreateItemFromParsingName(string path, IntPtr bindContext, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory factory);
+    static extern void SHCreateItemFromParsingName(string path, IntPtr bindContext, [MarshalAs(UnmanagedType.LPStruct)] Guid riid,
+        [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory factory);
 
     [DllImport("gdi32.dll")]
     static extern int GetDIBits(IntPtr dc, IntPtr bitmap, uint start, uint lines, [Out] byte[] bits, ref BitmapInfoHeader info, uint usage);
@@ -179,7 +180,8 @@ static class StartApps
             // SIIGBF_BIGGERSIZEOK | SIIGBF_ICONONLY
             if (factory.GetImage(new NativeSize { cx = size, cy = size }, 0x1 | 0x4, out handle) != 0 || handle == IntPtr.Zero) return null;
             NativeBitmap info;
-            if (GetObject(handle, Marshal.SizeOf(typeof(NativeBitmap)), out info) == 0 || info.bmWidth <= 0 || info.bmHeight <= 0 || info.bmWidth > 1024 || info.bmHeight > 1024) return null;
+            if (GetObject(handle, Marshal.SizeOf(typeof(NativeBitmap)), out info) == 0 || info.bmWidth <= 0 || info.bmHeight <= 0 || info.bmWidth > 1024
+                || info.bmHeight > 1024) return null;
             int w = info.bmWidth, h = info.bmHeight;
             // Copy the pixels top-down with their alpha (FromHbitmap would drop it).
             var header = new BitmapInfoHeader { biSize = Marshal.SizeOf(typeof(BitmapInfoHeader)), biWidth = w, biHeight = -h, biPlanes = 1, biBitCount = 32 };

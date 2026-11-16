@@ -335,7 +335,8 @@ sealed class DeckController : ControllerBase
 
     internal string ViewIdentity(ApiRequest r, string viewId)
     {
-        if (String.IsNullOrEmpty(viewId) || viewId.Length < 8 || viewId.Length > 64 || !System.Text.RegularExpressions.Regex.IsMatch(viewId, "\\A[a-zA-Z0-9_-]+\\z"))
+        if (String.IsNullOrEmpty(viewId) || viewId.Length < 8 || viewId.Length > 64
+            || !System.Text.RegularExpressions.Regex.IsMatch(viewId, "\\A[a-zA-Z0-9_-]+\\z"))
             throw new Exception(Text.Get("source.deckcontroller.2"));
         return Pairing.Hash(r.auth ?? r.remote.ToString()) + ":" + viewId;
     }

@@ -41,7 +41,9 @@ export class DeckBackground {
         try {
           const result = await this.api.get('/api/background/image', 20000);
           if (wanted === this.imageVersion) this.imageData = safeImageSource(result.data);
-        } catch (error) { if (wanted === this.imageVersion) this.imageVersion = null; }
+        } catch (error) {
+          if (wanted === this.imageVersion) this.imageVersion = null;
+        }
       }
     }
     this.paint();
@@ -66,12 +68,17 @@ export class DeckBackground {
     this.picture.style.filter = background.blur ? `blur(${background.blur}px)` : '';
     this.picture.style.transform = background.blur ? 'scale(1.04)' : '';
     this.shade.style.background = background.dim ? `rgba(0,0,0,${background.dim / 100})` : 'transparent';
-    if (!background.image || !this.imageData) { this.picture.style.backgroundSize = ''; return; }
+    if (!background.image || !this.imageData) {
+      this.picture.style.backgroundSize = '';
+      return;
+    }
     const width = this.target.clientWidth || 1;
     const height = this.target.clientHeight || 1;
     const imageWidth = background.imageWidth || 1;
     const imageHeight = background.imageHeight || 1;
-    const scale = (position.fit === 'contain' ? Math.min(width / imageWidth, height / imageHeight) : Math.max(width / imageWidth, height / imageHeight)) * position.zoom;
+    const scale =
+      (position.fit === 'contain' ? Math.min(width / imageWidth, height / imageHeight) : Math.max(width / imageWidth, height / imageHeight)) *
+      position.zoom;
     this.picture.style.backgroundSize = `${Math.round(imageWidth * scale)}px ${Math.round(imageHeight * scale)}px`;
   }
 
@@ -99,9 +106,14 @@ export class DeckBackground {
       const own = tile.dataset.keyClear;
       const clear = own !== undefined && own !== '' ? Number(own) : Math.max(0, Math.min(100, background.keyClear || 0));
       tile.classList.remove('key-fade');
-      if (!(clear > 0)) { tile.style.removeProperty('--key-fill'); tile.style.removeProperty('--key-alpha'); return; }
+      if (!(clear > 0)) {
+        tile.style.removeProperty('--key-fill');
+        tile.style.removeProperty('--key-alpha');
+        return;
+      }
       const style = view.getComputedStyle(tile);
-      const fill = style.backgroundImage && style.backgroundImage !== 'none' ? `${style.backgroundImage}, ${style.backgroundColor}` : style.backgroundColor;
+      const fill =
+        style.backgroundImage && style.backgroundImage !== 'none' ? `${style.backgroundImage}, ${style.backgroundColor}` : style.backgroundColor;
       tile.style.setProperty('--key-fill', fill);
       tile.style.setProperty('--key-alpha', String(1 - clear / 100));
       tile.classList.add('key-fade');

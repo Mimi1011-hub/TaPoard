@@ -169,7 +169,8 @@ static class WeatherService
 
     static List<WeatherLocationResult> SearchOnce(string query)
     {
-        string url = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=" + global::Text.Language + "&format=json&name=" + Uri.EscapeDataString(query);
+        string url = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=" + global::Text.Language + "&format=json&name="
+            + Uri.EscapeDataString(query);
         var root = Json.DeserializeObject(Downloader(url)) as Dictionary<string, object>;
         var result = new List<WeatherLocationResult>();
         object raw;
@@ -275,7 +276,8 @@ static class WeatherService
         var days = new List<WeatherDay>();
         int count = Math.Min(3, dates.Length);
         for (int i = 0; i < count; i++)
-            days.Add(new WeatherDay { date = Convert.ToString(dates[i]), code = Integer(codes, i), maximum = Rounded(maximums, i), minimum = Rounded(minimums, i), precipitation = Integer(precipitation, i) });
+            days.Add(new WeatherDay { date = Convert.ToString(dates[i]), code = Integer(codes, i), maximum = Rounded(maximums, i),
+                minimum = Rounded(minimums, i), precipitation = Integer(precipitation, i) });
         if (current == null || days.Count == 0) throw new Exception(global::Text.Get("source.weatherservice.13"));
         return new WeatherSnapshot
         {
@@ -327,13 +329,23 @@ static class WeatherService
     static void Notify() { Action callback; lock (Sync) callback = changed; if (callback != null) callback(); }
     static long ToUnix(DateTime value) { return new DateTimeOffset(value.ToUniversalTime()).ToUnixTimeMilliseconds(); }
     static DateTime FromUnix(long value) { return value > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(value).UtcDateTime : DateTime.MinValue; }
-    static WeatherSnapshot Empty(bool isActive, string key) { return new WeatherSnapshot { active = isActive, location = key, days = new WeatherDay[0], attribution = "Weather data by Open-Meteo.com" }; }
-    static Dictionary<string, object> Object(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value) ? value as Dictionary<string, object> : null; }
-    static object[] Array(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value) ? value as object[] ?? new object[0] : new object[0]; }
-    static string Text(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value) ? Convert.ToString(value) : ""; }
-    static double Number(Dictionary<string, object> source, string key) { object value; if (source == null || !source.TryGetValue(key, out value)) throw new Exception(global::Text.Get("source.weatherservice.14")); return Convert.ToDouble(value, CultureInfo.InvariantCulture); }
-    static int Integer(object[] source, int index) { return source != null && index < source.Length && source[index] != null ? Convert.ToInt32(source[index], CultureInfo.InvariantCulture) : 0; }
-    static double Rounded(object[] source, int index) { return source != null && index < source.Length && source[index] != null ? Math.Round(Convert.ToDouble(source[index], CultureInfo.InvariantCulture), 1) : 0; }
+    static WeatherSnapshot Empty(bool isActive, string key) {
+        return new WeatherSnapshot { active = isActive, location = key, days = new WeatherDay[0], attribution = "Weather data by Open-Meteo.com" }; }
+    static Dictionary<string,
+        object> Object(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value)
+        ? value as Dictionary<string, object> : null; }
+    static object[] Array(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value)
+        ? value as object[] ?? new object[0] : new object[0]; }
+    static string Text(Dictionary<string, object> source, string key) { object value; return source != null && source.TryGetValue(key, out value)
+        ? Convert.ToString(value) : ""; }
+    static double Number(Dictionary<string, object> source, string key) { object value;
+        if (source == null || !source.TryGetValue(key, out value)) throw new Exception(global::Text.Get("source.weatherservice.14"));
+        return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+        }
+    static int Integer(object[] source, int index) { return source != null && index < source.Length && source[index] != null
+        ? Convert.ToInt32(source[index], CultureInfo.InvariantCulture) : 0; }
+    static double Rounded(object[] source, int index) { return source != null && index < source.Length && source[index] != null
+        ? Math.Round(Convert.ToDouble(source[index], CultureInfo.InvariantCulture), 1) : 0; }
 
     static void LoadCacheLocked()
     {

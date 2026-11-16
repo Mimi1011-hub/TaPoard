@@ -1,3 +1,4 @@
+import { reflowOrientation, validOrientation } from './deck-rules.js';
 import { FaderEditor } from './fader-editor.js';
 
 const copy = (value) => JSON.parse(JSON.stringify(value));
@@ -37,8 +38,9 @@ export class EditorState {
       const currentPages = this.deck[orientation].pages;
       (saved[orientation].pages || []).forEach((page, pageIndex) => {
         (page.items || []).forEach((item) => {
-          const current = (currentPages[pageIndex] && currentPages[pageIndex].items || []).find((value) =>
-            !value.id && value.type === item.type && value.row === item.row && value.column === item.column);
+          const current = ((currentPages[pageIndex] && currentPages[pageIndex].items) || []).find(
+            (value) => !value.id && value.type === item.type && value.row === item.row && value.column === item.column,
+          );
           if (current) current.id = item.id;
         });
       });
@@ -93,17 +95,21 @@ export class EditorState {
       const source = orientation.pages[address.page];
       if (!source || !orientation.pages[page] || !source.items[address.index]) return false;
       const item = source.items.splice(address.index, 1)[0];
-      item.row = row; item.column = column;
+      item.row = row;
+      item.column = column;
       orientation.pages[page].items.push(item);
     });
   }
 
   canMoveItem(address, page, row, column) {
-    const candidate = copy(this.deck), orientation = this.orientation(address.orientation, candidate);
+    const candidate = copy(this.deck),
+      orientation = this.orientation(address.orientation, candidate);
     const source = orientation.pages[address.page];
     if (!source || !orientation.pages[page] || !source.items[address.index]) return false;
     const item = source.items.splice(address.index, 1)[0];
-    item.row = row; item.column = column; orientation.pages[page].items.push(item);
+    item.row = row;
+    item.column = column;
+    orientation.pages[page].items.push(item);
     return this.validateDeck(candidate);
   }
 
@@ -115,7 +121,8 @@ export class EditorState {
       const value = copy(item);
       const space = row === undefined ? this.firstSpace(orientation, pageIndex, value) : { row, column };
       if (!space) return false;
-      value.row = space.row; value.column = space.column;
+      value.row = space.row;
+      value.column = space.column;
       if (!value.id) value.id = '';
       page.items.push(value);
     });
@@ -133,18 +140,26 @@ export class EditorState {
     return this.change((deck) => {
       const item = this.item(address, deck);
       if (!item) return false;
-      Object.keys(values).forEach((key) => { item[key] = copy(values[key]); });
+      Object.keys(values).forEach((key) => {
+        item[key] = copy(values[key]);
+      });
     });
   }
 
   setKeepAwake(value) {
-    return this.change((deck) => { deck.keepAwake = Boolean(value); });
+    return this.change((deck) => {
+      deck.keepAwake = Boolean(value);
+    });
   }
 
   canUpdateItem(address, values) {
-    const candidate = copy(this.deck), item = this.item(address, candidate);
+    const candidate = copy(this.deck),
+      item = this.item(address, candidate);
     if (!item) return false;
-    Object.keys(values).forEach((key) => { item[key] = copy(values[key]); }); return this.validateDeck(candidate);
+    Object.keys(values).forEach((key) => {
+      item[key] = copy(values[key]);
+    });
+    return this.validateDeck(candidate);
   }
 
   addPage(orientationName, after) {
@@ -183,27 +198,48 @@ export class EditorState {
 
   setGrid(orientationName, columns, rows, rearrange) {
     if (columns < 2 || columns > 8 || rows < 2 || rows > 8) return { ok: false, count: 0 };
-    const before = copy(this.deck), candidate = copy(this.deck), orientation = this.orientation(orientationName, candidate);
-    orientation.columns = columns; orientation.rows = rows;
+    const before = copy(this.deck),
+      candidate = copy(this.deck),
+      orientation = this.orientation(orientationName, candidate);
+    orientation.columns = columns;
+    orientation.rows = rows;
     const moved = this.reflow(orientation, !!rearrange);
     if (moved.error || (moved.count && !rearrange) || !this.validateDeck(candidate)) return { ok: false, count: moved.count };
-    this.deck = candidate; this.dirty = true; this.revision += 1;
+    this.deck = candidate;
+    this.dirty = true;
+    this.revision += 1;
     this.emit({ source: 'edit', before, after: copy(candidate) });
     return { ok: true, count: moved.count };
   }
 
-  moveFader(...args) { return this.faderEditor.move(...args); }
-  canMoveFader(...args) { return this.faderEditor.canMove(...args); }
-  updateFader(...args) { return this.faderEditor.update(...args); }
-  canUpdateFader(...args) { return this.faderEditor.canUpdate(...args); }
-  setBackground(background) { this.deck.background = copy(background); this.savedDeck.background = copy(background); this.emit({ source: 'background' }); }
+  moveFader(...args) {
+    return this.faderEditor.move(...args);
+  }
+  canMoveFader(...args) {
+    return this.faderEditor.canMove(...args);
+  }
+  updateFader(...args) {
+    return this.faderEditor.update(...args);
+  }
+  canUpdateFader(...args) {
+    return this.faderEditor.canUpdate(...args);
+  }
+  setBackground(background) {
+    this.deck.background = copy(background);
+    this.savedDeck.background = copy(background);
+    this.emit({ source: 'background' });
+  }
 
-  countItems(orientation) { return orientation.pages.reduce((total, page) => total + page.items.length, 0); }
+  countItems(orientation) {
+    return orientation.pages.reduce((total, page) => total + page.items.length, 0);
+  }
   sizeAllowed(item) {
     const definition = this.definitions.get(item.type);
     return !!definition && definition.sizes.indexOf(`${item.width}x${item.height}`) >= 0;
   }
-  inside(value, orientation) { return value.row >= 0 && value.column >= 0 && value.row + value.height <= orientation.rows && value.column + value.width <= orientation.columns; }
+  inside(value, orientation) {
+    return value.row >= 0 && value.column >= 0 && value.row + value.height <= orientation.rows && value.column + value.width <= orientation.columns;
+  }
   cells(value) {
     const result = [];
     for (let row = value.row; row < value.row + value.height; row += 1)
@@ -211,15 +247,22 @@ export class EditorState {
     return result;
   }
   effectiveFader(orientation, pageIndex, target) {
-    const page = orientation.pages[pageIndex], own = page.faders;
+    const page = orientation.pages[pageIndex],
+      own = page.faders;
     if (!own) return orientation.faders[target].off ? null : orientation.faders[target];
     if (own[`${target}Hidden`]) return null;
     return own[target] || (orientation.faders[target].off ? null : orientation.faders[target]);
   }
   occupied(orientation, pageIndex, ignored) {
-    const used = new Set(), page = orientation.pages[pageIndex];
-    ['speaker', 'mic'].forEach((target) => { const fader = this.effectiveFader(orientation, pageIndex, target); if (fader) this.cells(fader).forEach((cell) => used.add(cell)); });
-    page.items.forEach((item, index) => { if (index !== ignored) this.cells(item).forEach((cell) => used.add(cell)); });
+    const used = new Set(),
+      page = orientation.pages[pageIndex];
+    ['speaker', 'mic'].forEach((target) => {
+      const fader = this.effectiveFader(orientation, pageIndex, target);
+      if (fader) this.cells(fader).forEach((cell) => used.add(cell));
+    });
+    page.items.forEach((item, index) => {
+      if (index !== ignored) this.cells(item).forEach((cell) => used.add(cell));
+    });
     return used;
   }
   firstSpace(orientation, page, item) {
@@ -233,40 +276,13 @@ export class EditorState {
     const ids = new Set();
     return ['landscape', 'portrait'].every((name) => this.validateOrientation(deck[name], ids));
   }
-  faderSizeAllowed(value) { return ['1x1', '2x2', '3x1', '4x1', '3x2', '4x2'].indexOf(`${value.width}x${value.height}`) >= 0; }
+  faderSizeAllowed(value) {
+    return ['1x1', '2x2', '3x1', '4x1', '3x2', '4x2'].indexOf(`${value.width}x${value.height}`) >= 0;
+  }
   validateOrientation(orientation, ids) {
-    if (!orientation || orientation.columns < 2 || orientation.columns > 8 || orientation.rows < 2 || orientation.rows > 8 || !orientation.pages.length || orientation.pages.length > 40 || this.countItems(orientation) > 40) return false;
-    return orientation.pages.every((page, pageIndex) => {
-      if (!page || !Array.isArray(page.items) || String(page.name || '').length > 20) return false;
-      const used = new Set();
-      for (const target of ['speaker', 'mic']) {
-        const fader = this.effectiveFader(orientation, pageIndex, target);
-        if (fader && (!this.faderSizeAllowed(fader) || !this.inside(fader, orientation) || this.cells(fader).some((cell) => used.has(cell)))) return false;
-        if (fader) this.cells(fader).forEach((cell) => used.add(cell));
-      }
-      return page.items.every((item) => {
-        if ((item.id && ids.has(item.id)) || !this.sizeAllowed(item) || !this.inside(item, orientation) || this.cells(item).some((cell) => used.has(cell))) return false;
-        if (item.id) ids.add(item.id);
-        this.cells(item).forEach((cell) => used.add(cell)); return true;
-      });
-    });
+    return validOrientation(this, orientation, ids);
   }
   reflow(orientation, apply) {
-    const displaced = [];
-    for (let pageIndex = 0; pageIndex < orientation.pages.length; pageIndex += 1) {
-      const page = orientation.pages[pageIndex], used = new Set();
-      for (const target of ['speaker', 'mic']) { const fader = this.effectiveFader(orientation, pageIndex, target); if (fader && !this.inside(fader, orientation)) return { error: true, count: 0 }; if (fader) this.cells(fader).forEach((cell) => used.add(cell)); }
-      const kept = [];
-      page.items.forEach((item) => { const fits = this.sizeAllowed(item) && this.inside(item, orientation) && this.cells(item).every((cell) => !used.has(cell)); if (fits) { kept.push(item); this.cells(item).forEach((cell) => used.add(cell)); } else displaced.push({ item, page: pageIndex }); });
-      page.items = kept;
-    }
-    if (!apply) return { count: displaced.length };
-    for (const value of displaced) {
-      let placed = false;
-      for (let page = value.page; page < orientation.pages.length && !placed; page += 1) { const space = this.firstSpace(orientation, page, value.item); if (space) { Object.assign(value.item, space); orientation.pages[page].items.push(value.item); placed = true; } }
-      while (!placed && orientation.pages.length < 40) { orientation.pages.push({ name: '', faders: null, items: [] }); const page = orientation.pages.length - 1, space = this.firstSpace(orientation, page, value.item); if (space) { Object.assign(value.item, space); orientation.pages[page].items.push(value.item); placed = true; } }
-      if (!placed) return { error: true, count: displaced.length };
-    }
-    return { count: displaced.length };
+    return reflowOrientation(this, orientation, apply);
   }
 }

@@ -99,7 +99,9 @@ sealed class PageController : ControllerBase
             state.Save();
             state.Version = DeckView.NewId();
             state.Signal();
-            HttpIO.ReplyJson(r.stream, 200, new { ok = true, landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision });
+            HttpIO.ReplyJson(r.stream, 200,
+                new { ok = true, landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision
+                });
         }
     }
 
@@ -129,7 +131,10 @@ sealed class PageController : ControllerBase
             state.Version = DeckView.NewId();
             state.Signal();
             state.Undo.Remember(before, state.Config, orientation, target);
-            HttpIO.ReplyJson(r.stream, 200, new { ok = true, removed = removed, landscapePages = DeckLayout.Pages(state.Config, "landscape"), portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision });
+            HttpIO.ReplyJson(r.stream, 200,
+                new { ok = true, removed = removed, landscapePages = DeckLayout.Pages(state.Config, "landscape"),
+                portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = state.LandscapePage, portraitPage = state.PortraitPage,
+                version = state.Version, revision = state.Sync.Revision });
         }
     }
 
@@ -183,7 +188,10 @@ sealed class PageController : ControllerBase
             state.Version = DeckView.NewId();
             state.Signal();
             state.Undo.Remember(before, state.Config, orientation, target);
-            HttpIO.ReplyJson(r.stream, 200, new { ok = true, page = target, placed = placed, landscapePages = DeckLayout.Pages(state.Config, "landscape"), portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision });
+            HttpIO.ReplyJson(r.stream, 200,
+                new { ok = true, page = target, placed = placed, landscapePages = DeckLayout.Pages(state.Config, "landscape"),
+                portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = state.LandscapePage, portraitPage = state.PortraitPage,
+                version = state.Version, revision = state.Sync.Revision });
         }
     }
 
@@ -206,7 +214,9 @@ sealed class PageController : ControllerBase
             state.Save();
             state.Version = DeckView.NewId();
             state.Signal();
-            HttpIO.ReplyJson(r.stream, 200, new { ok = true, landscapePages = DeckLayout.Pages(state.Config, "landscape"), portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision });
+            HttpIO.ReplyJson(r.stream, 200,
+                new { ok = true, landscapePages = DeckLayout.Pages(state.Config, "landscape"), portraitPages = DeckLayout.Pages(state.Config, "portrait"),
+                landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision });
         }
     }
 

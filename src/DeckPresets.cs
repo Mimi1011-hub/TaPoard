@@ -36,8 +36,11 @@ static class DeckPresets
         bool analog = style == "analog", wide = style == "wide";
         return new PresetItem
         {
-            name = analog ? Text.Get("source.deckpresets.1") : Text.Get("source.deckpresets.2"), type = "clock", row = row, column = column, width = 2, height = wide ? 1 : 2,
-            options = new Dictionary<string, object> { { "style", analog ? "analog" : "digital" }, { "showSeconds", !wide }, { "showDate", true }, { "showWeekday", true }, { "hour12", false } },
+            name = analog ? Text.Get("source.deckpresets.1") : Text.Get("source.deckpresets.2"), type = "clock", row = row, column = column, width = 2,
+                height = wide ? 1 : 2,
+            options = new Dictionary<string,
+                object> { { "style", analog ? "analog" : "digital" }, { "showSeconds", !wide }, { "showDate", true }, { "showWeekday", true }, { "hour12", false
+                } },
         };
     }
 
@@ -45,7 +48,8 @@ static class DeckPresets
     {
         return new PresetItem
         {
-            name = days ? Text.Get("source.deckpresets.3") : Text.Get("source.deckpresets.4"), type = "weather", row = row, column = column, width = days ? 2 : 1, height = days ? 2 : 1,
+            name = days ? Text.Get("source.deckpresets.3") : Text.Get("source.deckpresets.4"), type = "weather", row = row, column = column, width = days ? 2
+                : 1, height = days ? 2 : 1,
             options = new Dictionary<string, object> { { "forecastMode", days ? "days" : "hours" } },
         };
     }
@@ -53,7 +57,8 @@ static class DeckPresets
     static PresetItem Metric(string primary, int row, int column)
     {
         bool overview = primary == "overview";
-        string name = overview ? Text.Get("source.deckpresets.5") : primary == "memory" ? Text.Get("source.deckpresets.6") : primary == "gpu" ? Text.Get("source.deckpresets.7") : Text.Get("source.deckpresets.8");
+        string name = overview ? Text.Get("source.deckpresets.5") : primary == "memory" ? Text.Get("source.deckpresets.6") : primary == "gpu"
+            ? Text.Get("source.deckpresets.7") : Text.Get("source.deckpresets.8");
         return new PresetItem
         {
             name = name, type = "metrics", row = row, column = column, width = overview ? 2 : 1, height = overview ? 2 : 1,
@@ -375,7 +380,8 @@ static class DeckPresets
         foreach (var i in l.items)
         {
             var help = Describe(i);
-            items.Add(new { name = i.name, type = i.type, icon = i.icon ?? "", key = i.hotkey ?? "", description = help[0], sends = help[1], row = i.row, column = i.column, width = i.width, height = i.height });
+            items.Add(new { name = i.name, type = i.type, icon = i.icon ?? "", key = i.hotkey ?? "", description = help[0], sends = help[1], row = i.row,
+                column = i.column, width = i.width, height = i.height });
         }
         return new { columns = l.columns, rows = l.rows, speaker = l.speaker, mic = l.mic, items = items };
     }
@@ -384,7 +390,8 @@ static class DeckPresets
     {
         var result = new List<object>();
         foreach (var preset in All)
-            result.Add(new { id = preset.id, name = preset.name, note = preset.note, setup = preset.setup, landscape = PublicLayout(preset.landscape), portrait = PublicLayout(preset.portrait) });
+            result.Add(new { id = preset.id, name = preset.name, note = preset.note, setup = preset.setup, landscape = PublicLayout(preset.landscape),
+                portrait = PublicLayout(preset.portrait) });
         return result;
     }
 
@@ -439,7 +446,8 @@ static class DeckPresets
         bool portrait = orientation == "portrait";
         var layout = portrait ? preset.portrait : preset.landscape;
         if (page < 0 || page >= DeckLayout.Pages(s, orientation)) throw new Exception(Text.Get("source.deckpresets.200"));
-        Func<AppEntry, bool> onPage = a => a.orientation == orientation && DeckLayout.Position(a, portrait) != null && DeckLayout.Position(a, portrait).page == page;
+        Func<AppEntry, bool> onPage = a => a.orientation == orientation && DeckLayout.Position(a, portrait) != null
+            && DeckLayout.Position(a, portrait).page == page;
         s.apps.RemoveAll(a => onPage(a));
         DeckLayout.ControlPages(s, portrait).RemoveAll(e => e == null || e.page == page);
         if (s.apps.FindAll(a => a.orientation == orientation).Count + layout.items.Length > 40)
@@ -477,8 +485,10 @@ static class DeckPresets
             micHeight = layout.mic != null ? layout.mic.height : shared.micHeight,
         };
         // A hidden fader keeps a harmless spot that cannot overlap the one shown.
-        if (layout.mic == null && layout.speaker != null) { c.micRow = layout.speaker.row; c.micColumn = layout.speaker.column; c.micWidth = 1; c.micHeight = 1; }
-        if (layout.speaker == null && layout.mic != null) { c.speakerRow = layout.mic.row; c.speakerColumn = layout.mic.column; c.speakerWidth = 1; c.speakerHeight = 1; }
+        if (layout.mic == null && layout.speaker != null) { c.micRow = layout.speaker.row; c.micColumn = layout.speaker.column; c.micWidth = 1; c.micHeight = 1;
+            }
+        if (layout.speaker == null && layout.mic != null) { c.speakerRow = layout.mic.row; c.speakerColumn = layout.mic.column; c.speakerWidth = 1;
+            c.speakerHeight = 1; }
         DeckLayout.SetPageControls(s, portrait, page, c, layout.speaker == null, layout.mic == null);
 
         foreach (var item in layout.items) s.apps.Add(Entry(item, orientation, page, newId));

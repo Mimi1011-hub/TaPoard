@@ -73,7 +73,8 @@ sealed class InputController : ControllerBase
     void SendInput(ApiRequest r)
     {
         object session, view, sequence, events;
-        if (!r.input.TryGetValue("sessionId", out session) || !r.input.TryGetValue("viewId", out view) || !r.input.TryGetValue("sequence", out sequence) || !r.input.TryGetValue("events", out events))
+        if (!r.input.TryGetValue("sessionId", out session) || !r.input.TryGetValue("viewId", out view) || !r.input.TryGetValue("sequence", out sequence)
+            || !r.input.TryGetValue("events", out events))
             throw new Exception(Text.Get("source.inputcontroller.3"));
         string owner = deck.ViewIdentity(r, Convert.ToString(view));
         PcWindowService.YieldFocus();

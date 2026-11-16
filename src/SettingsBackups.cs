@@ -31,7 +31,8 @@ static class SettingsBackups
             if (!File.Exists(current)) return;
             var files = Files(data);
             DateTime last;
-            if (files.Length > 0 && TimeOf(Path.GetFileNameWithoutExtension(files[files.Length - 1]), out last) && DateTime.Now - last < Spacing && DateTime.Now >= last) return;
+            if (files.Length > 0 && TimeOf(Path.GetFileNameWithoutExtension(files[files.Length - 1]), out last) && DateTime.Now - last < Spacing
+                && DateTime.Now >= last) return;
             Directory.CreateDirectory(Folder(data));
             string target = Path.Combine(Folder(data), "settings-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json");
             if (File.Exists(target)) return;
@@ -58,7 +59,8 @@ static class SettingsBackups
                 foreach (var a in s.apps ?? new List<AppEntry>()) if (a.orientation == "portrait") portrait++; else landscape++;
                 DateTime time;
                 TimeOf(id, out time);
-                result.Add(new Dictionary<string, object> { { "id", id }, { "time", time.ToString("yyyy/MM/dd HH:mm") }, { "landscape", landscape }, { "portrait", portrait } });
+                result.Add(new Dictionary<string,
+                    object> { { "id", id }, { "time", time.ToString("yyyy/MM/dd HH:mm") }, { "landscape", landscape }, { "portrait", portrait } });
             }
             catch { }
         }
@@ -68,7 +70,9 @@ static class SettingsBackups
     static bool TimeOf(string id, out DateTime time)
     {
         time = DateTime.MinValue;
-        return NamePattern.IsMatch(id) && DateTime.TryParseExact(id.Substring(9), "yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out time);
+        return NamePattern.IsMatch(id)
+            && DateTime.TryParseExact(id.Substring(9), "yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out time);
     }
 
     internal static Settings Read(string data, string id)

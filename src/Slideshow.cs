@@ -17,14 +17,16 @@ static class Slideshow
     const int MaxFiles = 3000;
     const int MaxSide = 1280;
     static readonly object Gate = new object();
-    static readonly Dictionary<string, KeyValuePair<DateTime, string[]>> Listings = new Dictionary<string, KeyValuePair<DateTime, string[]>>(StringComparer.OrdinalIgnoreCase);
+    static readonly Dictionary<string, KeyValuePair<DateTime, string[]>> Listings = new Dictionary<string, KeyValuePair<DateTime,
+        string[]>>(StringComparer.OrdinalIgnoreCase);
     static readonly LinkedList<KeyValuePair<string, string>> Pictures = new LinkedList<KeyValuePair<string, string>>();
 
     internal static bool ValidFolder(string folder)
     {
         if (String.IsNullOrEmpty(folder)) return true;
         if (folder.Length > 260 || folder.IndexOfAny(Path.GetInvalidPathChars()) >= 0) return false;
-        try { return Path.IsPathRooted(folder) && !folder.StartsWith("\\\\.\\", StringComparison.Ordinal) && !folder.StartsWith("\\\\?\\", StringComparison.Ordinal); }
+        try { return Path.IsPathRooted(folder) && !folder.StartsWith("\\\\.\\", StringComparison.Ordinal)
+            && !folder.StartsWith("\\\\?\\", StringComparison.Ordinal); }
         catch { return false; }
     }
 
@@ -60,7 +62,8 @@ static class Slideshow
     {
         var files = Files(folder);
         if (files.Length == 0)
-            return new { count = 0, index = 0, name = "", data = (string)null, error = String.IsNullOrEmpty(folder) ? Text.Get("source.slideshow.1") : Directory.Exists(folder) ? Text.Get("source.slideshow.2") : Text.Get("source.slideshow.3") };
+            return new { count = 0, index = 0, name = "", data = (string)null, error = String.IsNullOrEmpty(folder) ? Text.Get("source.slideshow.1")
+                : Directory.Exists(folder) ? Text.Get("source.slideshow.2") : Text.Get("source.slideshow.3") };
         index = ((index % files.Length) + files.Length) % files.Length;
         string file = files[index], data = null;
         for (int tries = 0; tries < Math.Min(5, files.Length) && data == null; tries++)
@@ -69,7 +72,8 @@ static class Slideshow
             data = Read(file);
             if (data != null) index = (index + tries) % files.Length;
         }
-        return new { count = files.Length, index = index, name = Path.GetFileNameWithoutExtension(file), data = data, error = data == null ? Text.Get("source.slideshow.4") : "" };
+        return new { count = files.Length, index = index, name = Path.GetFileNameWithoutExtension(file), data = data, error = data == null
+            ? Text.Get("source.slideshow.4") : "" };
     }
 
     static string Read(string file)

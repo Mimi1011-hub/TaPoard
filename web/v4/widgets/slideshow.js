@@ -16,11 +16,20 @@ export class SlideshowWidget {
     this.node = node;
     this.item = item;
     const source = item.options || {};
-    this.options = { interval: Math.max(3, Math.min(3600, Number(source.interval) || 10)), order: source.order === 'random' ? 'random' : 'name', fit: source.fit === 'contain' ? 'contain' : 'cover', folder: source.folder || '' };
+    this.options = {
+      interval: Math.max(3, Math.min(3600, Number(source.interval) || 10)),
+      order: source.order === 'random' ? 'random' : 'name',
+      fit: source.fit === 'contain' ? 'contain' : 'cover',
+      folder: source.folder || '',
+    };
     node.classList.add('slideshow-widget', `slideshow-${this.options.fit}`);
     this.picture = el('img', 'slideshow-picture');
     this.picture.alt = '';
-    this.note = el('span', 'slideshow-note', this.options.folder ? this.context.i18n.t('slideshow.loading') : this.context.i18n.t('slideshow.unconfigured'));
+    this.note = el(
+      'span',
+      'slideshow-note',
+      this.options.folder ? this.context.i18n.t('slideshow.loading') : this.context.i18n.t('slideshow.unconfigured'),
+    );
     node.append(this.picture, this.note);
     appendWidgetName(node, item);
     this.click = () => this.load(1);
@@ -44,7 +53,9 @@ export class SlideshowWidget {
       const source = safeImageSource(result.data);
       this.note.textContent = source ? '' : result.error || '';
       if (source) this.picture.src = source;
-    } catch (error) { this.note.textContent = error.serverError || error.message; }
+    } catch (error) {
+      this.note.textContent = error.serverError || error.message;
+    }
     this.loading = false;
     this.schedule();
   }

@@ -89,21 +89,26 @@ static class DeckLayout
                 var place = PagePlacement(s, portrait, mic, page);
                 if (place == null) continue;
                 bool blocked = s.apps.Exists(a => a.orientation == orientation && Position(a, portrait) != null && Position(a, portrait).page == page
-                    && Overlap(Position(a, portrait).row, Position(a, portrait).column, Width(a), Height(a), place.row, place.column, place.width, place.height));
+                    && Overlap(Position(a, portrait).row, Position(a, portrait).column, Width(a), Height(a), place.row, place.column, place.width,
+                        place.height));
                 var other = PagePlacement(s, portrait, !mic, page);
-                if (other != null && Overlap(other.row, other.column, other.width, other.height, place.row, place.column, place.width, place.height)) blocked = true;
+                if (other != null && Overlap(other.row, other.column, other.width, other.height, place.row, place.column, place.width, place.height))
+                    blocked = true;
                 if (!blocked) continue;
                 var entry = FindPage(s, portrait, page);
                 if (entry == null)
                 {
-                    entry = new ControlPage { page = page, speaker = Placement(s, portrait, false), mic = Placement(s, portrait, true), speakerHidden = Off(s, portrait, false), micHidden = Off(s, portrait, true) };
+                    entry = new ControlPage { page = page, speaker = Placement(s, portrait, false), mic = Placement(s, portrait, true),
+                        speakerHidden = Off(s, portrait, false), micHidden = Off(s, portrait, true) };
                     ControlPages(s, portrait).Add(entry);
                 }
                 if (mic) entry.micHidden = true; else entry.speakerHidden = true;
             }
             ControlPages(s, portrait).Sort((a, b) => a.page.CompareTo(b.page));
         }
-        ControlPages(s, portrait).RemoveAll(entry => entry != null && !entry.speakerHidden && !entry.micHidden && Same(entry.speaker, Placement(s, portrait, false)) && Same(entry.mic, Placement(s, portrait, true)) && !Off(s, portrait, false) && !Off(s, portrait, true));
+        ControlPages(s, portrait).RemoveAll(entry => entry != null && !entry.speakerHidden && !entry.micHidden
+            && Same(entry.speaker, Placement(s, portrait, false)) && Same(entry.mic, Placement(s, portrait, true)) && !Off(s, portrait, false)
+            && !Off(s, portrait, true));
     }
 
     // The fader as shown on one page, or null when that page hides it.
@@ -137,8 +142,10 @@ static class DeckLayout
         var mic = FromLayout(c.micRow, c.micColumn, c.micSlot, c.micWidth, c.micHeight, c.micSize, columns);
         var pages = ControlPages(s, portrait);
         pages.RemoveAll(entry => entry == null || entry.page == page);
-        if (!speakerHidden && !micHidden && !Off(s, portrait, false) && !Off(s, portrait, true) && Same(speaker, Placement(s, portrait, false)) && Same(mic, Placement(s, portrait, true))) return;
-        if (speakerHidden == Off(s, portrait, false) && micHidden == Off(s, portrait, true) && Same(speaker, Placement(s, portrait, false)) && Same(mic, Placement(s, portrait, true))) return;
+        if (!speakerHidden && !micHidden && !Off(s, portrait, false) && !Off(s, portrait, true) && Same(speaker, Placement(s, portrait, false))
+            && Same(mic, Placement(s, portrait, true))) return;
+        if (speakerHidden == Off(s, portrait, false) && micHidden == Off(s, portrait, true) && Same(speaker, Placement(s, portrait, false))
+            && Same(mic, Placement(s, portrait, true))) return;
         pages.Add(new ControlPage { page = page, speaker = speaker, mic = mic, speakerHidden = speakerHidden, micHidden = micHidden });
         pages.Sort((a, b) => a.page.CompareTo(b.page));
     }
@@ -237,8 +244,14 @@ static class DeckLayout
             int total = Math.Max(2, columns * Rows(s, portrait));
             if (speakerSlot < 0 || speakerSlot >= total) speakerSlot = 0;
             if (micSlot < 0 || micSlot >= total || micSlot == speakerSlot) micSlot = speakerSlot == 0 ? 1 : 0;
-            if (Placement(s, portrait, false) == null) SetPlacement(s, portrait, false, new ControlPlacement { row = Math.Max(0, speakerSlot) / columns, column = Math.Max(0, speakerSlot) % columns, width = LegacySize(speakerSize), height = LegacySize(speakerSize) });
-            if (Placement(s, portrait, true) == null) SetPlacement(s, portrait, true, new ControlPlacement { row = Math.Max(0, micSlot) / columns, column = Math.Max(0, micSlot) % columns, width = LegacySize(micSize), height = LegacySize(micSize) });
+            if (Placement(s, portrait, false) == null)
+                SetPlacement(s, portrait, false,
+                    new ControlPlacement { row = Math.Max(0, speakerSlot) / columns, column = Math.Max(0, speakerSlot) % columns,
+                    width = LegacySize(speakerSize), height = LegacySize(speakerSize) });
+            if (Placement(s, portrait, true) == null)
+                SetPlacement(s, portrait, true,
+                    new ControlPlacement { row = Math.Max(0, micSlot) / columns, column = Math.Max(0, micSlot) % columns, width = LegacySize(micSize),
+                    height = LegacySize(micSize) });
             MirrorLegacy(s, portrait);
         }
     }
@@ -259,7 +272,8 @@ static class DeckLayout
             if (!app.labelOpacity.HasValue) app.labelOpacity = 45;
         }
         foreach (bool portrait in new[] { false, true }) PlaceUnpositioned(s, portrait);
-        s.landscapePageCount = Math.Max(s.landscapePageCount, RequiredPages(s, "landscape")); s.portraitPageCount = Math.Max(s.portraitPageCount, RequiredPages(s, "portrait"));
+        s.landscapePageCount = Math.Max(s.landscapePageCount, RequiredPages(s, "landscape"));
+        s.portraitPageCount = Math.Max(s.portraitPageCount, RequiredPages(s, "portrait"));
         PageNames.Resize(s);
     }
 
@@ -267,7 +281,8 @@ static class DeckLayout
     static string Cell(int page, int row, int column) { return page + ":" + row + ":" + column; }
     static bool AreaFree(HashSet<string> occupied, int page, int row, int column, int width, int height)
     {
-        for (int y = row; y < row + height; y++) for (int x = column; x < column + width; x++) if (occupied.Contains(Cell(page, y, x))) return false; return true;
+        for (int y = row; y < row + height; y++) for (int x = column; x < column + width; x++) if (occupied.Contains(Cell(page, y, x))) return false;
+        return true;
     }
     static void MarkArea(HashSet<string> occupied, int page, int row, int column, int width, int height)
     {
@@ -297,7 +312,8 @@ static class DeckLayout
         {
             var candidate = new TilePosition { page = page, row = row, column = column };
             if (!Fits(occupied, candidate, width, height, columns, rows, s, portrait)) continue;
-            int value = wanted == null ? page * 1000 + row * 10 + column : Math.Abs(page - wanted.page) * 1000 + Math.Abs(row - wanted.row) * 10 + Math.Abs(column - wanted.column);
+            int value = wanted == null ? page * 1000 + row * 10 + column
+                : Math.Abs(page - wanted.page) * 1000 + Math.Abs(row - wanted.row) * 10 + Math.Abs(column - wanted.column);
             if (value < score) { score = value; best = candidate; }
         }
         if (best == null) throw new Exception(Text.Get("source.decklayoutv2.3")); return best;
@@ -306,8 +322,15 @@ static class DeckLayout
     static void PlaceUnpositioned(Settings s, bool portrait)
     {
         int columns = Columns(s, portrait), rows = Rows(s, portrait); string orientation = OrientationName(portrait); var occupied = new HashSet<string>();
-        foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null) Mark(occupied, Position(app, portrait), Width(app), Height(app), columns, rows, s, portrait);
-        foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) == null) { var p = FindSpace(occupied, Width(app), Height(app), columns, rows, s, portrait, null); SetPosition(app, portrait, p); Mark(occupied, p, Width(app), Height(app), columns, rows, s, portrait); }
+        foreach (var app in s.apps)
+            if (app.orientation == orientation && Position(app, portrait) != null)
+                Mark(occupied, Position(app, portrait), Width(app), Height(app), columns, rows, s, portrait);
+        foreach (var app in s.apps)
+            if (app.orientation == orientation && Position(app, portrait) == null) {
+                var p = FindSpace(occupied, Width(app), Height(app), columns, rows, s, portrait, null);
+                SetPosition(app, portrait, p);
+                Mark(occupied, p, Width(app), Height(app), columns, rows, s, portrait);
+                }
     }
 
     static ControlPlacement FindControl(HashSet<string> occupied, ControlPlacement wanted, int columns, int rows)
@@ -315,7 +338,8 @@ static class DeckLayout
         ControlPlacement best = null; int score = int.MaxValue;
         for (int row = 0; row + wanted.height <= rows; row++) for (int column = 0; column + wanted.width <= columns; column++)
         {
-            if (!AreaFree(occupied, 0, row, column, wanted.width, wanted.height)) continue; int value = Math.Abs(row - wanted.row) * 10 + Math.Abs(column - wanted.column);
+            if (!AreaFree(occupied, 0, row, column, wanted.width, wanted.height)) continue;
+            int value = Math.Abs(row - wanted.row) * 10 + Math.Abs(column - wanted.column);
             if (value < score) { score = value; best = new ControlPlacement { row = row, column = column, width = wanted.width, height = wanted.height }; }
         }
         if (best == null) throw new Exception(Text.Get("source.decklayoutv2.4")); return best;
@@ -324,23 +348,28 @@ static class DeckLayout
     internal static void Reflow(Settings s, string orientation, int oldColumns)
     {
         bool portrait = orientation == "portrait"; int columns = Columns(s, portrait), rows = Rows(s, portrait); var controls = new HashSet<string>();
-        var speaker = FindControl(controls, Placement(s, portrait, false), columns, rows); MarkArea(controls, 0, speaker.row, speaker.column, speaker.width, speaker.height);
+        var speaker = FindControl(controls, Placement(s, portrait, false), columns, rows);
+        MarkArea(controls, 0, speaker.row, speaker.column, speaker.width, speaker.height);
         var mic = FindControl(controls, Placement(s, portrait, true), columns, rows); MarkArea(controls, 0, mic.row, mic.column, mic.width, mic.height);
         SetPlacement(s, portrait, false, speaker); SetPlacement(s, portrait, true, mic); MirrorLegacy(s, portrait);
         foreach (var entry in ControlPages(s, portrait))
         {
             var pageControls = new HashSet<string>();
-            if (entry.speaker != null) { entry.speaker = FindControl(pageControls, entry.speaker, columns, rows); MarkArea(pageControls, 0, entry.speaker.row, entry.speaker.column, entry.speaker.width, entry.speaker.height); }
+            if (entry.speaker != null) { entry.speaker = FindControl(pageControls, entry.speaker, columns, rows);
+                MarkArea(pageControls, 0, entry.speaker.row, entry.speaker.column, entry.speaker.width, entry.speaker.height); }
             else if (!entry.speakerHidden) MarkArea(pageControls, 0, speaker.row, speaker.column, speaker.width, speaker.height);
             if (entry.mic != null) entry.mic = FindControl(pageControls, entry.mic, columns, rows);
         }
         var occupied = new HashSet<string>();
         foreach (var app in s.apps) if (app.orientation == orientation)
         {
-            var original = Position(app, portrait); var placed = Fits(occupied, original, Width(app), Height(app), columns, rows, s, portrait) ? original : FindSpace(occupied, Width(app), Height(app), columns, rows, s, portrait, original);
+            var original = Position(app, portrait);
+            var placed = Fits(occupied, original, Width(app), Height(app), columns, rows, s, portrait) ? original
+                : FindSpace(occupied, Width(app), Height(app), columns, rows, s, portrait, original);
             SetPosition(app, portrait, placed); Mark(occupied, placed, Width(app), Height(app), columns, rows, s, portrait);
         }
-        if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, RequiredPages(s, orientation)); else s.landscapePageCount = Math.Max(s.landscapePageCount, RequiredPages(s, orientation));
+        if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, RequiredPages(s, orientation));
+        else s.landscapePageCount = Math.Max(s.landscapePageCount, RequiredPages(s, orientation));
         PageNames.Resize(s);
     }
 
@@ -401,11 +430,15 @@ static class DeckLayout
     internal static void PlaceFrom(Settings s, string orientation, List<AppEntry> added, int firstPage)
     {
         bool portrait = orientation == "portrait"; int columns = Columns(s, portrait), rows = Rows(s, portrait); var occupied = new HashSet<string>();
-        foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null && !added.Contains(app)) MarkArea(occupied, Position(app, portrait).page, Position(app, portrait).row, Position(app, portrait).column, Width(app), Height(app));
+        foreach (var app in s.apps)
+            if (app.orientation == orientation && Position(app, portrait) != null && !added.Contains(app))
+                MarkArea(occupied, Position(app, portrait).page, Position(app, portrait).row, Position(app, portrait).column, Width(app), Height(app));
         foreach (var app in added)
         {
             TilePosition found = null;
-            for (int page = firstPage; page < MaxPages && found == null; page++) for (int row = 0; row + Height(app) <= rows && found == null; row++) for (int column = 0; column + Width(app) <= columns && found == null; column++)
+            for (int page = firstPage; page < MaxPages && found == null; page++)
+                for (int row = 0; row + Height(app) <= rows && found == null; row++)
+                    for (int column = 0; column + Width(app) <= columns && found == null; column++)
             {
                 var candidate = new TilePosition { page = page, row = row, column = column };
                 if (Fits(occupied, candidate, Width(app), Height(app), columns, rows, s, portrait)) found = candidate;
@@ -414,16 +447,25 @@ static class DeckLayout
             SetPosition(app, portrait, found); MarkArea(occupied, found.page, found.row, found.column, Width(app), Height(app));
         }
         int pages = RequiredPages(s, orientation);
-        if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, pages); else { s.landscapePageCount = Math.Max(s.landscapePageCount, pages); s.pageCount = s.landscapePageCount; }
+        if (portrait) s.portraitPageCount = Math.Max(s.portraitPageCount, pages);
+        else { s.landscapePageCount = Math.Max(s.landscapePageCount, pages); s.pageCount = s.landscapePageCount; }
         PageNames.Resize(s);
     }
 
     internal static int RequiredPages(Settings s, string orientation)
     {
-        int count = 1; bool portrait = orientation == "portrait"; foreach (var app in s.apps) if (app.orientation == orientation && Position(app, portrait) != null) count = Math.Max(count, Position(app, portrait).page + 1); return count;
+        int count = 1;
+        bool portrait = orientation == "portrait";
+        foreach (var app in s.apps)
+            if (app.orientation == orientation && Position(app, portrait) != null) count = Math.Max(count, Position(app, portrait).page + 1);
+        return count;
     }
-    internal static int Pages(Settings s, string orientation) { return Math.Max(orientation == "portrait" ? s.portraitPageCount : s.landscapePageCount, RequiredPages(s, orientation)); }
-    internal static bool ControlDimensionsValid(ControlPlacement p) { return p != null && ((p.width == 1 && p.height == 1) || (p.width == 2 && p.height == 2) || (p.width == 3 && p.height == 1) || (p.width == 4 && p.height == 1) || (p.width == 3 && p.height == 2) || (p.width == 4 && p.height == 2)); }
+    internal static int Pages(Settings s, string orientation) {
+        return Math.Max(orientation == "portrait" ? s.portraitPageCount : s.landscapePageCount, RequiredPages(s, orientation)); }
+    internal static bool ControlDimensionsValid(ControlPlacement p) { return p != null
+        && ((p.width == 1 && p.height == 1) || (p.width == 2 && p.height == 2) || (p.width == 3 && p.height == 1) || (p.width == 4 && p.height == 1)
+            || (p.width == 3 && p.height == 2) || (p.width == 4 && p.height == 2));
+        }
     internal static bool ControlFits(ControlPlacement p, int columns, int rows)
     {
         return ControlDimensionsValid(p) && p.row >= 0 && p.column >= 0 && p.row + p.height <= rows && p.column + p.width <= columns;
@@ -451,18 +493,26 @@ static class DeckLayout
 
     internal static void Validate(Settings s)
     {
-        if (s.pageCount < 1 || s.pageCount > MaxPages || s.landscapePageCount < 1 || s.landscapePageCount > MaxPages || s.portraitPageCount < 1 || s.portraitPageCount > MaxPages) throw new Exception(Text.Get("source.decklayoutv2.9"));
-        if (!GridCountValid(s.landscapeColumns) || !GridCountValid(s.landscapeRows) || !GridCountValid(s.portraitColumns) || !GridCountValid(s.portraitRows)) throw new Exception(Text.Get("source.decklayoutv2.10"));
-        foreach (bool portrait in new[] { false, true }) if (!ControlsValid(s, portrait)) throw new Exception(Text.Get("source.decklayoutv2.13", Text.Get(portrait ? "source.decklayoutv2.11" : "source.decklayoutv2.12")));
+        if (s.pageCount < 1 || s.pageCount > MaxPages || s.landscapePageCount < 1 || s.landscapePageCount > MaxPages || s.portraitPageCount < 1
+            || s.portraitPageCount > MaxPages) throw new Exception(Text.Get("source.decklayoutv2.9"));
+        if (!GridCountValid(s.landscapeColumns) || !GridCountValid(s.landscapeRows) || !GridCountValid(s.portraitColumns) || !GridCountValid(s.portraitRows))
+            throw new Exception(Text.Get("source.decklayoutv2.10"));
+        foreach (bool portrait in new[] { false, true })
+            if (!ControlsValid(s, portrait))
+                throw new Exception(Text.Get("source.decklayoutv2.13", Text.Get(portrait ? "source.decklayoutv2.11" : "source.decklayoutv2.12")));
         foreach (var app in s.apps)
         {
             WidgetRegistry.ValidateDimensions(app);
-            if (app.fontSize < 8 || app.fontSize > 28 || app.iconScale < 20 || app.iconScale > 100 || !app.labelOpacity.HasValue || app.labelOpacity.Value < 0 || app.labelOpacity.Value > 100 || (app.keyClear.HasValue && (app.keyClear.Value < 0 || app.keyClear.Value > 100))) throw new Exception(Text.Get("source.decklayoutv2.14"));
+            if (app.fontSize < 8 || app.fontSize > 28 || app.iconScale < 20 || app.iconScale > 100 || !app.labelOpacity.HasValue || app.labelOpacity.Value < 0
+                || app.labelOpacity.Value > 100
+                || (app.keyClear.HasValue && (app.keyClear.Value < 0 || app.keyClear.Value > 100))) throw new Exception(Text.Get("source.decklayoutv2.14"));
         }
         foreach (bool portrait in new[] { false, true })
         {
             var occupied = new HashSet<string>(); string orientation = OrientationName(portrait);
-            foreach (var app in s.apps) if (app.orientation == orientation) Mark(occupied, Position(app, portrait), Width(app), Height(app), Columns(s, portrait), Rows(s, portrait), s, portrait);
+            foreach (var app in s.apps)
+                if (app.orientation == orientation)
+                    Mark(occupied, Position(app, portrait), Width(app), Height(app), Columns(s, portrait), Rows(s, portrait), s, portrait);
         }
     }
 }

@@ -40,33 +40,60 @@ export class SettingsApp {
       onConflict: () => this.externalConflict(),
     });
     this.preview = new Preview({
-      root: this.nodes.preview, editor: this.editor, api: this.api, i18n: this.i18n,
-      onSelect: (selection) => { if (this.inspector) this.inspector.select(selection); },
+      root: this.nodes.preview,
+      editor: this.editor,
+      api: this.api,
+      i18n: this.i18n,
+      onSelect: (selection) => {
+        if (this.inspector) this.inspector.select(selection);
+      },
       onError: (message) => this.shell.showNotice(message),
     });
-    this.iconPicker = new IconPicker({ editor: this.editor, i18n: this.i18n, documentObject: this.documentObject, onError: (message) => this.shell.showNotice(message) });
+    this.iconPicker = new IconPicker({
+      editor: this.editor,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
+      onError: (message) => this.shell.showNotice(message),
+    });
     this.inspector = new Inspector({
-      root: this.nodes.inspector, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      root: this.nodes.inspector,
+      editor: this.editor,
+      preview: this.preview,
+      i18n: this.i18n,
       api: this.api,
       chooseSection: (section) => this.shell.chooseSection(section),
       onIcon: (selection) => this.iconPicker.open(selection),
       onError: (message) => this.shell.showNotice(message),
     });
     this.pages = new Pages({
-      root: this.nodes.pages, editor: this.editor, preview: this.preview, i18n: this.i18n,
-      confirmFn: this.confirmFn, onError: (message) => this.shell.showNotice(message),
+      root: this.nodes.pages,
+      editor: this.editor,
+      preview: this.preview,
+      i18n: this.i18n,
+      confirmFn: this.confirmFn,
+      onError: (message) => this.shell.showNotice(message),
     });
     this.gridSize = new GridSize({
-      root: this.nodes.gridSize, editor: this.editor, i18n: this.i18n,
-      orientation: () => this.preview.orientation, confirmFn: this.confirmFn,
+      root: this.nodes.gridSize,
+      editor: this.editor,
+      i18n: this.i18n,
+      orientation: () => this.preview.orientation,
+      confirmFn: this.confirmFn,
       onError: (message) => this.shell.showNotice(message),
     });
     this.catalog = new Catalog({
-      root: this.nodes.catalog, editor: this.editor, preview: this.preview, i18n: this.i18n, documentObject: this.documentObject,
+      root: this.nodes.catalog,
+      editor: this.editor,
+      preview: this.preview,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
       onError: (message) => this.shell.showNotice(message),
     });
     this.shortcutPacks = new ShortcutPacks({
-      api: this.api, catalog: this.catalog, i18n: this.i18n, documentObject: this.documentObject,
+      api: this.api,
+      catalog: this.catalog,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
       confirmDialog: new ConfirmDialog(this.documentObject, this.i18n),
       onError: (message) => this.shell.showNotice(message),
       onNotice: (message) => this.shell.showNotice(message),
@@ -75,22 +102,44 @@ export class SettingsApp {
     // The catalog works without packs, so a failed read only shows a notice.
     await this.shortcutPacks.load().catch((error) => this.shell.showNotice(error.serverError || error.message));
     this.appImport = new AppImport({
-      root: this.nodes.catalog, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
-      documentObject: this.documentObject, onNotice: (message) => this.shell.showNotice(message),
+      root: this.nodes.catalog,
+      api: this.api,
+      editor: this.editor,
+      preview: this.preview,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
+      onNotice: (message) => this.shell.showNotice(message),
     });
     this.catalog.launchExtra = () => this.appImport.button;
     this.appearance = new Appearance({
-      root: this.nodes.sections.appearance, api: this.api, editor: this.editor, preview: this.preview, iconPicker: this.iconPicker,
-      i18n: this.i18n, confirmFn: this.confirmFn, promptFn: this.promptFn, onError: (message) => this.shell.showNotice(message),
+      root: this.nodes.sections.appearance,
+      api: this.api,
+      editor: this.editor,
+      preview: this.preview,
+      iconPicker: this.iconPicker,
+      i18n: this.i18n,
+      confirmFn: this.confirmFn,
+      promptFn: this.promptFn,
+      onError: (message) => this.shell.showNotice(message),
     });
     await this.appearance.start();
     this.backgroundSettings = new BackgroundSettings({
-      root: this.appearance.backgroundRoot, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      root: this.appearance.backgroundRoot,
+      api: this.api,
+      editor: this.editor,
+      preview: this.preview,
+      i18n: this.i18n,
       onError: (message) => this.shell.showNotice(message),
     });
     this.saved = new Saved({
-      root: this.nodes.sections.saved, api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
-      documentObject: this.documentObject, confirmFn: this.confirmFn, promptFn: this.promptFn,
+      root: this.nodes.sections.saved,
+      api: this.api,
+      editor: this.editor,
+      preview: this.preview,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
+      confirmFn: this.confirmFn,
+      promptFn: this.promptFn,
       settle: async () => (await this.backgroundSettings.flush()) && this.saver.flush(),
       reload: () => this.reloadDeck(),
       onError: (message) => this.shell.showNotice(message),
@@ -98,31 +147,48 @@ export class SettingsApp {
     });
     await this.saved.start();
     this.connect = new Connect({
-      root: this.nodes.sections.connection, api: this.api, i18n: this.i18n, documentObject: this.documentObject,
+      root: this.nodes.sections.connection,
+      api: this.api,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
       onError: (message) => this.shell.showNotice(message),
     });
     await this.connect.start();
     this.shell.sections.subscribe((section) => this.connect.active(section === 'connection'));
     this.pcWindowSettings = new PcWindowSettings({
-      root: this.nodes.sections.pc, api: this.api, i18n: this.i18n,
+      root: this.nodes.sections.pc,
+      api: this.api,
+      i18n: this.i18n,
       onError: (message) => this.shell.showNotice(message),
     });
     this.pcWindowSettings.start();
     this.shell.sections.subscribe((section) => this.pcWindowSettings.active(section === 'pc'));
     this.general = new General({
-      root: this.nodes.sections.general, api: this.api, editor: this.editor, i18n: this.i18n,
-      view: this.languageView, documentObject: this.documentObject,
+      root: this.nodes.sections.general,
+      api: this.api,
+      editor: this.editor,
+      i18n: this.i18n,
+      view: this.languageView,
+      documentObject: this.documentObject,
       onError: (message) => this.shell.showNotice(message),
     });
     this.general.start();
     this.preview.onTarget = () => this.saved.targetChanged();
-    this.editor.subscribe((event) => { if (event.source === 'load') this.saved.targetChanged(); });
-    this.nodes.orientation.forEach((button) => button.addEventListener('click', () => {
-      this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
-      this.preview.setOrientation(button.dataset.orientation);
-      this.pages.render(); this.gridSize.render(); this.backgroundSettings.orientationChanged();
-    }));
-    this.history.subscribe((history) => { this.nodes.undo.disabled = !history.past.length; });
+    this.editor.subscribe((event) => {
+      if (event.source === 'load') this.saved.targetChanged();
+    });
+    this.nodes.orientation.forEach((button) =>
+      button.addEventListener('click', () => {
+        this.nodes.orientation.forEach((value) => value.classList.toggle('is-active', value === button));
+        this.preview.setOrientation(button.dataset.orientation);
+        this.pages.render();
+        this.gridSize.render();
+        this.backgroundSettings.orientationChanged();
+      }),
+    );
+    this.history.subscribe((history) => {
+      this.nodes.undo.disabled = !history.past.length;
+    });
     this.nodes.undo.addEventListener('click', () => this.history.undo());
     this.documentObject.addEventListener('keydown', (event) => this.keydown(event));
     this.store.subscribe((state) => this.stateChanged(state));
@@ -143,8 +209,11 @@ export class SettingsApp {
     }
     if (!event.ctrlKey || event.altKey) return;
     const key = event.key.toLowerCase();
-    if (key === 'z' && !event.shiftKey) { if (this.history.undo()) event.preventDefault(); }
-    else if (key === 'y' || (key === 'z' && event.shiftKey)) { if (this.history.redo()) event.preventDefault(); }
+    if (key === 'z' && !event.shiftKey) {
+      if (this.history.undo()) event.preventDefault();
+    } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+      if (this.history.redo()) event.preventDefault();
+    }
   }
 
   setSaveStatus(status, error) {
@@ -164,7 +233,10 @@ export class SettingsApp {
 
   externalConflict() {
     this.saver.pause();
-    this.shell.showConflict(() => this.reloadDeck(), () => {});
+    this.shell.showConflict(
+      () => this.reloadDeck(),
+      () => {},
+    );
   }
 
   async reloadDeck() {

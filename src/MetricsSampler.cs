@@ -157,7 +157,8 @@ static class MetricsSampler
 
     internal static double? CalculateCpu(SystemCounters before, SystemCounters after)
     {
-        if (!before.supported || !after.supported || !before.available || !after.available || after.idle < before.idle || after.kernel < before.kernel || after.user < before.user)
+        if (!before.supported || !after.supported || !before.available || !after.available || after.idle < before.idle || after.kernel < before.kernel
+            || after.user < before.user)
             return null;
         ulong idle = after.idle - before.idle,
             kernel = after.kernel - before.kernel,

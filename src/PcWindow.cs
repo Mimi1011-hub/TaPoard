@@ -598,7 +598,8 @@ sealed class PcWindow : Form
         else if (message.StartsWith("resize:"))
         {
             string edge = message.Substring(7);
-            if (!maximized && !fullscreen && Array.IndexOf(new[] { "left", "right", "top", "bottom", "topleft", "topright", "bottomleft", "bottomright" }, edge) >= 0)
+            if (!maximized && !fullscreen
+                && Array.IndexOf(new[] { "left", "right", "top", "bottom", "topleft", "topright", "bottomleft", "bottomright" }, edge) >= 0)
                 BeginTrack(edge);
         }
         else if (message.StartsWith("move:"))
@@ -1729,7 +1730,8 @@ sealed class PcBar : Control
                         g.FillRectangle(b, item.bounds);
                 if (active)
                     using (var accent = new SolidBrush(Color.FromArgb(110, 150, 255)))
-                        g.FillRectangle(accent, item.bounds.X + item.bounds.Width / 4, item.bounds.Bottom - Math.Max(2, (int)(2 * UiScale)), item.bounds.Width / 2, Math.Max(2, (int)(2 * UiScale)));
+                        g.FillRectangle(accent, item.bounds.X + item.bounds.Width / 4, item.bounds.Bottom - Math.Max(2, (int)(2 * UiScale)),
+                            item.bounds.Width / 2, Math.Max(2, (int)(2 * UiScale)));
                 using (var fg = new SolidBrush(active ? Color.FromArgb(150, 182, 255) : Color.FromArgb(222, 224, 230)))
                     g.DrawString(active ? item.activeGlyph : item.glyph, glyphFont, fg, item.bounds, center);
             }
@@ -1751,7 +1753,8 @@ sealed class PcBar : Control
             if (!pageNameBounds.IsEmpty)
                 using (var pageFont = new Font("Segoe UI", h * 0.34f, GraphicsUnit.Pixel))
                 using (var fg = new SolidBrush(Color.FromArgb(205, 209, 218)))
-                using (var ellipsis = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap })
+                using (var ellipsis = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center,
+                    Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap })
                     g.DrawString(pageName, pageFont, fg, pageNameBounds, ellipsis);
         }
     }

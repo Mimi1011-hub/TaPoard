@@ -43,7 +43,8 @@ static class SettingsMigration
         int pageCount = DeckLayout.Pages(settings, orientation);
         var pages = new List<PageV3>();
         for (int page = 0; page < pageCount; page++)
-            pages.Add(new PageV3 { name = PageNames.Normalize(PageNames.Get(settings, portrait, page)), faders = PageFaders(settings, portrait, page, pageCount), items = new List<DeckItem>() });
+            pages.Add(new PageV3 { name = PageNames.Normalize(PageNames.Get(settings, portrait, page)),
+                faders = PageFaders(settings, portrait, page, pageCount), items = new List<DeckItem>() });
         foreach (var app in settings.apps ?? new List<AppEntry>())
         {
             if (app.orientation != orientation)
@@ -137,7 +138,8 @@ static class SettingsMigration
 
     internal static Settings ToV2(SettingsV3 settings)
     {
-        if (settings == null || settings.schemaVersion != 3 || settings.security == null || settings.deck == null || settings.deck.landscape == null || settings.deck.portrait == null)
+        if (settings == null || settings.schemaVersion != 3 || settings.security == null || settings.deck == null || settings.deck.landscape == null
+            || settings.deck.portrait == null)
             throw new Exception(Text.Get("source.settingsmigration.5"));
         var result = new Settings
         {
@@ -162,7 +164,8 @@ static class SettingsMigration
 
     static void ApplyOrientation(Settings target, OrientationV3 source, bool portrait)
     {
-        if (source == null || source.faders == null || source.faders.speaker == null || source.faders.mic == null || source.pages == null || source.pages.Count < 1)
+        if (source == null || source.faders == null || source.faders.speaker == null || source.faders.mic == null || source.pages == null
+            || source.pages.Count < 1)
             throw new Exception(Text.Get("source.settingsmigration.6"));
         if (portrait)
         {

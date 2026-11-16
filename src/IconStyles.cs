@@ -240,7 +240,8 @@ static class IconStyles
             string customIcon = IconPresets.ValidCustomIcon(saved.customIcon) ? saved.customIcon : null;
             string iconKey = IconPresets.Exists(saved.iconKey) ? saved.iconKey : a.iconKey;
             string iconColor = IconPresets.ValidColor(saved.iconColor) ? saved.iconColor : null;
-            if (a.iconKey == iconKey && a.iconColor == iconColor && a.customIcon == customIcon && a.iconPack == saved.iconPack && a.iconPackItem == saved.iconPackItem && (saved.iconScale == 0 || a.iconScale == saved.iconScale))
+            if (a.iconKey == iconKey && a.iconColor == iconColor && a.customIcon == customIcon && a.iconPack == saved.iconPack
+                && a.iconPackItem == saved.iconPackItem && (saved.iconScale == 0 || a.iconScale == saved.iconScale))
                 continue;
             a.iconKey = iconKey;
             a.iconColor = iconColor;

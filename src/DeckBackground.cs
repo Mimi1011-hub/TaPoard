@@ -118,7 +118,8 @@ static class DeckBackgrounds
         if (bytes.Length == 0 || bytes.Length > MaxImageBytes) throw new Exception(Text.Get("source.deckbackground.6"));
         bool valid = type == "image/png" ? bytes.Length > 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e && bytes[3] == 0x47
             : type == "image/jpeg" ? bytes.Length > 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff
-            : bytes.Length > 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50;
+            : bytes.Length > 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 && bytes[8] == 0x57 && bytes[9] == 0x45
+                && bytes[10] == 0x42 && bytes[11] == 0x50;
         if (!valid) throw new Exception(Text.Get("source.deckbackground.7"));
         if (width < 1 || height < 1 || width > 4096 || height > 4096) throw new Exception(Text.Get("source.deckbackground.8"));
         string version = Guid.NewGuid().ToString("N");

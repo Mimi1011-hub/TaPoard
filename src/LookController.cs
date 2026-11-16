@@ -26,8 +26,10 @@ sealed class LookController : ControllerBase
         api.Get("/api/shortcut-packs", ApiAccess.Admin, GetShortcutPacks);
         api.Post("/api/backups/restore", ApiAccess.Admin, delegate(ApiRequest r) { RestoreBackup(r, r.input); });
         api.PostPrefix("/api/background", ApiAccess.Admin, delegate(ApiRequest r) { SetBackground(r, r.path, r.input, r.json); });
-        api.PostPrefix("/api/icon-styles/", ApiAccess.Admin, delegate(ApiRequest r) { IconStyleAction(r, r.path.Substring("/api/icon-styles/".Length), r.input); });
-        api.PostPrefix("/api/icon-packs/", ApiAccess.Admin, delegate(ApiRequest r) { IconPackAction(r, r.path.Substring("/api/icon-packs/".Length), r.input, r.json); });
+        api.PostPrefix("/api/icon-styles/", ApiAccess.Admin,
+            delegate(ApiRequest r) { IconStyleAction(r, r.path.Substring("/api/icon-styles/".Length), r.input); });
+        api.PostPrefix("/api/icon-packs/", ApiAccess.Admin,
+            delegate(ApiRequest r) { IconPackAction(r, r.path.Substring("/api/icon-packs/".Length), r.input, r.json); });
         api.Post("/api/shortcut-packs/save", ApiAccess.Admin, SaveShortcutPack);
         api.Post("/api/shortcut-packs/delete", ApiAccess.Admin, DeleteShortcutPack);
     }
@@ -140,7 +142,10 @@ sealed class LookController : ControllerBase
                 state.Signal();
                 // Restoring a look can be undone once, like a page delete or a preset.
                 state.Undo.Remember(before, state.Config, "landscape", 0);
-                HttpIO.ReplyJson(r.stream, 200, new { ok = true, changed = changed, background = DeckBackgrounds.Public(state.Config.background), landscapePages = DeckLayout.Pages(state.Config, "landscape"), portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision });
+                HttpIO.ReplyJson(r.stream, 200,
+                    new { ok = true, changed = changed, background = DeckBackgrounds.Public(state.Config.background),
+                    landscapePages = DeckLayout.Pages(state.Config, "landscape"), portraitPages = DeckLayout.Pages(state.Config, "portrait"),
+                    landscapePage = state.LandscapePage, portraitPage = state.PortraitPage, version = state.Version, revision = state.Sync.Revision });
             }
         else if (action == "rename")
         {
@@ -163,7 +168,8 @@ sealed class LookController : ControllerBase
             if (path == "/api/background")
                 state.Config.background = DeckBackgrounds.Clean(IconPacks.Serializer().Deserialize<DeckBackground>(json), state.Config.background);
             else if (path == "/api/background/image")
-                state.Config.background = DeckBackgrounds.SetImage(state.Data, state.Config.background, Convert.ToString(input["data"]), Convert.ToInt32(input["width"]), Convert.ToInt32(input["height"]));
+                state.Config.background = DeckBackgrounds.SetImage(state.Data, state.Config.background, Convert.ToString(input["data"]),
+                    Convert.ToInt32(input["width"]), Convert.ToInt32(input["height"]));
             else if (path == "/api/background/image/delete")
                 state.Config.background = DeckBackgrounds.ClearImage(state.Data, state.Config.background);
             else
@@ -216,7 +222,10 @@ sealed class LookController : ControllerBase
             state.Version = DeckView.NewId();
             state.Signal();
             state.Undo.Remember(before, state.Config, "landscape", 0);
-            HttpIO.ReplyJson(r.stream, 200, new { ok = true, buttons = kept.Count, landscapePages = DeckLayout.Pages(state.Config, "landscape"), portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = 0, portraitPage = 0, version = state.Version, revision = state.Sync.Revision });
+            HttpIO.ReplyJson(r.stream, 200,
+                new { ok = true, buttons = kept.Count, landscapePages = DeckLayout.Pages(state.Config, "landscape"),
+                portraitPages = DeckLayout.Pages(state.Config, "portrait"), landscapePage = 0, portraitPage = 0, version = state.Version,
+                revision = state.Sync.Revision });
         }
     }
 }

@@ -38,7 +38,10 @@ export class PhoneApp {
       else if (this.pairing) this.pairing.build();
     });
     this.store.subscribe((state) => this.stateChanged(state));
-    const orientationChanged = () => { this.signature = ''; this.render(this.store.get()); };
+    const orientationChanged = () => {
+      this.signature = '';
+      this.render(this.store.get());
+    };
     if (this.media.addEventListener) this.media.addEventListener('change', orientationChanged);
     else this.media.addListener(orientationChanged);
     this.documentObject.addEventListener('visibilitychange', () => this.visibilityChanged());
@@ -47,47 +50,83 @@ export class PhoneApp {
   }
 
   connect() {
-    if (this.pairing) { this.pairing.destroy(); this.pairing = null; }
+    if (this.pairing) {
+      this.pairing.destroy();
+      this.pairing = null;
+    }
     this.api = new Api(this.key, this.windowObject.fetch.bind(this.windowObject));
     this.sessions = new InputSessions();
     this.senders = new InputSenders({
-      api: this.api, sessions: this.sessions, viewId: this.viewId,
+      api: this.api,
+      sessions: this.sessions,
+      viewId: this.viewId,
       renewView: () => this.announcer.force(this.visibleIds()).catch(() => {}),
-      onLatency: (value) => { if (this.pcHost) this.pcHost.actionLatency(value); },
+      onLatency: (value) => {
+        if (this.pcHost) this.pcHost.actionLatency(value);
+      },
     });
     const widgetFeedback = this.pcWindow ? { prepare() {}, tap() {} } : this.feedback;
     const context = {
-      api: this.api, i18n: this.i18n, feedback: widgetFeedback, viewId: this.viewId,
-      documentObject: this.documentObject, state: () => this.store.get(),
-      patch: (value) => this.store.update(value), refresh: () => this.sync.refresh(),
+      api: this.api,
+      i18n: this.i18n,
+      feedback: widgetFeedback,
+      viewId: this.viewId,
+      documentObject: this.documentObject,
+      state: () => this.store.get(),
+      patch: (value) => this.store.update(value),
+      refresh: () => this.sync.refresh(),
       showError: (error) => this.showError(error),
-      senders: this.senders, pcWindow: this.pcWindow,
+      senders: this.senders,
+      pcWindow: this.pcWindow,
     };
     this.grid = new DeckGrid(context, (item) => this.press(item));
     this.background = new DeckBackground(this.nodes.deck.parentNode, this.api);
     this.announcer = new ViewAnnouncer(this.api, this.viewId, this.sessions);
-    this.topbar = new TopBar(this.nodes.topbar, this.api, this.i18n, (page, orientation) => this.localPage(page, orientation), () => this.menu.open(), (error) => this.showError(error));
+    this.topbar = new TopBar(
+      this.nodes.topbar,
+      this.api,
+      this.i18n,
+      (page, orientation) => this.localPage(page, orientation),
+      () => this.menu.open(),
+      (error) => this.showError(error),
+    );
     this.menu = new PhoneMenu(this.nodes.menu, {
-      storage: this.storage, i18n: this.i18n, keyStore: this.keyStore,
-      documentObject: this.documentObject, wakeLock: this.navigatorObject.wakeLock,
-      NoSleepClass: this.windowObject.NoSleep, onDisconnect: () => this.disconnect(),
+      storage: this.storage,
+      i18n: this.i18n,
+      keyStore: this.keyStore,
+      documentObject: this.documentObject,
+      wakeLock: this.navigatorObject.wakeLock,
+      NoSleepClass: this.windowObject.NoSleep,
+      onDisconnect: () => this.disconnect(),
       pcWindow: this.pcWindow,
     });
     if (!this.pcWindow) new Swipe(this.nodes.deck, this.storage, (delta) => this.topbar.move(delta));
-    if (this.pcWindow) this.pcHost = new PcHost({
-      windowObject: this.windowObject, documentObject: this.documentObject, appNode: this.nodes.app,
-      deckShell: this.nodes.deck.parentNode,
-      topbar: this.nodes.topbar, api: this.api, i18n: this.i18n, storage: this.storage,
-      connected: () => this.pcConnected === true, movePage: (step) => this.topbar.move(step),
-      openMenu: () => this.menu.open(),
-    });
+    if (this.pcWindow)
+      this.pcHost = new PcHost({
+        windowObject: this.windowObject,
+        documentObject: this.documentObject,
+        appNode: this.nodes.app,
+        deckShell: this.nodes.deck.parentNode,
+        topbar: this.nodes.topbar,
+        api: this.api,
+        i18n: this.i18n,
+        storage: this.storage,
+        connected: () => this.pcConnected === true,
+        movePage: (step) => this.topbar.move(step),
+        openMenu: () => this.menu.open(),
+      });
     this.sync = new SyncLoop(this.api, this.store, {
-      viewId: this.viewId, visibleIds: () => this.visibleIds(),
+      viewId: this.viewId,
+      visibleIds: () => this.visibleIds(),
       onOffline: (offline) => {
-        this.nodes.offline.hidden = !offline; this.pcConnected = !offline;
+        this.nodes.offline.hidden = !offline;
+        this.pcConnected = !offline;
         if (this.pcHost) this.pcHost.connectionChanged();
       },
-      onAuthLost: () => { this.keyStore.clear(); this.disconnect(); },
+      onAuthLost: () => {
+        this.keyStore.clear();
+        this.disconnect();
+      },
     });
     this.signature = '';
     this.nodes.app.hidden = false;
@@ -95,11 +134,12 @@ export class PhoneApp {
     this.sync.start();
   }
 
-  orientation() { return this.media.matches ? 'portrait' : 'landscape'; }
+  orientation() {
+    return this.media.matches ? 'portrait' : 'landscape';
+  }
 
   async stateChanged(state) {
-    if (this.pcWindow && state && state.pcLanguage && state.pcLanguage !== this.i18n.language)
-      await this.i18n.setLanguage(state.pcLanguage, false);
+    if (this.pcWindow && state && state.pcLanguage && state.pcLanguage !== this.i18n.language) await this.i18n.setLanguage(state.pcLanguage, false);
     this.render(state);
   }
 
@@ -112,7 +152,10 @@ export class PhoneApp {
     const page = Math.max(0, Math.min((state.current && state.current[orientation]) || 0, orientationDeck.pages.length - 1));
     const pageName = orientationDeck.pages[page].name || '';
     this.topbar.update(page, orientationDeck.pages.length, orientation, pageName);
-    if (this.pcHost) { this.pcHost.updatePage(page, orientationDeck.pages.length, pageName); this.pcHost.updateLayout(orientationDeck.columns, orientationDeck.rows); }
+    if (this.pcHost) {
+      this.pcHost.updatePage(page, orientationDeck.pages.length, pageName);
+      this.pcHost.updateLayout(orientationDeck.columns, orientationDeck.rows);
+    }
     const signature = `${state.version || ''}|${orientation}|${page}|${this.i18n.language}`;
     if (signature !== this.signature) {
       this.signature = signature;
@@ -138,21 +181,33 @@ export class PhoneApp {
     const orientation = this.orientation();
     const page = (state.current && state.current[orientation]) || 0;
     const target = state.deck[orientation] && state.deck[orientation].pages[page];
-    return target ? (target.items || []).filter((item) => isSubscribedWidget(item.type)).map((item) => item.id).filter(Boolean).slice(0, 40) : [];
+    return target
+      ? (target.items || [])
+          .filter((item) => isSubscribedWidget(item.type))
+          .map((item) => item.id)
+          .filter(Boolean)
+          .slice(0, 40)
+      : [];
   }
 
   async press(item) {
     if (!this.pcWindow) this.feedback.tap(true);
     const started = Date.now();
-    try { await this.api.post('/api/action', { action: 'launch', id: item.id }, 8000); if (this.pcHost) this.pcHost.actionLatency(Date.now() - started); }
-    catch (error) { this.showError(error); }
+    try {
+      await this.api.post('/api/action', { action: 'launch', id: item.id }, 8000);
+      if (this.pcHost) this.pcHost.actionLatency(Date.now() - started);
+    } catch (error) {
+      this.showError(error);
+    }
   }
 
   showError(error) {
     clearTimeout(this.messageTimer);
     this.nodes.message.textContent = this.i18n.t('action.failed', { error: error.serverError || this.i18n.t('error.network') });
     this.nodes.message.hidden = false;
-    this.messageTimer = setTimeout(() => { this.nodes.message.hidden = true; }, 4000);
+    this.messageTimer = setTimeout(() => {
+      this.nodes.message.hidden = true;
+    }, 4000);
   }
 
   visibilityChanged() {
@@ -183,8 +238,14 @@ export class PhoneApp {
     if (this.pairing) this.pairing.destroy();
     const openApi = new Api('', this.windowObject.fetch.bind(this.windowObject));
     this.pairing = new PairingScreen(this.nodes.disconnected, {
-      api: openApi, i18n: this.i18n, documentObject: this.documentObject,
-      onApproved: (token) => { this.key = token; this.keyStore.save(token); this.connect(); },
+      api: openApi,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
+      onApproved: (token) => {
+        this.key = token;
+        this.keyStore.save(token);
+        this.connect();
+      },
     });
     this.i18n.apply(this.documentObject);
   }

@@ -163,7 +163,8 @@ sealed class ImportWindow : Form
         };
         var urlLabel = new Label { Text = global::Text.Get("source.appimporter.urlLabel"), Dock = DockStyle.Top, Height = 22 };
         urlBox = new TextBox { Dock = DockStyle.Top, MaxLength = 2048 };
-        var nameLabel = new Label { Text = global::Text.Get("source.appimporter.10"), Dock = DockStyle.Top, Height = 26, TextAlign = ContentAlignment.BottomLeft };
+        var nameLabel = new Label { Text = global::Text.Get("source.appimporter.10"), Dock = DockStyle.Top, Height = 26, TextAlign = ContentAlignment.BottomLeft
+        };
         nameBox = new TextBox { Dock = DockStyle.Top, MaxLength = 80 };
         urlFeedback = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Firebrick };
         var add = new Button { Text = global::Text.Get("source.appimporter.11"), Dock = DockStyle.Fill };
@@ -190,7 +191,8 @@ sealed class ImportWindow : Form
             Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 12),
         };
         appSearch = new TextBox { Dock = DockStyle.Top, MaxLength = 80 };
-        var searchLabel = new Label { Text = global::Text.Get("source.appimporter.14"), Dock = DockStyle.Top, Height = 22, TextAlign = ContentAlignment.BottomLeft };
+        var searchLabel = new Label { Text = global::Text.Get("source.appimporter.14"), Dock = DockStyle.Top, Height = 22,
+            TextAlign = ContentAlignment.BottomLeft };
         appList = new ListView { Dock = DockStyle.Fill, View = View.LargeIcon, MultiSelect = true, HideSelection = false };
         appList.LargeImageList = new ImageList { ImageSize = new Size(40, 40), ColorDepth = ColorDepth.Depth32Bit };
         appFeedback = new Label { Dock = DockStyle.Bottom, Height = 24, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Firebrick };

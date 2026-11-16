@@ -126,7 +126,8 @@ static class DeckV3Validator
         foreach (AppEntry entry in settings.apps)
         {
             bool portrait = entry.orientation == "portrait"; TilePosition position = DeckLayout.Position(entry, portrait);
-            values.Add(entry.id + ":" + entry.orientation + ":" + position.page + ":" + position.row + ":" + position.column + ":" + entry.width + ":" + entry.height);
+            values.Add(entry.id + ":" + entry.orientation + ":" + position.page + ":" + position.row + ":" + position.column + ":" + entry.width + ":"
+                + entry.height);
         }
         return String.Join("|", values.ToArray());
     }
