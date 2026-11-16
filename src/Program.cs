@@ -331,14 +331,6 @@ partial class Program
         menu.Items.Add(new ToolStripSeparator());
         menu.Opening += delegate { leaveViewOnly.Visible = PcWindowService.ViewOnly; };
         menu.Items.Add(
-            Text.Get("source.program.5"),
-            null,
-            delegate
-            {
-                OpenSettingsInBrowser();
-            }
-        );
-        menu.Items.Add(
             Text.Get("source.program.6"),
             null,
             delegate
@@ -362,9 +354,14 @@ partial class Program
 
     static void OpenSettings()
     {
+        OpenSettings(null);
+    }
+
+    static void OpenSettings(string section)
+    {
         if (!PcWindowService.RuntimeAvailable)
         {
-            OpenSettingsInBrowser();
+            OpenSettingsInBrowser(section);
             return;
         }
         ui.BeginInvoke(new MethodInvoker(delegate
@@ -381,14 +378,16 @@ partial class Program
                 if (settingsWindow.WindowState == FormWindowState.Minimized) settingsWindow.WindowState = FormWindowState.Normal;
                 settingsWindow.Show();
             }
+            if (!String.IsNullOrEmpty(section)) settingsWindow.ShowSection(section);
             settingsWindow.Activate();
             settingsWindow.BringToFront();
         }));
     }
 
-    static void OpenSettingsInBrowser()
+    static void OpenSettingsInBrowser(string section)
     {
         string url = "http://127.0.0.1:" + AppState.Port + "/v4/settings.html#admin=" + Uri.EscapeDataString(admin);
+        if (!String.IsNullOrEmpty(section)) url += "&section=" + Uri.EscapeDataString(section);
         State.Host.Shell.OpenUrl(url);
     }
 }

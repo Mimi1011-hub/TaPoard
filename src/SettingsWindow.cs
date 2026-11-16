@@ -63,6 +63,12 @@ sealed class SettingsWindow : Form
         web.SetVisible(WindowState != FormWindowState.Minimized);
     }
 
+    internal void ShowSection(string section)
+    {
+        if (!webStarted) return;
+        web.ExecuteScript("window.dispatchEvent(new CustomEvent('tapoard-section',{detail:'" + section + "'}));");
+    }
+
     protected override void OnMove(EventArgs e)
     {
         base.OnMove(e);

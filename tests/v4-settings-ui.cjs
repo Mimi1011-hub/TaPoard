@@ -160,6 +160,12 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.equal(await missing.locator('#settings-app:visible').count(), 0, 'missing key only shows guidance');
     await missing.close();
 
+    const pcSection = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 700 } });
+    await pcSection.goto(`${base}/v4/settings.html#admin=test&section=pc`);
+    await pcSection.locator('#settings-section-pc:not([hidden])').waitFor();
+    assert.equal(await pcSection.locator('[data-section="pc"].is-active').count(), 1, 'section=pc opens PC settings');
+    await pcSection.close();
+
     const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 700 } });
     page.setDefaultTimeout(5000);
     page.on('pageerror', (error) => errors.push(String(error)));

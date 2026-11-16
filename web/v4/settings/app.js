@@ -39,6 +39,8 @@ i18n.init().then(() => {
   nodes.app.hidden = false;
   const shell = new SettingsShell(nodes, i18n);
   shell.start();
+  if (keys.section) shell.chooseSection(keys.section);
+  window.addEventListener('tapoard-section', (event) => shell.chooseSection(event.detail));
   const settings = new SettingsApp({
     key, i18n, shell, nodes: Object.assign(nodes, {
       undo: document.querySelector('#settings-undo'),
