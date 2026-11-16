@@ -183,6 +183,19 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert(!page.url().includes('#'), 'admin hash is removed');
     assert.equal(await page.locator('.deck-button').count(), 1, 'preview contains the configured button');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, '1100px has no horizontal scroll');
+    const glyphBounds = await page.evaluate(async () => {
+      const { presetIconNode } = await import('/v4/deck/icons.js');
+      return ['chat', 'previous', 'copy'].flatMap((key) => [40, 70, 100].map((size) => {
+        const icon = presetIconNode(key, '#3569c8');
+        icon.style.cssText += `;position:fixed;left:0;top:0;width:${size}px;height:${size}px;font-size:${size}px`;
+        document.body.appendChild(icon);
+        const box = icon.getBoundingClientRect();
+        const glyph = icon.querySelector('.glyph-wide').getBoundingClientRect();
+        icon.remove();
+        return { key, size, width: glyph.width, height: glyph.height, fits: glyph.width <= box.width && glyph.height <= box.height };
+      }));
+    });
+    assert(glyphBounds.every((value) => value.fits), `wide preset glyphs stay inside the icon square: ${JSON.stringify(glyphBounds)}`);
 
     await page.locator('.deck-button').click({ force: true });
     await page.locator('.audio-mute').first().click({ force: true });

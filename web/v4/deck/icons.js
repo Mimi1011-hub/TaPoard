@@ -166,7 +166,13 @@ export function presetIconNode(key, color) {
   const preset = presetMap[key];
   const node = document.createElement('span');
   node.className = `preset-icon preset-${preset ? preset.className : 'basic'}`;
-  node.textContent = preset ? preset.glyph : '?';
+  const glyph = preset ? preset.glyph : '?';
+  if (Array.from(glyph).length > 1) {
+    const wide = document.createElement('span');
+    wide.className = 'glyph-wide';
+    wide.textContent = glyph;
+    node.appendChild(wide);
+  } else node.textContent = glyph;
   if (presetPaths[key])
     node.innerHTML = `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${presetPaths[key]}</svg>`;
   if (/^#[0-9a-f]{6}$/i.test(color || '')) node.style.backgroundColor = color;
