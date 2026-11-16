@@ -34,7 +34,11 @@ export class GridSize {
   }
 
   change() {
-    const orientation = this.orientation(), columns = Number(this.columns.value), rows = Number(this.rows.value);
+    this.set(Number(this.columns.value), Number(this.rows.value));
+  }
+
+  set(columns, rows) {
+    const orientation = this.orientation();
     let result = this.editor.setGrid(orientation, columns, rows, false);
     if (!result.ok && result.count > 0) {
       const yes = this.confirmFn(this.i18n.t('settings.grid.rearrange', { count: result.count }));

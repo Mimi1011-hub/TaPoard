@@ -20,6 +20,8 @@ import { General } from './general.js';
 import { AppImport } from './app-import.js';
 import { ShortcutPacks } from './shortcut-packs.js';
 import { ConfirmDialog } from './confirm-dialog.js';
+import { clear, el } from '../core/dom.js';
+import { gridShape, recommendedGrids } from './phone-grid-advice.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -203,6 +205,7 @@ export class SettingsApp {
         this.presets.render();
         this.pages.render();
         this.gridSize.render();
+        this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize || []);
         this.backgroundSettings.orientationChanged();
       }),
     );
@@ -235,9 +238,16 @@ export class SettingsApp {
   async setupPreviewView() {
     let view = { options: { previewMode: 'pc', previewRatio: 'auto' }, phoneWidth: 0, phoneHeight: 0 };
     try { view = await this.api.get('/api/pc-window'); } catch (error) { this.shell.showNotice(error.message); }
+    this.phonePreviewSize = [view.phoneWidth, view.phoneHeight];
+    const automatic = this.nodes.previewRatio.querySelector('option[value="auto"]');
+    automatic.textContent = view.phoneWidth && view.phoneHeight
+      ? this.i18n.t('settings.preview.autoPhoneSize', { width: view.phoneWidth, height: view.phoneHeight })
+      : this.i18n.t('settings.preview.autoPhone');
     const apply = () => {
-      this.nodes.previewRatio.hidden = this.nodes.previewMode.value !== 'phone';
+      const phone = this.nodes.previewMode.value === 'phone';
+      this.nodes.previewRatio.hidden = !phone;
       this.preview.setView(this.nodes.previewMode.value, this.nodes.previewRatio.value, [view.phoneWidth, view.phoneHeight]);
+      this.renderPhoneAdvice(phone, this.phonePreviewSize);
     };
     this.nodes.previewMode.value = view.options.previewMode || 'pc';
     this.nodes.previewRatio.value = view.options.previewRatio || 'auto';
@@ -248,6 +258,29 @@ export class SettingsApp {
       }).catch((error) => this.shell.showNotice(error.message));
     }));
     apply();
+    this.editor.subscribe(() => this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize));
+  }
+
+  renderPhoneAdvice(phone, phoneSize) {
+    clear(this.nodes.gridAdvice);
+    this.nodes.gridAdvice.hidden = !phone;
+    this.nodes.gridWarning.hidden = true;
+    if (!phone) return;
+    const orientation = this.preview.orientation;
+    const ratio = this.nodes.previewRatio.value;
+    this.nodes.gridAdvice.appendChild(el('span', '', this.i18n.t('settings.preview.recommended')));
+    recommendedGrids(ratio, phoneSize, orientation).forEach((grid) => {
+      const button = el('button', '', `${grid.columns} × ${grid.rows}`);
+      button.type = 'button';
+      button.addEventListener('click', () => this.gridSize.set(grid.columns, grid.rows));
+      this.nodes.gridAdvice.appendChild(button);
+    });
+    const current = this.editor.deck[orientation];
+    const shape = gridShape(ratio, phoneSize, orientation, current.columns, current.rows);
+    if (shape) {
+      this.nodes.gridWarning.textContent = this.i18n.t(`settings.preview.${shape}Cells`);
+      this.nodes.gridWarning.hidden = false;
+    }
   }
 
   keydown(event) {

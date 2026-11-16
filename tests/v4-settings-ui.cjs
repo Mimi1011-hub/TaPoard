@@ -232,6 +232,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
 
     const pcAspect = await page.locator('.settings-preview-screen').evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
     await page.locator('#settings-preview-mode').selectOption('phone');
+    assert.match(await page.locator('#settings-preview-ratio option[value="auto"]').innerText(), /390×844/);
     await page.locator('#settings-preview-ratio').selectOption('16:9');
     const phoneAspect = await page.locator('.settings-preview-screen').evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
     assert(phoneAspect > pcAspect, 'smartphone view changes the preview ratio');
@@ -240,6 +241,14 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await dragToCell(page, page.locator('.preview-hit[data-kind="item"]'), 0, 1);
     await waitFor(() => posts.length === phoneDragPosts + 1, 'smartphone-ratio drag save');
     assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].column, 1, 'smartphone-ratio drag uses the intended cell');
+    assert.match(await page.locator('#settings-grid-warning').innerText(), /横長/);
+    const advicePosts = posts.length;
+    await page.locator('#settings-grid-advice button').first().click();
+    await waitFor(() => posts.length === advicePosts + 1, 'recommended grid save');
+    assert.equal(posts.at(-1).deck.landscape.columns, 7);
+    assert.equal(posts.at(-1).deck.landscape.rows, 4);
+    await page.locator('#settings-undo').click();
+    await waitFor(() => posts.length === advicePosts + 2, 'recommended grid undo');
     await page.locator('#settings-preview-mode').selectOption('pc');
 
     await page.locator('.deck-button').click({ force: true });
@@ -251,7 +260,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     const firstGets = deckGets;
     await dragToCell(page, page.locator('.preview-hit[data-kind="item"]'), 0, 2);
     await waitFor(() => posts.length === firstPost + 1, 'drag save');
-    assert.equal(posts.at(-1).baseVersion, '2');
+    assert.equal(posts.at(-1).baseVersion, String(version - 1));
     assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].column, 2);
     await waitFor(() => deckGets > firstGets, 'GET after POST');
 
