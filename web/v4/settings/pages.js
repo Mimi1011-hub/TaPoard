@@ -27,8 +27,9 @@ export class Pages {
       button.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/x-tapoard-page', String(index)); });
       button.addEventListener('dragover', (event) => event.preventDefault());
       button.addEventListener('drop', (event) => this.drop(event, index));
-      const more = el('button', 'settings-page-more', '…');
+      const more = el('button', 'settings-page-more', '⋮');
       more.type = 'button'; more.setAttribute('aria-label', this.i18n.t('settings.page.menu'));
+      more.title = this.i18n.t('settings.page.menu');
       more.addEventListener('click', () => this.openMenu(wrap, index));
       wrap.append(button, more); tabs.appendChild(wrap);
     });

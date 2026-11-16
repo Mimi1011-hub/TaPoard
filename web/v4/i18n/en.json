@@ -25,7 +25,7 @@
   "settings.orientation.portrait": "Portrait",
   "settings.page.default": "Page {number}",
   "settings.page.add": "Add page",
-  "settings.page.menu": "Page actions",
+  "settings.page.menu": "Page menu",
   "settings.page.list": "Page list",
   "settings.page.rename": "Rename",
   "settings.page.previous": "Move earlier",

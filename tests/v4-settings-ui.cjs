@@ -436,6 +436,14 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.deepEqual(posts.at(-1).deck.landscape.pages[1].faders, { speakerHidden: true, micHidden: true });
     assert.equal(await page.locator('.preview-hit[data-kind="fader"]').count(), 0, 'a new page starts without faders');
     assert.match(await page.locator('.settings-page-tab.is-active .settings-page-name').innerText(), /^2 Work$/);
+    const firstPageName = await page.locator('.settings-page-tab').first().locator('.settings-page-name').boundingBox();
+    await page.mouse.click(firstPageName.x + firstPageName.width - 2, firstPageName.y + firstPageName.height / 2);
+    assert.equal(await page.locator('.settings-page-tab.is-active').getAttribute('class'), 'settings-page-tab is-active');
+    assert.equal(await page.locator('.settings-page-tab.is-active .settings-page-name').innerText(), '1 Home');
+    const secondPageName = await page.locator('.settings-page-tab').nth(1).locator('.settings-page-name').boundingBox();
+    await page.mouse.click(secondPageName.x + secondPageName.width - 2, secondPageName.y + secondPageName.height / 2);
+    assert.match(await page.locator('.settings-page-tab.is-active .settings-page-name').innerText(), /^2 Work$/);
+    assert.equal(await page.locator('.settings-page-more').first().getAttribute('title'), 'ページのメニュー');
     await page.getByRole('button', { name: 'ページ一覧' }).click();
     assert.equal(await page.locator('.settings-page-list-row').count(), 2, 'page list shows every numbered page');
     assert.match(await page.locator('.settings-page-list-row').last().innerText(), /2 Work · 0/);
