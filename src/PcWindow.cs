@@ -1723,16 +1723,13 @@ sealed class PcBar : Control
                     back = item.id == "close" ? Color.FromArgb(160, 30, 20) : Color.FromArgb(52, 55, 64);
                 else if (item == hover)
                     back = item.id == "close" ? Color.FromArgb(196, 43, 28) : Color.FromArgb(42, 44, 51);
+                // Only a switched-on toggle is filled; switched-off buttons stay flat like the other title bar buttons,
+                // so they do not look pressed (Hiro, 2026-11-17).
                 if (active && back.IsEmpty)
                     back = Color.FromArgb(53, 105, 200);
-                else if (IsToggle(item.id) && back.IsEmpty)
-                    back = Color.FromArgb(34, 36, 43);
                 if (!back.IsEmpty)
                     using (var b = new SolidBrush(back))
                         g.FillRectangle(b, item.bounds);
-                if (IsToggle(item.id) && !active)
-                    using (var border = new Pen(Color.FromArgb(75, 80, 94)))
-                        g.DrawRectangle(border, item.bounds.X, item.bounds.Y, item.bounds.Width - 1, item.bounds.Height - 1);
                 using (var fg = new SolidBrush(active ? Color.White : Color.FromArgb(222, 224, 230)))
                     g.DrawString(active ? item.activeGlyph : item.glyph, glyphFont, fg, item.bounds, center);
             }
@@ -1758,11 +1755,6 @@ sealed class PcBar : Control
                     Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap })
                     g.DrawString(pageName, pageFont, fg, pageNameBounds, ellipsis);
         }
-    }
-
-    static bool IsToggle(string id)
-    {
-        return id == "info" || id == "viewonly" || id == "topmost" || id == "fullscreen";
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
