@@ -249,10 +249,12 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     await waitFor(() => names(from).includes('POST presets/save'), 'custom preset saved');
     await waitFor(async () => (await page.locator('.preset-tab').count()) === 3, 'custom preset listed');
     await page.locator('.preset-tab').last().click();
-    const customHelp = page.locator('.preset-help-row').filter({ has: page.locator('.preset-help-icon > *') });
-    assert.equal(await customHelp.count(), 9, 'every custom preset item has an icon');
-    assert.equal(await page.locator('.preset-help-row .preset-help-icon').evaluateAll((nodes) =>
-      nodes.some((node) => !node.firstElementChild || node.textContent.trim() === '?')), false, 'custom preset icons are never empty or unknown');
+    // Each row shows an icon element, or a clock / weather / PC info mark like the built-in presets.
+    const iconStates = await page.locator('.preset-help-row .preset-help-icon').evaluateAll((nodes) =>
+      nodes.map((node) => (node.firstElementChild ? 'element' : node.textContent.trim())));
+    assert.equal(iconStates.filter((value) => value === 'element').length >= 8, true, 'custom preset buttons use deck icons');
+    assert.equal(iconStates.some((value) => value === '' || value === '?'), false, 'custom preset icons are never empty or unknown');
+    assert.equal(iconStates.includes('🕒'), true, 'a clock keeps the clock mark of the preset list');
     const customHelpText = await page.locator('.preset-help').innerText();
     assert.match(customHelpText, /アプリを起動します：ChatGPT\.exe/);
     assert.match(customHelpText, /ブラウザで開きます：example\.com/);
