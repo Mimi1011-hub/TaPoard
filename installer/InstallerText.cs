@@ -12,8 +12,16 @@ static class InstallerText
         { "uninstall", "TaPoard アンインストール" },
         { "log", "ログ: {0}" },
         { "startFailed", "TaPoardを起動できなかったため、LAN設定を開始できませんでした。\n\nほかの場所でTaPoardが起動していないか確認し、セットアップをもう一度実行してください。\n\nログ: {0}" },
-        { "doneNoFirewall", "インストールが完了しました。\n\nファイアウォールの許可は追加していないため、スマートフォンからつながらない場合があります。あとから許可するときは、PC の設定画面の「接続」から追加できます。" },
-        { "done", "インストールが完了しました。\n\nPCのブラウザに表示されたQRコードをスマートフォンで読み取ってください。" },
+        {
+            "doneNoFirewall",
+            "インストールが完了しました。\n\nファイアウォールの許可は追加していないため、スマートフォンからつながらない場合があります。"
+                + "あとから許可するときは、PC の設定画面の「接続」から追加できます。\n\nOK を押すと TaPoard の画面が開きます。"
+        },
+        {
+            "done",
+            "インストールが完了しました。\n\nOK を押すと TaPoard の画面が開きます。"
+                + "スマートフォンは、設定の「接続」に出る QR コードを読み取るとつながります。"
+        },
         { "adminCancelled", "アプリのインストールは完了しました。\n\nWindowsの管理者確認がキャンセルされたため、LAN接続設定は未完了です。セットアップをもう一度実行してください。" },
         { "lanFailed", "アプリのインストールは完了しましたが、LAN接続設定でエラーが発生しました。\n\nログを確認してセットアップをもう一度実行してください。\n\nログ: {0}" },
         { "updateFailed", "インストール用ファイルを更新できませんでした。TaPoardのセットアップ画面をすべて閉じ、ウイルス対策ソフトの検査が終わってから、もう一度実行してください。" },
@@ -47,8 +55,16 @@ static class InstallerText
         { "languageAuto", "Automatic (use Windows language)" },
         { "setup", "TaPoard Setup" }, { "uninstall", "Uninstall TaPoard" }, { "log", "Log: {0}" },
         { "startFailed", "TaPoard could not start, so network setup did not begin.\n\nCheck that no other copy of TaPoard is running, then run setup again.\n\nLog: {0}" },
-        { "doneNoFirewall", "Installation is complete.\n\nNo firewall rule was added, so your phone may not be able to connect. You can add it later under Connection in Settings on the PC." },
-        { "done", "Installation is complete.\n\nScan the QR code shown on the PC with your phone." },
+        {
+            "doneNoFirewall",
+            "Installation is complete.\n\nNo firewall rule was added, so your phone may not be able to connect."
+                + " You can add it later under Connection in Settings on the PC.\n\nTaPoard opens when you click OK."
+        },
+        {
+            "done",
+            "Installation is complete.\n\nTaPoard opens when you click OK."
+                + " To connect your phone, scan the QR code under Connection in Settings."
+        },
         { "adminCancelled", "The app was installed.\n\nThe Windows administrator prompt was canceled, so network setup is not finished. Run setup again." },
         { "lanFailed", "The app was installed, but network setup failed.\n\nCheck the log and run setup again.\n\nLog: {0}" },
         { "updateFailed", "The installer files could not be updated. Close every TaPoard setup window, wait for your antivirus scan to finish, and run setup again." },

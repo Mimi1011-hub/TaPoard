@@ -23,6 +23,9 @@ class InstallerTextTests
             Assert(InstallerText.Get("next") == "Next", "English can be chosen");
             InstallerText.Use("ja");
             Assert(InstallerText.Get("next") == InstallerText.Ja["next"], "Japanese can be chosen");
+            Assert(InstallerText.Get("done").Contains("OK を押すと TaPoard の画面が開きます"), "completion explains the open order");
+            Assert(InstallerText.Get("doneNoFirewall").Contains("OK を押すと TaPoard の画面が開きます"),
+                "completion without firewall explains the open order");
             InstallerText.Use("xx");
             Assert(InstallerText.Preference == "auto", "unknown values fall back to automatic");
             Console.WriteLine("PASS InstallerTextTests");

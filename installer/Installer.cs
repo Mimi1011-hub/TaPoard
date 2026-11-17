@@ -139,7 +139,7 @@ class Installer
             Log("shortcuts and registry configured");
             using (
                 Process app = Process.Start(
-                    new ProcessStartInfo(AppPath) { WorkingDirectory = InstallDirectory, UseShellExecute = true }
+                    new ProcessStartInfo(AppPath, "--installing") { WorkingDirectory = InstallDirectory, UseShellExecute = true }
                 )
             )
             {
@@ -169,6 +169,7 @@ class Installer
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information
                 );
+                OpenAppWindow();
                 return;
             }
             FirewallResult firewall = ConfigureFirewall("setup-lan.ps1");
@@ -189,6 +190,19 @@ class Installer
                 messageIcon = MessageBoxIcon.Warning;
             }
             MessageBox.Show(note, InstallerText.Get("setup"), MessageBoxButtons.OK, messageIcon);
+            OpenAppWindow();
+        }
+    }
+
+    static void OpenAppWindow()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(AppPath) { WorkingDirectory = InstallDirectory, UseShellExecute = true });
+        }
+        catch (Exception error)
+        {
+            Log("could not open the app window: " + error.Message);
         }
     }
 
