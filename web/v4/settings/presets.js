@@ -1,5 +1,6 @@
 import { clear, el } from '../core/dom.js';
 import { iconNode, presetIconNode, widgetGlyphNode } from '../deck/icons.js';
+import { customItemHelp } from './item-help.js';
 import { PresetFiles } from './preset-files.js';
 
 const widgetMarks = { clock: '🕒', weather: '⛅', metrics: '📈' };
@@ -173,7 +174,10 @@ export class Presets {
       else if (item.type === 'keypad') icon = widgetGlyphNode('keyboard');
       else if (widgetMarks[item.type] || item.type === 'slideshow') icon = widgetGlyphNode('');
       else icon = iconNode(item);
-      row(icon, item.name, item.description || '', item.sends ? this.i18n.t('presets.sends', { keys: item.sends }) : '');
+      const details = custom ? customItemHelp(item, this.i18n) : {
+        name: item.name, description: item.description || '', sends: item.sends ? this.i18n.t('presets.sends', { keys: item.sends }) : '',
+      };
+      row(icon, details.name, details.description, details.sends);
     });
     const direct = this.i18n.t('presets.direct');
     if (layout.speaker) row('🔊', this.i18n.t('presets.speaker'), this.i18n.t('presets.speakerHelp'), direct);

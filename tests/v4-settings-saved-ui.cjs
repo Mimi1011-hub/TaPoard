@@ -11,7 +11,7 @@ const calls = [];
 const evil = '<img src=x onerror="window.hacked=1">';
 
 const item = (id, name, row, column) => ({
-  id, name, type: 'hotkey', action: 'media-play', category: 'music', iconKey: '', iconColor: '', customIcon: '',
+  id, name, type: 'hotkey', action: 'media-playpause', category: 'music', hotkey: '', iconKey: '', iconColor: '', customIcon: '',
   row, column, width: 1, height: 1, fontSize: 11, iconScale: 82, labelOpacity: 45, keyClear: null, hideLabel: false,
 });
 const faders = () => ({
@@ -45,11 +45,15 @@ const customPresetLayout = () => ({
     { ...item('standard', 'Microphone', 0, 0), iconKey: 'microphone' },
     { ...item('app', 'ChatGPT', 0, 1), type: 'app', action: null, category: 'app', path: 'C:\\Apps\\ChatGPT.exe',
       icon: 'data:image/png;base64,iVBORw0KGgo=' },
-    { ...item('pack', 'Pack icon', 0, 2), iconKey: 'star', iconPack: 'pack-1', iconPackItem: 'heart',
+    { ...item('pack', 'Pack icon', 0, 2), action: 'key-custom', hotkey: 'Ctrl+Alt+P', iconKey: 'star', iconPack: 'pack-1', iconPackItem: 'heart',
       customIcon: 'data:image/png;base64,iVBORw0KGgo=' },
-    { ...item('clock', 'Clock', 1, 0), type: 'clock', category: 'widget', width: 2 },
-    { ...item('wheel', 'Wheel', 1, 2), type: 'wheel', category: 'widget', height: 2 },
-    { ...item('keypad', 'Keypad', 0, 3), type: 'keypad', category: 'widget', width: 2, height: 4 },
+    { ...item('clock', 'Clock', 1, 0), type: 'clock', category: 'widget', width: 2, options: { style: 'digital' } },
+    { ...item('wheel', 'Wheel', 1, 2), type: 'wheel', category: 'widget', height: 2, options: { style: 'vertical' } },
+    { ...item('keypad', 'Keypad', 0, 3), type: 'keypad', category: 'widget', width: 2, height: 4, options: {} },
+    { ...item('url', 'Web', 3, 0), type: 'url', action: null, category: 'custom', url: 'https://example.com/path', iconKey: 'globe' },
+    { ...item('text', 'Text', 3, 1), type: 'clipboard', action: null, category: 'custom', text: '12345678901234567890more', iconKey: 'copy' },
+    { ...item('sound', 'Speakers', 3, 2), type: 'audioDevice', action: null, category: 'audio', deviceId: 'a',
+      deviceTarget: 'speaker', deviceName: 'Desk speakers', iconKey: 'audio-output' },
   ],
 });
 const presets = [
@@ -246,9 +250,17 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     await waitFor(async () => (await page.locator('.preset-tab').count()) === 3, 'custom preset listed');
     await page.locator('.preset-tab').last().click();
     const customHelp = page.locator('.preset-help-row').filter({ has: page.locator('.preset-help-icon > *') });
-    assert.equal(await customHelp.count(), 6, 'every custom preset item has an icon');
+    assert.equal(await customHelp.count(), 9, 'every custom preset item has an icon');
     assert.equal(await page.locator('.preset-help-row .preset-help-icon').evaluateAll((nodes) =>
       nodes.some((node) => !node.firstElementChild || node.textContent.trim() === '?')), false, 'custom preset icons are never empty or unknown');
+    const customHelpText = await page.locator('.preset-help').innerText();
+    assert.match(customHelpText, /アプリを起動します：ChatGPT\.exe/);
+    assert.match(customHelpText, /ブラウザで開きます：example\.com/);
+    assert.match(customHelpText, /文字を入力します：12345678901234567890/);
+    assert.match(customHelpText, /音の出力先を切り替えます：Desk speakers/);
+    assert.match(customHelpText, /この上ではページのスワイプは効きません/);
+    assert.equal(await page.locator('.preset-help-row p').evaluateAll((nodes) => nodes.every((node) => node.textContent.trim().length > 0)), true,
+      'every custom preset row has a description');
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: '書き出す' }).last().click();
     assert.equal((await download).suggestedFilename(), 'My preset.tppreset');
@@ -344,6 +356,9 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     await english.goto(`${base}/v4/settings.html#admin=test&section=presets`);
     await english.getByRole('button', { name: 'Add this page as a preset' }).waitFor();
     assert.equal(await english.getByRole('button', { name: 'Import presets' }).count(), 1);
+    await english.getByRole('button', { name: /My preset/ }).click();
+    assert.match(await english.locator('.preset-help').innerText(), /Launches the app: ChatGPT\.exe/);
+    assert.equal(await english.locator('.preset-help-row p').evaluateAll((nodes) => nodes.every((node) => node.textContent.trim().length > 0)), true);
     assert.equal(await english.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
     await english.close();
     assert.deepEqual(errors, [], `console errors: ${errors.join('\n')}`);
