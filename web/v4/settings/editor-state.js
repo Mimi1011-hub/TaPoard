@@ -207,12 +207,12 @@ export class EditorState {
     orientation.columns = columns;
     orientation.rows = rows;
     const moved = this.reflow(orientation, !!rearrange);
-    if (moved.error || (moved.count && !rearrange) || !this.validateDeck(candidate)) return { ok: false, count: moved.count };
+    if (moved.error || (moved.count && !rearrange) || !this.validateDeck(candidate)) return { ok: false, ...moved };
     this.deck = candidate;
     this.dirty = true;
     this.revision += 1;
     this.emit({ source: 'edit', before, after: copy(candidate) });
-    return { ok: true, count: moved.count };
+    return { ok: true, ...moved };
   }
 
   moveFader(...args) {

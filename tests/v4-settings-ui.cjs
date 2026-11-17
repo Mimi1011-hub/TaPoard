@@ -225,6 +225,55 @@ async function assertPreviewChromeFits(page, label) {
     assert.equal(await oldAppearance.locator('[data-section="background"].is-active').count(), 1, 'old appearance link opens background');
     await oldAppearance.close();
 
+    const originalDeck = JSON.parse(JSON.stringify(deck));
+    deck = {
+      ...originalDeck,
+      landscape: {
+        columns: 4,
+        rows: 3,
+        faders: {
+          speaker: { row: 0, column: 0, width: 1, height: 1, off: true },
+          mic: { row: 0, column: 1, width: 1, height: 1, off: true },
+        },
+        pages: [
+          { name: 'First', faders: { speakerHidden: true, micHidden: true }, items: [] },
+          {
+            name: 'Second',
+            faders: { speaker: { row: 0, column: 0, width: 4, height: 2 }, micHidden: true },
+            items: [],
+          },
+        ],
+      },
+    };
+    const overflowOptions = { locale: 'ja-JP', viewport: { width: 1100, height: 640 } };
+    const faderOverflow = await browser.newPage(overflowOptions);
+    await faderOverflow.goto(`${base}/v4/settings.html#admin=test&section=layout`);
+    const faderColumns = faderOverflow.locator('.settings-grid-size select').first();
+    await faderColumns.selectOption('3', { force: true });
+    await waitFor(
+      async () => (await faderOverflow.locator('#settings-notice').innerText()).includes('ページ 2'),
+      'fader page warning',
+    );
+    assert.match(await faderOverflow.locator('#settings-notice').innerText(), /フェーダーが新しい枠に入りません/);
+    assert.equal(await faderOverflow.locator('.settings-grid-size select').first().inputValue(), '4');
+    await faderOverflow.close();
+
+    deck.landscape.pages[1].faders = { speakerHidden: true, micHidden: true };
+    deck.landscape.pages[0].items = [item('edge-one', 'Edge one', 0, 3)];
+    deck.landscape.pages[1].items = [item('edge-two', 'Edge two', 0, 3)];
+    const buttonOverflow = await browser.newPage(overflowOptions);
+    await buttonOverflow.goto(`${base}/v4/settings.html#admin=test&section=layout`);
+    const dialogPromise = buttonOverflow.waitForEvent('dialog');
+    const buttonColumns = buttonOverflow.locator('.settings-grid-size select').first();
+    const selectPromise = buttonColumns.selectOption('3', { force: true });
+    const overflowDialog = await dialogPromise;
+    assert.match(overflowDialog.message(), /ページ 1（First）・2（Second） がはみ出します/);
+    await overflowDialog.dismiss();
+    await selectPromise;
+    assert.equal(await buttonOverflow.locator('.settings-grid-size select').first().inputValue(), '4');
+    await buttonOverflow.close();
+    deck = originalDeck;
+
     const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 640 } });
     page.setDefaultTimeout(5000);
     page.on('pageerror', (error) => errors.push(String(error)));

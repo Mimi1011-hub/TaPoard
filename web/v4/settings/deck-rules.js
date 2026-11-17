@@ -47,14 +47,16 @@ export function validOrientation(state, orientation, ids) {
 }
 
 export function reflowOrientation(state, orientation, apply) {
-  const displaced = [];
+  const displaced = [], overflowPages = new Set(), faderPages = new Set();
   for (let pageIndex = 0; pageIndex < orientation.pages.length; pageIndex += 1) {
     const page = orientation.pages[pageIndex],
       used = new Set();
     for (const target of ['speaker', 'mic']) {
       const fader = state.effectiveFader(orientation, pageIndex, target);
-      if (fader && !state.inside(fader, orientation)) return { error: true, count: 0 };
-      if (fader) state.cells(fader).forEach((cell) => used.add(cell));
+      if (fader && !state.inside(fader, orientation)) {
+        faderPages.add(pageIndex + 1);
+        overflowPages.add(pageIndex + 1);
+      } else if (fader) state.cells(fader).forEach((cell) => used.add(cell));
     }
     const kept = [];
     page.items.forEach((item) => {
@@ -62,11 +64,20 @@ export function reflowOrientation(state, orientation, apply) {
       if (fits) {
         kept.push(item);
         state.cells(item).forEach((cell) => used.add(cell));
-      } else displaced.push({ item, page: pageIndex });
+      } else {
+        displaced.push({ item, page: pageIndex });
+        overflowPages.add(pageIndex + 1);
+      }
     });
     page.items = kept;
   }
-  if (!apply) return { count: displaced.length };
+  const details = () => ({
+    count: displaced.length,
+    pages: Array.from(overflowPages),
+    faderPages: Array.from(faderPages),
+  });
+  if (faderPages.size) return { error: true, ...details() };
+  if (!apply) return details();
   for (const value of displaced) {
     let placed = false;
     for (let page = value.page; page < orientation.pages.length && !placed; page += 1) {
@@ -87,7 +98,7 @@ export function reflowOrientation(state, orientation, apply) {
         placed = true;
       }
     }
-    if (!placed) return { error: true, count: displaced.length };
+    if (!placed) return { error: true, ...details() };
   }
-  return { count: displaced.length };
+  return details();
 }

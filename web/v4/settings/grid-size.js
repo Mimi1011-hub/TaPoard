@@ -1,5 +1,16 @@
 import { clear, el } from '../core/dom.js';
 
+export function overflowText(pages, orientation, i18n) {
+  const shown = pages.slice(0, 5).map((number) => {
+    const page = orientation.pages[number - 1];
+    return page && page.name ? i18n.t('settings.grid.pageNamed', { number, name: page.name }) : String(number);
+  });
+  const remaining = pages.length - shown.length;
+  let values = shown.join(i18n.t('settings.grid.pageSeparator'));
+  if (remaining > 0) values += i18n.t('settings.grid.morePages', { count: remaining });
+  return i18n.t(pages.length === 1 ? 'settings.grid.overflowOne' : 'settings.grid.overflowMany', { pages: values });
+}
+
 export class GridSize {
   constructor(options) {
     Object.assign(this, options);
@@ -40,13 +51,23 @@ export class GridSize {
   set(columns, rows) {
     const orientation = this.orientation();
     let result = this.editor.setGrid(orientation, columns, rows, false);
+    if (!result.ok && result.faderPages && result.faderPages.length) {
+      this.render();
+      const warning = overflowText(result.faderPages, this.editor.deck[orientation], this.i18n);
+      this.onError(`${warning} ${this.i18n.t('settings.grid.cannotFit')}`);
+      return;
+    }
     if (!result.ok && result.count > 0) {
-      const yes = this.confirmFn(this.i18n.t('settings.grid.rearrange', { count: result.count }));
+      const warning = overflowText(result.pages, this.editor.deck[orientation], this.i18n);
+      const yes = this.confirmFn(`${warning} ${this.i18n.t('settings.grid.rearrange', { count: result.count })}`);
       if (yes) result = this.editor.setGrid(orientation, columns, rows, true);
     }
     if (!result.ok) {
       this.render();
-      if (!result.count) this.onError(this.i18n.t('settings.grid.cannotFit'));
+      if (result.faderPages && result.faderPages.length) {
+        const warning = overflowText(result.faderPages, this.editor.deck[orientation], this.i18n);
+        this.onError(`${warning} ${this.i18n.t('settings.grid.cannotFit')}`);
+      } else if (!result.count) this.onError(this.i18n.t('settings.grid.cannotFit'));
     }
   }
 }

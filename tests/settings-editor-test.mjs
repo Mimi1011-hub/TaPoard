@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { EditorState } from '../web/v4/settings/editor-state.js';
 import { History } from '../web/v4/settings/history.js';
+import { overflowText } from '../web/v4/settings/grid-size.js';
 
 const faders = () => ({
   speaker: { row: 0, column: 0, width: 1, height: 1, off: true },
@@ -61,6 +62,47 @@ assert(reflow.setGrid('landscape', 3, 3, false).ok);
 assert(reflow.addItem('landscape', 0, item('new-page', 0, 0), 2, 2));
 assert(reflow.setGrid('landscape', 2, 2, true).ok);
 assert(reflow.orientation('landscape').pages.length >= 3, 'creates a new page when later pages are full');
+
+const overflow = new EditorState(response());
+assert(overflow.addPage('landscape', 0));
+assert(overflow.addItem('landscape', 0, item('page-one', 0, 0), 0, 3));
+assert(overflow.addItem('landscape', 1, item('page-two', 0, 0), 0, 3));
+let overflowResult = overflow.setGrid('landscape', 3, 3, false);
+assert.deepEqual(overflowResult.pages, [1, 2], 'button overflow returns both page numbers');
+assert.equal(overflowResult.count, 2);
+
+const faderOverflow = new EditorState(response());
+assert(faderOverflow.addPage('landscape', 0));
+assert(faderOverflow.placeFader('landscape', 1, 'speaker', 4, 2, 0, 0));
+overflowResult = faderOverflow.setGrid('landscape', 3, 3, false);
+assert.deepEqual(overflowResult.faderPages, [2], 'fader overflow returns its page number');
+assert.deepEqual(overflowResult.pages, [2]);
+assert(faderOverflow.addItem('landscape', 0, item('other-overflow', 0, 0), 0, 3));
+overflowResult = faderOverflow.setGrid('landscape', 3, 3, false);
+assert.deepEqual(overflowResult.pages, [1, 2], 'button and fader overflow pages are combined');
+
+const manyOverflow = new EditorState(response());
+for (let page = 1; page < 6; page += 1) assert(manyOverflow.addPage('landscape', page - 1));
+manyOverflow.renamePage('landscape', 1, 'Stream');
+for (let page = 0; page < 6; page += 1) {
+  assert(manyOverflow.addItem('landscape', page, item(`edge-${page}`, 0, 0), 0, 3));
+}
+overflowResult = manyOverflow.setGrid('landscape', 3, 3, false);
+assert.deepEqual(overflowResult.pages, [1, 2, 3, 4, 5, 6], 'six overflow pages are returned in order');
+const text = (key, values = {}) => {
+  const patterns = {
+    'settings.grid.pageNamed': `${values.number} (${values.name})`,
+    'settings.grid.pageSeparator': ', ',
+    'settings.grid.morePages': `, and ${values.count} more pages`,
+    'settings.grid.overflowMany': `Pages ${values.pages} would overflow.`,
+  };
+  return patterns[key];
+};
+assert.equal(
+  overflowText(overflowResult.pages, manyOverflow.orientation('landscape'), { t: text }),
+  'Pages 1 (Home), 2 (Stream), 3, 4, 5, and 1 more pages would overflow.',
+  'overflow summary includes names and caps pages at five',
+);
 
 const beforeUndo = editor.item(address(editor, 'wide')).column;
 assert(editor.moveItem(address(editor, 'wide'), 0, 2, 2));
