@@ -122,21 +122,40 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:1/3'));
 
     await page.evaluate(() => localStorage.setItem('tapoard-swipe', 'on'));
-    const swipe = async (target) => {
+    const swipe = async (target, whileMoving) => {
       await target.waitFor();
-      const box = await target.boundingBox();
+      let box = null;
+      for (let attempt = 0; attempt < 5 && !box; attempt += 1) {
+        box = await target.boundingBox();
+        if (!box) await page.waitForTimeout(40);
+      }
       assert(box, 'swipe target is visible');
       await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2);
       await page.mouse.down();
       await page.mouse.move(box.x + box.width * 0.1, box.y + box.height / 2, { steps: 8 });
+      if (whileMoving) await whileMoving();
       await page.mouse.up();
     };
     const actionCount = actions.length;
-    await swipe(page.locator('.deck-button').filter({ hasText: 'action-1' }));
+    await page.evaluate(() => { window.__hostMessages = []; });
+    await swipe(page.locator('.deck-button').filter({ hasText: 'action-1' }), async () => {
+      assert.match(await page.locator('#deck').evaluate((node) => node.style.transform), /translateX/);
+    });
     await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
+    await page.waitForFunction(() => document.querySelector('.deck-button').textContent.includes('action-2'));
     assert.equal(actions.length, actionCount, 'button swipe does not run its action');
     await page.evaluate(() => window.tapoardPc.page(-1));
     await page.waitForFunction(() => document.querySelector('.deck-button').textContent.includes('action-1'));
+    const shortSwipePage = current.landscape;
+    const shortBox = await page.locator('.deck-button').filter({ hasText: 'action-1' }).boundingBox();
+    await page.mouse.move(shortBox.x + shortBox.width / 2, shortBox.y + shortBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(shortBox.x + shortBox.width / 2 - 20, shortBox.y + shortBox.height / 2, { steps: 3 });
+    assert.match(await page.locator('#deck').evaluate((node) => node.style.transform), /translateX/);
+    await page.mouse.up();
+    await page.waitForTimeout(220);
+    assert.equal(current.landscape, shortSwipePage, 'short PC swipe keeps the page');
+    assert.equal(await page.locator('#deck').evaluate((node) => getComputedStyle(node).transform), 'none');
     const faderPage = current.landscape;
     await swipe(page.locator('.audio-fader'));
     await page.waitForTimeout(180);

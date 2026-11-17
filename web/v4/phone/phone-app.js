@@ -100,12 +100,21 @@ export class PhoneApp {
       onDisconnect: () => this.disconnect(),
       pcWindow: this.pcWindow,
     });
-    if (!this.pcWindow) new Swipe(this.nodes.deck, this.storage, (delta) => this.topbar.move(delta));
+    if (!this.pcWindow) {
+      this.swipe = new Swipe(
+        this.nodes.deck,
+        this.storage,
+        (delta) => this.topbar.move(delta),
+        () => ({ page: this.topbar.page, total: this.topbar.total }),
+        this.windowObject,
+      );
+    }
     if (this.pcWindow)
       this.pcHost = new PcHost({
         windowObject: this.windowObject,
         documentObject: this.documentObject,
         appNode: this.nodes.app,
+        deckNode: this.nodes.deck,
         deckShell: this.nodes.deck.parentNode,
         topbar: this.nodes.topbar,
         api: this.api,

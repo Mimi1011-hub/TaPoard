@@ -1,3 +1,5 @@
+import { SwipeMotion } from '../deck/swipe-motion.js';
+
 // Same as 3.x: clocks, weather, PC info and slideshows can be used to move the window; widgets with their own gestures cannot.
 const INTERACTIVE =
   'button,a,input,select,textarea,label,.audio-fader,.touchpad-widget,.wheel-widget,.keypad-widget,.phone-menu,.menu-backdrop,.offline-band';
@@ -9,6 +11,12 @@ export class PcPointer {
     this.edgeSize = 10;
     this.wheelRest = 0;
     this.wheelAt = 0;
+    this.swipe = new SwipeMotion(context.deckNode, {
+      enabled: context.swipeEnabled,
+      onPage: context.movePage,
+      pages: context.pages,
+      windowObject: context.windowObject,
+    });
     this.down = (event) => this.pointerDown(event);
     this.move = (event) => this.pointerMove(event);
     this.up = (event) => this.pointerUp(event);
@@ -83,7 +91,8 @@ export class PcPointer {
       edge: this.edgeAt(event.clientX, event.clientY),
     };
     if (this.press.edge) this.start('resize');
-    else if (!this.context.swipeEnabled() && !button) this.start('drag');
+    else if (this.swipe.begin(event)) this.press.swipe = true;
+    else if (!button) this.start('drag');
   }
   pointerMove(event) {
     if (!this.press || event.pointerId !== this.press.id) return;
@@ -92,12 +101,19 @@ export class PcPointer {
     const dy = event.clientY - this.press.y;
     if (!this.press.mode) {
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      if (this.press.button && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) this.press.mode = 'swipe';
+      if (this.press.button && this.swipe.horizontal(event)) this.press.mode = 'swipe';
       else if (this.press.button) return;
-      else if (Date.now() - this.press.time < 250 && Math.abs(dx) > Math.abs(dy) * 1.5) this.press.mode = 'swipe';
+      else if (Date.now() - this.press.time < 250 && this.swipe.horizontal(event, 6)) this.press.mode = 'swipe';
       else this.start('drag');
     }
-    if (this.press.mode === 'swipe') return;
+    if (this.press.mode === 'swipe') {
+      this.swipe.follow(event);
+      return;
+    }
+    if (this.press.swipe) {
+      this.swipe.cancel();
+      this.press.swipe = false;
+    }
     const point = this.point(event);
     this.lastScreen = point;
     this.post(`move:${Math.round(point.x - this.press.start.x)},${Math.round(point.y - this.press.start.y)}`);
@@ -112,11 +128,11 @@ export class PcPointer {
       /* unavailable */
     }
     if (press.mode === 'swipe') {
-      const dx = event.clientX - press.x;
-      const dy = event.clientY - press.y;
-      const needed = Math.max(40, Math.min(120, this.context.appNode.clientWidth * 0.08));
-      if (Date.now() - press.time <= 900 && Math.abs(dx) >= needed && Math.abs(dx) >= Math.abs(dy) * 1.5) this.context.movePage(dx < 0 ? 1 : -1);
-    } else if (press.mode) this.post('dragend');
+      this.swipe.end(event);
+    } else {
+      if (press.swipe) this.swipe.cancel();
+      if (press.mode) this.post('dragend');
+    }
   }
   pointerHover(event) {
     if (event.buttons) return;

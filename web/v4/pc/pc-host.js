@@ -7,8 +7,13 @@ export class PcHost {
     context.documentObject.body.classList.add('pc-window'); context.topbar.hidden = true;
     this.info = new PcInfo(context);
     this.pointer = new PcPointer({
-      windowObject: context.windowObject, documentObject: context.documentObject, appNode: context.appNode,
-      post: (message) => this.post(message), movePage: (step) => context.movePage(step),
+      windowObject: context.windowObject,
+      documentObject: context.documentObject,
+      appNode: context.appNode,
+      deckNode: context.deckNode,
+      post: (message) => this.post(message),
+      movePage: (step) => context.movePage(step),
+      pages: () => ({ page: context.topbar.page, total: context.topbar.total }),
       swipeEnabled: () => context.storage.getItem('tapoard-swipe') !== 'off',
     });
     this.resize = () => this.fitLayout(); context.windowObject.addEventListener('resize', this.resize);

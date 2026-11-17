@@ -163,10 +163,22 @@ async function assertPlacement(page, id, row, column, width, height) {
     await portrait.mouse.move(deckBox.x + deckBox.width * 0.8, deckBox.y + deckBox.height / 2);
     await portrait.mouse.down();
     await portrait.mouse.move(deckBox.x + deckBox.width * 0.2, deckBox.y + deckBox.height / 2, { steps: 8 });
+    assert.match(await portrait.locator('#deck').evaluate((node) => node.style.transform), /translateX/);
     await portrait.mouse.up();
     for (let count = 0; count < 30 && pageRequests.length === beforeSwipe; count += 1) await new Promise((resolve) => setTimeout(resolve, 20));
     assert.equal(pageRequests.length, beforeSwipe + 1, 'swipe sends one page request');
     assert.deepEqual(pageRequests.at(-1), { page: 1, orientation: 'portrait' });
+
+    await portrait.waitForFunction(() => document.querySelector('.deck-label').textContent === 'Second');
+    const beforeShortSwipe = pageRequests.length;
+    await portrait.mouse.move(deckBox.x + deckBox.width / 2, deckBox.y + deckBox.height / 2);
+    await portrait.mouse.down();
+    await portrait.mouse.move(deckBox.x + deckBox.width / 2 - 20, deckBox.y + deckBox.height / 2, { steps: 3 });
+    assert.match(await portrait.locator('#deck').evaluate((node) => node.style.transform), /translateX/);
+    await portrait.mouse.up();
+    await portrait.waitForTimeout(220);
+    assert.equal(pageRequests.length, beforeShortSwipe, 'short phone swipe keeps the page');
+    assert.equal(await portrait.locator('#deck').evaluate((node) => getComputedStyle(node).transform), 'none');
 
     await portrait.evaluate(() => localStorage.setItem('tapoard-swipe', 'off'));
     await portrait.getByRole('button', { name: '前のページ' }).click();
