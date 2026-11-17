@@ -169,11 +169,12 @@ partial class Program
         {
             if (!first)
             {
-                SingleInstance.SignalRunning(SingleInstance.EventName, args);
+                SingleInstance.SignalRunning(SingleInstance.EventName, SingleInstance.SettingsEventName, args);
                 return;
             }
             Application.EnableVisualStyles();
             SingleInstance showSignal = null;
+            SingleInstance settingsSignal = null;
             try
             {
                 LoadLanguage();
@@ -207,6 +208,10 @@ partial class Program
                 {
                     ui.BeginInvoke((Action)OpenPcWindowFromTray);
                 });
+                settingsSignal = new SingleInstance(SingleInstance.SettingsEventName, delegate
+                {
+                    ui.BeginInvoke((Action)delegate { OpenSettings("connection"); });
+                });
                 string startup = StartupMode();
                 if (Array.IndexOf(args, "--installing") >= 0)
                 {
@@ -238,6 +243,8 @@ partial class Program
             {
                 if (showSignal != null)
                     showSignal.Dispose();
+                if (settingsSignal != null)
+                    settingsSignal.Dispose();
                 PcWindowService.Close();
                 if (server != null)
                     server.Stop();

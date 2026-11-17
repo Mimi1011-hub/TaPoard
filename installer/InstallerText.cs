@@ -15,12 +15,12 @@ static class InstallerText
         {
             "doneNoFirewall",
             "インストールが完了しました。\n\nファイアウォールの許可は追加していないため、スマートフォンからつながらない場合があります。"
-                + "あとから許可するときは、PC の設定画面の「接続」から追加できます。\n\nOK を押すと TaPoard の画面が開きます。"
+                + "あとから許可するときは、PC の設定画面の「接続」から追加できます。\n\nOK を押すと TaPoard の設定画面が開きます。"
         },
         {
             "done",
-            "インストールが完了しました。\n\nOK を押すと TaPoard の画面が開きます。"
-                + "スマートフォンは、設定の「接続」に出る QR コードを読み取るとつながります。"
+            "インストールが完了しました。\n\nOK を押すと TaPoard の設定画面が開きます。"
+                + "スマートフォンは、画面に出る QR コードを読み取るとつながります。"
         },
         { "adminCancelled", "アプリのインストールは完了しました。\n\nWindowsの管理者確認がキャンセルされたため、LAN接続設定は未完了です。セットアップをもう一度実行してください。" },
         { "lanFailed", "アプリのインストールは完了しましたが、LAN接続設定でエラーが発生しました。\n\nログを確認してセットアップをもう一度実行してください。\n\nログ: {0}" },
@@ -58,12 +58,12 @@ static class InstallerText
         {
             "doneNoFirewall",
             "Installation is complete.\n\nNo firewall rule was added, so your phone may not be able to connect."
-                + " You can add it later under Connection in Settings on the PC.\n\nTaPoard opens when you click OK."
+                + " You can add it later under Connection in Settings on the PC.\n\nTaPoard Settings opens when you click OK."
         },
         {
             "done",
-            "Installation is complete.\n\nTaPoard opens when you click OK."
-                + " To connect your phone, scan the QR code under Connection in Settings."
+            "Installation is complete.\n\nTaPoard Settings opens when you click OK."
+                + " To connect your phone, scan the QR code shown there."
         },
         { "adminCancelled", "The app was installed.\n\nThe Windows administrator prompt was canceled, so network setup is not finished. Run setup again." },
         { "lanFailed", "The app was installed, but network setup failed.\n\nCheck the log and run setup again.\n\nLog: {0}" },

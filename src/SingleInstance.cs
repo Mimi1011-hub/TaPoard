@@ -5,6 +5,7 @@ using System.Threading;
 class SingleInstance : IDisposable
 {
     internal const string EventName = "Local\\TaPoard.Show";
+    internal const string SettingsEventName = "Local\\TaPoard.ShowSettings";
     readonly EventWaitHandle handle;
     readonly Thread listener;
     readonly Action onShow;
@@ -30,13 +31,14 @@ class SingleInstance : IDisposable
         }
     }
 
-    internal static bool SignalRunning(string eventName, string[] args)
+    internal static bool SignalRunning(string eventName, string settingsEventName, string[] args)
     {
         if (Array.IndexOf(args, "--silent") >= 0)
             return false;
+        string target = Array.IndexOf(args, "--show-settings") >= 0 ? settingsEventName : eventName;
         try
         {
-            using (EventWaitHandle other = EventWaitHandle.OpenExisting(eventName))
+            using (EventWaitHandle other = EventWaitHandle.OpenExisting(target))
             {
                 other.Set();
                 return true;

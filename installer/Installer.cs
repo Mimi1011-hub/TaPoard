@@ -198,7 +198,7 @@ class Installer
     {
         try
         {
-            Process.Start(new ProcessStartInfo(AppPath) { WorkingDirectory = InstallDirectory, UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(AppPath, "--show-settings") { WorkingDirectory = InstallDirectory, UseShellExecute = true });
         }
         catch (Exception error)
         {
