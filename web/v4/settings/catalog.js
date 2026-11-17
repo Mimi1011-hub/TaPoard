@@ -30,7 +30,10 @@ export class Catalog {
     this.render();
   }
 
-  text(value) { return value.indexOf('catalog.') === 0 ? this.i18n.t(value) : value; }
+  text(value) {
+    if (Array.isArray(value)) return value.map((part) => this.text(part)).join(this.i18n.t('catalog.desc.separator'));
+    return value.indexOf('catalog.') === 0 ? this.i18n.t(value) : value;
+  }
 
   // Built-in names are dictionary keys; names from a pack are shown as they are.
   label(value) { return value.plain ? value.name : this.i18n.t(value.name); }

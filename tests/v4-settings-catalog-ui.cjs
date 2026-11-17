@@ -100,9 +100,12 @@ const server = http.createServer(async (req, res) => {
     for await (const chunk of req) text += chunk;
     const body = text ? JSON.parse(text) : {};
     const name = url.pathname.slice(5);
-    if (name === 'v3/language') return json(res, 200, {
-      preference: 'ja', language: 'ja', languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
-    });
+    if (name === 'v3/language') {
+      const language = String(req.headers['accept-language'] || '').startsWith('en') ? 'en' : 'ja';
+      return json(res, 200, {
+        preference: language, language, languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
+      });
+    }
     if (name === 'v3/deck' && req.method === 'GET') {
       return json(res, 200, { version: String(version), deck, widgetDefinitions: definitions });
     }
@@ -215,6 +218,20 @@ const waitFor = async (check, message) => {
     await shot('recent');
 
     await page.getByRole('button', { name: /部品/ }).click();
+    await page.locator('.settings-catalog-search').fill('この上ではページのスワイプは効きません');
+    assert.deepEqual(
+      (await page.locator('.settings-catalog-item').evaluateAll((nodes) => nodes.map((node) => node.dataset.action))).sort(),
+      [
+        'control-mic-fader',
+        'control-speaker-fader',
+        'widget-keypad',
+        'widget-touchpad-wide',
+        'widget-wheel-rotary',
+        'widget-wheel-vertical',
+      ],
+      'only gesture parts show the page swipe exception',
+    );
+    await page.locator('.settings-catalog-search').fill('');
     await page.getByRole('button', { name: /音量フェーダー/ }).click();
     const speakerFader = page.locator('[data-action="control-speaker-fader"]');
     await speakerFader.click();
@@ -363,6 +380,12 @@ const waitFor = async (check, message) => {
     await waitFor(() => shortcutPacks.length === 1 && Boolean(shortcutPacks[0].iconPack), 'zip pack with icon imported');
     assert.equal(iconPack.icons.length, 1, 'only the referenced picture is imported');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
+    const english = await browser.newPage({ locale: 'en-US', viewport: { width: 1100, height: 700 } });
+    await english.goto(`${base}/v4/settings.html#admin=test`);
+    await english.locator('.settings-catalog-search').fill('Swiping between pages does not work on this part.');
+    assert.equal(await english.locator('.settings-catalog-item').count(), 6, 'English shows six gesture parts');
+    assert.equal(await english.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
+    await english.close();
     if (process.env.UI_SHOTS) {
       fs.mkdirSync(process.env.UI_SHOTS, { recursive: true });
       await page.screenshot({ path: path.join(process.env.UI_SHOTS, 'settings-catalog.png'), fullPage: true });

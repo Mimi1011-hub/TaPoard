@@ -209,7 +209,13 @@ async function assertPlacement(page, id, row, column, width, height) {
     await collectErrors(narrow, errors);
     await narrow.goto(`${base}/v4/#connect=test`);
     await narrow.locator('.deck-button').waitFor();
+    await narrow.getByRole('button', { name: '画面と接続の設定' }).click();
+    assert.match(await narrow.locator('.phone-menu').innerText(), /フェーダー・ホイール・タッチパッド・テンキーの上を除く/);
     assert.equal(await narrow.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, '320px has no horizontal scrolling');
+    await narrow.locator('.language-row select').selectOption('en');
+    await narrow.waitForFunction(() => document.querySelector('.menu-header h2').textContent === 'Display & Connection');
+    assert.match(await narrow.locator('.phone-menu').innerText(), /except on faders, wheels, the touchpad and the keypad/);
+    assert.equal(await narrow.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'English menu fits 320px');
     await narrow.close();
 
     const unauthorized = await browser.newPage({ locale: 'ja-JP', viewport: { width: 375, height: 667 } });

@@ -4,8 +4,8 @@ export const catalogGroups = [
   {
     id: 'audio',
     items: [
-      item('control-speaker-fader', 'speakerFader', 'catalog.desc.swipe'),
-      item('control-mic-fader', 'micFader', 'catalog.desc.swipe'),
+      item('control-speaker-fader', 'speakerFader', ['catalog.desc.swipe', 'catalog.desc.noPageSwipe']),
+      item('control-mic-fader', 'micFader', ['catalog.desc.swipe', 'catalog.desc.noPageSwipe']),
       item('custom-audio-output', 'audioOutput', 'catalog.desc.chooseSpeaker'),
       item('custom-audio-input', 'audioInput', 'catalog.desc.chooseMic'),
       item('audio-speaker-mute', 'speakerMute', 'catalog.desc.toggle'),
@@ -35,13 +35,17 @@ export const catalogGroups = [
     id: 'mouse',
     category: 'widget',
     items: [
-      item('widget-wheel-vertical', 'wheelVertical', 'catalog.desc.chooseSize'),
-      item('widget-wheel-rotary', 'wheelRotary', '2×2'),
-      item('widget-touchpad-wide', 'touchpadWide', 'catalog.desc.chooseSize'),
+      item('widget-wheel-vertical', 'wheelVertical', ['catalog.desc.chooseSize', 'catalog.desc.noPageSwipe']),
+      item('widget-wheel-rotary', 'wheelRotary', ['2×2', 'catalog.desc.noPageSwipe']),
+      item('widget-touchpad-wide', 'touchpadWide', ['catalog.desc.chooseSize', 'catalog.desc.noPageSwipe']),
     ],
   },
   { id: 'photo', category: 'widget', items: [item('widget-slideshow-3x3', 'slideshow', 'catalog.desc.chooseSize')] },
-  { id: 'keyboard', category: 'widget', items: [item('widget-keypad', 'keypad', 'catalog.desc.chooseSize')] },
+  {
+    id: 'keyboard',
+    category: 'widget',
+    items: [item('widget-keypad', 'keypad', ['catalog.desc.chooseSize', 'catalog.desc.noPageSwipe'])],
+  },
   {
     id: 'common',
     items: [
