@@ -15,6 +15,11 @@ export function iconPrompt(i18n, manifest) {
   return i18n.t('iconAi.prompt', { names });
 }
 
+export function iconReferencePrompt(i18n, manifest) {
+  const names = manifest.icons.map((icon) => icon.name).join(i18n.t('iconAi.separator'));
+  return i18n.t('iconAi.referencePrompt', { names });
+}
+
 export class IconAiGuide {
   constructor(options) { Object.assign(this, options); }
 
@@ -22,10 +27,20 @@ export class IconAiGuide {
     clear(this.root);
     const manifest = iconTemplate(this.i18n);
     const prompt = iconPrompt(this.i18n, manifest);
+    const referencePrompt = iconReferencePrompt(this.i18n, manifest);
     const list = el('ol', 'icon-ai-steps');
     list.append(
       this.step('iconAi.step1', this.button('iconAi.download', () => this.download(manifest))),
-      this.step('iconAi.step2', el('pre', 'icon-ai-prompt', prompt), this.button('iconAi.copy', () => this.copy(prompt))),
+      this.step(
+        'iconAi.step2',
+        el('p', 'icon-ai-sample-note', this.i18n.t('iconAi.sampleNote')),
+        el('h4', '', this.i18n.t('iconAi.withoutSample')),
+        el('pre', 'icon-ai-prompt', prompt),
+        this.button('iconAi.copyWithoutSample', () => this.copy(prompt)),
+        el('h4', '', this.i18n.t('iconAi.withSample')),
+        el('pre', 'icon-ai-prompt', referencePrompt),
+        this.button('iconAi.copyWithSample', () => this.copy(referencePrompt)),
+      ),
       this.step('iconAi.step3'),
       this.step('iconAi.step4'),
       this.step('iconAi.step5'),

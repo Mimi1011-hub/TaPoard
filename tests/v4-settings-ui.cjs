@@ -452,7 +452,19 @@ async function assertPreviewChromeFits(page, label) {
     assert.equal(await page.locator('#settings-icon-ai-guide .icon-ai-steps li').count(), 5, 'AI icon guide shows five local steps');
     assert((await page.locator('#settings-icon-ai-guide').evaluate((node) => node.getBoundingClientRect().height)) > 150, 'AI icon guide uses the preview height');
     assert.equal(await page.locator('#settings-icon-ai-guide a[href^="http"]').count(), 0, 'AI icon guide has no external link');
-    assert.match(await page.locator('.icon-ai-prompt').innerText(), /512×512/);
+    assert.equal(await page.locator('.icon-ai-prompt').count(), 2);
+    assert.match(await page.locator('.icon-ai-prompt').first().innerText(), /512×512/);
+    assert.match(await page.locator('.icon-ai-prompt').last().innerText(), /添付した画像と同じ絵柄・色合い/);
+    await page.evaluate(() => {
+      window.__copiedPrompts = [];
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: (text) => { window.__copiedPrompts.push(text); return Promise.resolve(); } },
+      });
+    });
+    await page.getByRole('button', { name: '見本なしの頼む文をコピー' }).click();
+    await page.getByRole('button', { name: '見本ありの頼む文をコピー' }).click();
+    assert.equal(await page.evaluate(() => window.__copiedPrompts.length), 2);
     await page.getByRole('button', { name: '戻る' }).click();
     assert.equal(await page.locator('#settings-preview').isVisible(), true, 'back returns to the layout preview');
     const englishGuide = await browser.newPage({ locale: 'en-US', viewport: { width: 1100, height: 640 } });
@@ -463,6 +475,7 @@ async function assertPreviewChromeFits(page, label) {
     assert.equal(await englishGuide.locator('#settings-inspector').evaluate((node) => node.scrollWidth <= node.clientWidth), true,
       'English phone ratio panel fits the inspector');
     await englishGuide.getByRole('button', { name: 'How to make icon files with AI' }).click();
+    assert.equal(await englishGuide.locator('.icon-ai-prompt').count(), 2);
     assert.equal(await englishGuide.locator('#settings-icon-ai-guide').evaluate((node) => node.scrollWidth <= node.clientWidth), true,
       'English AI guide fits at 1100px');
     await englishGuide.close();
