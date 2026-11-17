@@ -2,7 +2,15 @@ $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 New-Item -ItemType Directory -Force dist | Out-Null
 $buildInfo = & .\tools\build-info.ps1 -OutputPath (Join-Path $PSScriptRoot 'tests\bin\BuildInfo.generated.cs')
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:dist\TaPoard.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll src\*.cs $buildInfo.Path
+$winRt = @(
+    '/r:C:\Windows\System32\WinMetadata\Windows.Foundation.winmd',
+    '/r:C:\Windows\System32\WinMetadata\Windows.Media.winmd',
+    '/r:C:\Windows\System32\WinMetadata\Windows.Storage.winmd',
+    '/r:C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Runtime.dll'
+)
+$references = @('/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:System.Web.Extensions.dll') + $winRt
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /define:WINRT_MEDIA /target:winexe `
+    /win32icon:assets\TaPoard.ico /out:dist\TaPoard.exe $references src\*.cs src\winrt\*.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 New-Item -ItemType Directory -Force dist\web | Out-Null
 Copy-Item web\* dist\web -Recurse -Force

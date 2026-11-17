@@ -26,7 +26,15 @@ if ($LASTEXITCODE -ne 0) { throw 'Icon builder compilation failed.' }
 & .\tools\bin\IconBuilder.exe .\assets\TaPoard-icon.png .\assets\TaPoard.ico .\web\icon-32.png .\web\icon-180.png .\web\icon-192.png .\web\icon-512.png
 if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed.' }
 
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:"$stage\TaPoard.exe" /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll src\*.cs $buildInfo.Path
+$winRt = @(
+    '/r:C:\Windows\System32\WinMetadata\Windows.Foundation.winmd',
+    '/r:C:\Windows\System32\WinMetadata\Windows.Media.winmd',
+    '/r:C:\Windows\System32\WinMetadata\Windows.Storage.winmd',
+    '/r:C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Runtime.dll'
+)
+$references = @('/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:System.Web.Extensions.dll') + $winRt
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /define:WINRT_MEDIA /target:winexe `
+    /win32icon:assets\TaPoard.ico /out:"$stage\TaPoard.exe" $references src\*.cs src\winrt\*.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Application package build failed.' }
 Copy-Item -LiteralPath web -Destination (Join-Path $stage 'web') -Recurse
 Copy-Item -LiteralPath packaging\setup-lan.ps1,packaging\remove-firewall.ps1,packaging\README.txt,packaging\README.en.txt -Destination $stage

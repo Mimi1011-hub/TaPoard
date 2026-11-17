@@ -190,6 +190,7 @@ partial class Program
                 State.Lan = lan;
                 File.WriteAllText(Path.Combine(Root, "network-status.txt"), lan.Status);
                 StartServer();
+                ProbeMediaSession();
                 ui = new Control();
                 var handle = ui.Handle;
                 CreateTrayIcon();
@@ -236,6 +237,18 @@ partial class Program
                     appIcon.Dispose();
             }
         }
+    }
+
+    static void ProbeMediaSession()
+    {
+        ThreadPool.QueueUserWorkItem(delegate
+        {
+            MediaState media = State.Host.MediaSession.Current();
+            string title = (media.title ?? "").Replace("\r", " ").Replace("\n", " ");
+            string line = String.Format("{0:o}\tavailable={1}\tactive={2}\ttitle={3}{4}",
+                DateTime.UtcNow, media.available, media.active, title, Environment.NewLine);
+            File.AppendAllText(Path.Combine(Data, "media-session.log"), line);
+        });
     }
 
     // Loads settings-v3.json, or reads settings-v2.json once when v3 does not exist.
