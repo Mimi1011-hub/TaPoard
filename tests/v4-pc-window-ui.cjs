@@ -5,6 +5,7 @@ const http = require('http');
 const path = require('path');
 
 const inputs = [];
+const actions = [];
 let revision = 1;
 let version = 'pc-one';
 const current = { portrait: 0, landscape: 0 };
@@ -15,7 +16,13 @@ function item(id, type, row, column, width, height, options) {
 
 function orientation() {
   return {
-    columns: 5, rows: 4, faders: { speaker: { off: true }, mic: { off: true } }, pages: [
+    columns: 5,
+    rows: 4,
+    faders: {
+      speaker: { row: 3, column: 0, width: 2, height: 1, off: false },
+      mic: { off: true },
+    },
+    pages: [
       { name: '配信', faders: null, items: [item('action-1', 'launch', 0, 0, 1, 1), item('wheel-1', 'wheel', 0, 1, 1, 2, { sensitivity: 12 })] },
       { name: '作業', faders: null, items: [item('action-2', 'launch', 0, 0, 1, 1)] },
       { name: '', faders: null, items: [item('action-3', 'launch', 0, 0, 1, 1)] },
@@ -30,7 +37,7 @@ function state() {
     deck: { keepAwake: false, portrait: deck, landscape: deck },
     widgetDefinitions: [{ type: 'wheel', displayOnly: true }],
     inputSessions: [{ widgetId: 'wheel-1', sessionId: 'pc-wheel-session', nextSequence: 1 }],
-    audio: {}, metrics: {}, weather: {}, background: null,
+    audio: { speakerVolume: 30, speakerMuted: false, speakerAvailable: true }, metrics: {}, weather: {}, background: null,
   };
 }
 
@@ -51,6 +58,9 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname === '/api/view') { json(response, 200, { inputSessions: state().inputSessions }); return; }
     if (url.pathname === '/api/input') {
       const value = JSON.parse(body); inputs.push(value); json(response, 200, { acknowledged: value.sequence, foregroundBlocked: false }); return;
+    }
+    if (url.pathname === '/api/action') {
+      actions.push(JSON.parse(body)); json(response, 200, { ok: true }); return;
     }
     if (url.pathname === '/api/page') {
       const value = JSON.parse(body); current[value.orientation] = value.page; revision += 1; version = `pc-${revision}`;
@@ -110,6 +120,31 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     await page.waitForFunction(() => window.__hostMessages.includes('pagename:'));
     await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
     await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:1/3'));
+
+    await page.evaluate(() => localStorage.setItem('tapoard-swipe', 'on'));
+    const swipe = async (target) => {
+      await target.waitFor();
+      const box = await target.boundingBox();
+      assert(box, 'swipe target is visible');
+      await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * 0.1, box.y + box.height / 2, { steps: 8 });
+      await page.mouse.up();
+    };
+    const actionCount = actions.length;
+    await swipe(page.locator('.deck-button').filter({ hasText: 'action-1' }));
+    await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
+    assert.equal(actions.length, actionCount, 'button swipe does not run its action');
+    await page.evaluate(() => window.tapoardPc.page(-1));
+    await page.waitForFunction(() => document.querySelector('.deck-button').textContent.includes('action-1'));
+    const faderPage = current.landscape;
+    await swipe(page.locator('.audio-fader'));
+    await page.waitForTimeout(180);
+    assert.equal(current.landscape, faderPage, 'fader does not swipe pages');
+    await page.evaluate(() => localStorage.setItem('tapoard-swipe', 'off'));
+    await swipe(page.locator('.deck-button').filter({ hasText: 'action-1' }));
+    await page.waitForTimeout(180);
+    assert.equal(current.landscape, faderPage, 'disabled swiping does not change pages');
 
     await page.evaluate(() => window.tapoardPc.set({ info: true, aspect: 'fill', viewOnly: true, resizable: true, barVisible: false }));
     await page.waitForFunction(() => !document.querySelector('.pc-info').hidden && document.querySelector('.pc-info').textContent.includes('接続中'));

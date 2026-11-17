@@ -58,12 +58,16 @@ export class PcPointer {
   pointerDown(event) {
     this.post('raise');
     this.press = null;
-    if (event.button !== 0 || !this.empty(event.target)) return;
-    event.preventDefault();
-    try {
-      this.context.documentObject.documentElement.setPointerCapture(event.pointerId);
-    } catch (error) {
-      /* unavailable */
+    const button = event.target.closest && event.target.closest('button.deck-button');
+    if (event.button !== 0 || (!button && !this.empty(event.target))) return;
+    if (button && !this.context.swipeEnabled()) return;
+    if (!button) {
+      event.preventDefault();
+      try {
+        this.context.documentObject.documentElement.setPointerCapture(event.pointerId);
+      } catch (error) {
+        /* unavailable */
+      }
     }
     const point = this.point(event);
     this.lastScreen = point;
@@ -75,10 +79,11 @@ export class PcPointer {
       y: event.clientY,
       time: Date.now(),
       mode: '',
+      button: !!button,
       edge: this.edgeAt(event.clientX, event.clientY),
     };
     if (this.press.edge) this.start('resize');
-    else if (!this.context.swipeEnabled()) this.start('drag');
+    else if (!this.context.swipeEnabled() && !button) this.start('drag');
   }
   pointerMove(event) {
     if (!this.press || event.pointerId !== this.press.id) return;
@@ -87,7 +92,9 @@ export class PcPointer {
     const dy = event.clientY - this.press.y;
     if (!this.press.mode) {
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      if (Date.now() - this.press.time < 250 && Math.abs(dx) > Math.abs(dy) * 1.5) this.press.mode = 'swipe';
+      if (this.press.button && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) this.press.mode = 'swipe';
+      else if (this.press.button) return;
+      else if (Date.now() - this.press.time < 250 && Math.abs(dx) > Math.abs(dy) * 1.5) this.press.mode = 'swipe';
       else this.start('drag');
     }
     if (this.press.mode === 'swipe') return;
