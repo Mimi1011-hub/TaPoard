@@ -1,6 +1,7 @@
 import { ClockWidget } from './clock.js';
 import { FaderWidget } from './fader.js';
 import { MetricsWidget } from './metrics.js';
+import { NowPlayingWidget } from './now-playing.js';
 import { KeypadWidget } from './keypad.js';
 import { SlideshowWidget } from './slideshow.js';
 import { TouchpadWidget } from './touchpad.js';
@@ -11,13 +12,14 @@ export const widgetTypes = {
   clock: ClockWidget,
   weather: WeatherWidget,
   metrics: MetricsWidget,
+  nowPlaying: NowPlayingWidget,
   slideshow: SlideshowWidget,
   wheel: WheelWidget,
   touchpad: TouchpadWidget,
   keypad: KeypadWidget,
 };
 
-export const subscribedWidgetTypes = new Set(['metrics', 'weather', 'wheel', 'touchpad', 'keypad']);
+export const subscribedWidgetTypes = new Set(['metrics', 'weather', 'nowPlaying', 'wheel', 'touchpad', 'keypad']);
 
 export const faderTypes = { speaker: FaderWidget, mic: FaderWidget };
 

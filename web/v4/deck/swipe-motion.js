@@ -1,4 +1,4 @@
-const BLOCKED = '.audio-fader,.wheel-widget,.touchpad-widget,.keypad-widget';
+const BLOCKED = '.audio-fader,.wheel-widget,.touchpad-widget,.keypad-widget,.now-playing-control';
 
 export class SwipeMotion {
   constructor(root, options) {

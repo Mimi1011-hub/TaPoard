@@ -28,6 +28,23 @@ export class Api {
     return this.request('POST', path, body, timeoutMs);
   }
 
+  async blob(path, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs || 5000);
+    const headers = this.key ? { Authorization: `Bearer ${this.key}` } : {};
+    try {
+      const response = await this.fetchFn(path, { headers, signal: controller.signal });
+      if (response.status === 401) throw new AuthError('');
+      if (!response.ok) throw new ApiError(response.status, '');
+      return await response.blob();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(0, error && error.name === 'AbortError' ? 'Timeout' : error.message);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   withKey(key) {
     return new Api(key, this.fetchFn);
   }

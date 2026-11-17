@@ -10,12 +10,19 @@ let weatherConfigured = false;
 let metricValue = 22;
 let pairResult = 'approved';
 let pairPolls = 0;
+let currentPage = 0;
+let mediaState = {
+  available: true, active: true, title: 'Test song', artist: 'Test artist', album: 'Test album', app: 'Test player',
+  playing: true, canPlayPause: true, canNext: true, canPrevious: true, position: 83, duration: 225, artVersion: 'art-one',
+};
 const backgroundState = { color: '#123456', image: 'bg-one', imageWidth: 100, imageHeight: 50,
   portrait: { fit: 'cover', x: 40, y: 60, zoom: 1, flipX: true, flipY: false, rotate: 90 },
   landscape: { fit: 'cover', x: 50, y: 50, zoom: 1, flipX: false, flipY: false, rotate: 0 }, keyClear: 20 };
 const audioRequests = [];
 const viewRequests = [];
 const slideRequests = [];
+const mediaCommands = [];
+const artRequests = [];
 let backgroundRequests = 0;
 
 function placement(id, type, row, column, width, height, options) {
@@ -36,16 +43,22 @@ function deckState() {
     Object.assign(placement('button-1', 'app', 5, 1, 1, 1), { keyClear: 50 }),
     placement('future-1', 'future', 5, 2, 1, 1),
   ];
+  const mediaPages = ['2x1', '2x2', '3x2', '4x2', '3x3', '4x3', '4x4'].map((shape, index) => {
+    const [width, height] = shape.split('x').map(Number);
+    return { faders: { speakerHidden: true, micHidden: true }, items: [placement(`media-${index}`, 'nowPlaying', 0, 0, width, height)] };
+  });
+  const pages = [{ faders: null, items }].concat(mediaPages, [{ faders: { speakerHidden: true, micHidden: true }, items: [] }]);
   return {
-    schemaVersion: 3, revision, version, current: { portrait: 0, landscape: 0 },
+    schemaVersion: 3, revision, version, current: { portrait: currentPage, landscape: currentPage },
     deck: {
       keepAwake: false,
-      portrait: { columns: 4, rows: 6, faders, pages: [{ faders: null, items }, { faders: { speakerHidden: true, micHidden: true }, items: [] }] },
-      landscape: { columns: 6, rows: 4, faders, pages: [{ faders: null, items }, { faders: { speakerHidden: true, micHidden: true }, items: [] }] },
+      portrait: { columns: 4, rows: 6, faders, pages },
+      landscape: { columns: 6, rows: 6, faders, pages },
     },
     widgetDefinitions: [
       { type: 'clock', displayOnly: true }, { type: 'metrics', displayOnly: true }, { type: 'weather', displayOnly: true },
       { type: 'slideshow', displayOnly: true }, { type: 'wheel', displayOnly: true },
+      { type: 'nowPlaying', displayOnly: true },
       { type: 'future', displayOnly: true },
     ],
     audio: { speakerVolume: 20, speakerMuted: false, speakerAvailable: true, micVolume: 42, micMuted: true, micAvailable: true },
@@ -53,6 +66,7 @@ function deckState() {
       history: [{ cpuPercent: 10, memoryPercent: 40, gpus: [{ id: 'gpu-1', utilizationPercent: 30, memoryPercent: 20 }] }, { cpuPercent: metricValue, memoryPercent: 44, gpus: [{ id: 'gpu-1', utilizationPercent: 50, memoryPercent: 25 }] }],
       gpus: [{ id: 'gpu-1', name: 'Test GPU', utilizationPercent: 50, utilizationAvailable: true, memoryAvailable: true, memoryUsedBytes: 2147483648, memoryTotalBytes: 4294967296 }] },
     weather: weatherConfigured ? { configured: true, available: true, location: 'Tokyo', temperature: 21, code: 1, precipitation: 10, days: [{ date: '2026-11-15', code: 1, maximum: 22, minimum: 12, precipitation: 10 }], attribution: 'Open-Meteo', updatedAt: '2026-11-15T10:30:00+09:00', stale: true } : { configured: false },
+    media: mediaState,
     background: backgroundState,
   };
 }
@@ -63,6 +77,7 @@ function json(res, status, value) {
 }
 
 const image = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+const imageBytes = Buffer.from(image.split(',')[1], 'base64');
 const server = http.createServer(async (req, res) => {
   let body = '';
   for await (const chunk of req) body += chunk;
@@ -84,7 +99,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/view') { viewRequests.push(JSON.parse(body)); json(res, 200, { ok: true }); return; }
     if (url.pathname === '/api/slideshow') { slideRequests.push(Number(url.searchParams.get('index'))); json(res, 200, { index: Number(url.searchParams.get('index')), count: 3, data: image }); return; }
     if (url.pathname === '/api/background/image') { backgroundRequests += 1; json(res, 200, { data: image }); return; }
-    if (url.pathname === '/api/page') { json(res, 200, { ok: true }); return; }
+    if (url.pathname === '/api/media/art') {
+      artRequests.push(url.searchParams.get('v'));
+      res.writeHead(200, { 'Content-Type': 'image/gif' }); res.end(imageBytes); return;
+    }
+    if (url.pathname === '/api/media/command') { mediaCommands.push(JSON.parse(body)); json(res, 200, { ok: true }); return; }
+    if (url.pathname === '/api/page') { currentPage = JSON.parse(body).page; revision += 1; json(res, 200, { ok: true }); return; }
     json(res, 200, { ok: true }); return;
   }
   let file;
@@ -182,10 +202,39 @@ async function prepare(page, errors) {
     assert.deepEqual(audioRequests.at(-1), { target: 'speaker', toggleMute: true });
     assert.equal(await page.locator('.mic .fader-value').innerText(), '42%', 'speaker response keeps microphone volume');
     assert.equal(await page.locator('.mic').evaluate((node) => node.classList.contains('muted')), true, 'speaker response keeps microphone mute');
+    for (const shape of ['2x1', '2x2', '3x2', '4x2', '3x3', '4x3', '4x4']) {
+      await page.getByRole('button', { name: '次のページ' }).click();
+      const widget = page.locator(`.now-playing-${shape}`);
+      await widget.waitFor();
+      assert.equal(await widget.locator('.now-playing-title').innerText(), 'Test song');
+      assert.equal(await widget.locator('.now-playing-picture').count(), 1, `${shape} shows album art`);
+      const fits = await widget.evaluate((node) => node.scrollWidth <= node.clientWidth && node.scrollHeight <= node.clientHeight);
+      assert.equal(fits, true, `${shape} content stays inside the tile`);
+      if (shape === '2x1') await widget.click();
+      else assert.equal(await widget.locator('.now-playing-controls button').count(), 3, `${shape} shows controls`);
+    }
+    await page.locator('.now-playing-4x4 .now-playing-time').waitFor();
+    assert.match(await page.locator('.now-playing-time').innerText(), /\d+:\d\d \/ 3:45/);
+    await page.locator('.now-playing-4x4 [data-command="playPause"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert(mediaCommands.some((entry) => entry.command === 'playPause'), 'media control sends its command');
+    mediaState = { available: true, active: false, artVersion: '' }; revision += 1;
+    await page.waitForFunction(() => document.querySelector('.now-playing-message')?.textContent.includes('ありません'));
+    mediaState = { available: false, active: false, artVersion: '' }; revision += 1;
+    await page.waitForFunction(() => document.querySelector('.now-playing-message')?.textContent.includes('使えません'));
+    mediaState = {
+      available: true, active: true, title: 'Changed song', artist: 'Test artist', album: 'Test album', app: 'Test player',
+      playing: true, canPlayPause: true, canNext: true, canPrevious: true, position: 90, duration: 225, artVersion: 'art-two',
+    };
+    revision += 1;
+    await page.waitForFunction(() => document.querySelector('.now-playing-title')?.textContent === 'Changed song');
+    await page.waitForFunction(() => document.querySelector('.now-playing-picture'));
+    assert(artRequests.includes('art-one') && artRequests.includes('art-two'), 'album art URL follows artVersion');
     await page.getByRole('button', { name: '次のページ' }).click();
     await page.waitForFunction(() => document.querySelectorAll('.widget-tile').length === 0);
     assert(viewRequests.some((entry) => entry.visibleIds.length === 0), 'empty page announces no widgets');
 
+    currentPage = 0;
     const pair = await browser.newPage({ locale: 'ja-JP', viewport: { width: 320, height: 600 } });
     await prepare(pair, errors); await pair.goto(`${base}/v4/`);
     await pair.getByRole('button', { name: '接続をリクエスト' }).click();
