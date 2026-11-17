@@ -12,8 +12,7 @@ using Request = ApiRequest;
 partial class Program
 {
     const string JsonType = HttpIO.JsonType;
-    const string ContentSecurityPolicy =
-        "default-src 'self'; style-src 'self'; img-src 'self' data:; media-src data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
+    internal const string ContentSecurityPolicy = HttpIO.ContentSecurityPolicy;
     // Files under web\ that are served without authentication.
     static readonly HashSet<string> PublicFiles = new HashSet<string>
     {

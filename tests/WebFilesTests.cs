@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 
 public static class WebFilesTests
 {
@@ -30,6 +31,12 @@ public static class WebFilesTests
             Assert(WebFiles.ContentType("x.json") == "application/json", "json content type");
             Assert(WebFiles.ContentType("x.png") == "image/png", "png content type");
             Assert(WebFiles.ContentType("x.svg") == "image/svg+xml", "svg content type");
+            MemoryStream response = new MemoryStream();
+            HttpIO.Reply(response, 200, "text/html", "ok");
+            string headers = Encoding.ASCII.GetString(response.ToArray());
+            Assert(headers.Contains("img-src 'self' data: blob:"), "CSP allows blob images");
+            Assert(headers.Contains("script-src 'self'"), "CSP keeps scripts restricted to self");
+            Assert(HttpIO.ContentSecurityPolicy == Program.ContentSecurityPolicy, "HTTP implementations share the CSP");
             Console.WriteLine("PASS WebFilesTests");
             return 0;
         }

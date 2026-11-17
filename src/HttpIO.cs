@@ -7,8 +7,8 @@ using System.Web.Script.Serialization;
 static class HttpIO
 {
     internal const string JsonType = "application/json";
-    const string ContentSecurityPolicy =
-        "default-src 'self'; style-src 'self'; img-src 'self' data:; media-src data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
+    internal const string ContentSecurityPolicy =
+        "default-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
 
     internal static string Json(object value)
     {

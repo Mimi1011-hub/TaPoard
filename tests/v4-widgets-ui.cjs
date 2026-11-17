@@ -24,6 +24,7 @@ const slideRequests = [];
 const mediaCommands = [];
 const artRequests = [];
 let backgroundRequests = 0;
+const contentSecurityPolicy = "default-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
 
 function placement(id, type, row, column, width, height, options) {
   return { id, type, name: type, row, column, width, height, options: options || null, hideLabel: false, keyClear: null };
@@ -83,7 +84,7 @@ function json(res, status, value) {
   res.end(JSON.stringify(value));
 }
 
-const image = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 const imageBytes = Buffer.from(image.split(',')[1], 'base64');
 const server = http.createServer(async (req, res) => {
   let body = '';
@@ -108,7 +109,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/background/image') { backgroundRequests += 1; json(res, 200, { data: image }); return; }
     if (url.pathname === '/api/media/art') {
       artRequests.push(url.searchParams.get('v'));
-      res.writeHead(200, { 'Content-Type': 'image/gif' }); res.end(imageBytes); return;
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Security-Policy': contentSecurityPolicy }); res.end(imageBytes); return;
     }
     if (url.pathname === '/api/media/command') { mediaCommands.push(JSON.parse(body)); json(res, 200, { ok: true }); return; }
     if (url.pathname === '/api/page') { currentPage = JSON.parse(body).page; revision += 1; json(res, 200, { ok: true }); return; }
@@ -121,7 +122,7 @@ const server = http.createServer(async (req, res) => {
   if (!file || !fs.existsSync(file)) { res.writeHead(url.pathname === '/favicon.ico' ? 204 : 404); res.end(); return; }
   const ext = path.extname(file);
   const type = ext === '.js' ? 'application/javascript' : ext === '.css' ? 'text/css' : ext === '.json' ? 'application/json' : 'text/html';
-  res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` }); res.end(fs.readFileSync(file));
+  res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8`, 'Content-Security-Policy': contentSecurityPolicy }); res.end(fs.readFileSync(file));
 });
 
 async function prepare(page, errors) {
@@ -223,6 +224,7 @@ async function prepare(page, errors) {
       await widget.waitFor();
       assert.equal(await widget.locator('.now-playing-title').innerText(), 'Test song');
       assert.equal(await widget.locator('.now-playing-picture').count(), 1, `${shape} shows album art`);
+      assert(await widget.locator('.now-playing-picture').evaluate((node) => node.naturalWidth > 0), `${shape} loads album art`);
       const fits = await widget.evaluate((node) => node.scrollWidth <= node.clientWidth && node.scrollHeight <= node.clientHeight);
       assert.equal(fits, true, `${shape} content stays inside the tile`);
       if (shape === '2x1') await widget.click();
