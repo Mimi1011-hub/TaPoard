@@ -69,6 +69,21 @@ public static class ControllerTests
             Assert(invalidLanguage, "invalid language is rejected as a bad request");
             Directory.Delete(languageData, true);
 
+            // Saved screens are exported through the icon-styles route (it was once wired to icon packs and answered 404).
+            string lookData = Path.Combine(Path.GetTempPath(), "TaPoard-looks-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(lookData);
+            var lookState = new AppState("root", lookData, "test", state.Host, store);
+            lookState.Config = Settings();
+            var lookRouter = new ApiRouter<ApiRequest>();
+            new LookController(lookState, desktop, new DeckController(lookState, desktop)).Register(lookRouter);
+            request = Request("/api/icon-styles/save", new Dictionary<string, object> { { "name", "My screen" } });
+            lookRouter.Find("POST", request.path, true)(request);
+            string lookId = (string)IconPacks.Serializer().Deserialize<Dictionary<string, object>>(Body(request))["id"];
+            request = Request("/api/icon-styles/export", new Dictionary<string, object> { { "id", lookId } });
+            lookRouter.Find("POST", request.path, true)(request);
+            Assert(Body(request).Contains("\"name\":\"My screen.tppreset\"") && Body(request).Contains("\"data\":"), "saved screens can be exported");
+            Directory.Delete(lookData, true);
+
             request = Request("/api/v3/state", null); router.Find("GET", request.path, false)(request);
             Assert(Body(request).Contains("\"revision\":"), "v3 state response includes revision");
 

@@ -103,18 +103,6 @@ sealed class LookController : ControllerBase
             IconPacks.Rename(state.Data, id, name, author);
             HttpIO.ReplyJson(r.stream, 200, new { ok = true });
         }
-        else if (action == "export")
-        {
-            string fileName;
-            byte[] bytes = IconStyles.ExportPresets(state.Data, id, out fileName);
-            fileName = Regex.Replace(fileName, "[\\/:*?\"<>|]", "_").Trim();
-            if (fileName.Length == 0) fileName = "TaPoard screen";
-            HttpIO.ReplyJson(r.stream, 200, new
-            {
-                name = fileName + ".tppreset",
-                data = Convert.ToBase64String(bytes),
-            });
-        }
         else if (action == "delete")
         {
             IconPacks.Delete(state.Data, id);
@@ -164,6 +152,18 @@ sealed class LookController : ControllerBase
         {
             IconStyles.Rename(state.Data, id, name);
             HttpIO.ReplyJson(r.stream, 200, new { ok = true });
+        }
+        else if (action == "export")
+        {
+            string fileName;
+            byte[] bytes = IconStyles.ExportPresets(state.Data, id, out fileName);
+            fileName = Regex.Replace(fileName, "[\\/:*?\"<>|]", "_").Trim();
+            if (fileName.Length == 0) fileName = "TaPoard screen";
+            HttpIO.ReplyJson(r.stream, 200, new
+            {
+                name = fileName + ".tppreset",
+                data = Convert.ToBase64String(bytes),
+            });
         }
         else if (action == "delete")
         {
