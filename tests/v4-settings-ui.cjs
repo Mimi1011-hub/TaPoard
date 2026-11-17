@@ -252,7 +252,11 @@ async function assertPreviewChromeFits(page, label) {
     const pcAspect = await page.locator('.settings-preview-screen').evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
     await page.locator('#settings-preview-mode').selectOption('phone');
     assert.match(await page.locator('#settings-preview-ratio option[value="auto"]').innerText(), /390×844/);
+    assert.equal(await page.locator('#settings-inspector h2').innerText(), 'スマホの画面比率');
+    assert.match(await page.locator('#settings-inspector').innerText(), /最後につないだスマホ（390×844）/);
     await page.locator('#settings-preview-ratio').selectOption('16:9');
+    assert.match(await page.locator('#settings-inspector').innerText(), /iPhone 8/);
+    assert.equal(await page.locator('.phone-ratio-grids button').count(), 3);
     const phoneAspect = await page.locator('.settings-preview-screen').evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
     assert(phoneAspect > pcAspect, 'smartphone view changes the preview ratio');
     await assertPreviewChromeFits(page, 'Japanese phone preview chrome');
@@ -262,6 +266,21 @@ async function assertPreviewChromeFits(page, label) {
     await waitFor(() => posts.length === phoneDragPosts + 1, 'smartphone-ratio drag save');
     assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].column, 1, 'smartphone-ratio drag uses the intended cell');
     assert.match(await page.locator('#settings-grid-warning').innerText(), /横長/);
+    await page.locator('.preview-hit[data-kind="item"]').click();
+    assert.equal(await page.locator('.settings-inspector textarea').count() > 0, true, 'selecting a button restores its details');
+    await page.locator('#settings-preview-ratio').selectOption('18:9');
+    assert.equal(await page.locator('#settings-inspector h2').innerText(), 'スマホの画面比率');
+    await page.locator('.preview-hit[data-kind="item"]').click();
+    assert.equal(await page.locator('.settings-inspector textarea').count() > 0, true, 'selecting the button again restores details');
+    await page.locator('#settings-preview-ratio').selectOption('16:9');
+    const advicePosts = posts.length;
+    await page.locator('.phone-ratio-grids button:not(:disabled)').first().click();
+    await waitFor(() => posts.length === advicePosts + 1, 'recommended grid save');
+    assert.equal(posts.at(-1).deck.landscape.columns, 7);
+    assert.equal(posts.at(-1).deck.landscape.rows, 4);
+    assert.equal(await page.locator('.phone-ratio-grids button:disabled').count(), 1, 'current recommended grid is disabled');
+    await page.locator('#settings-undo').click();
+    await waitFor(() => posts.length === advicePosts + 2, 'recommended grid undo');
     await page.locator('#settings-preview-mode').selectOption('pc');
 
     await page.locator('.deck-button').click({ force: true });
@@ -387,6 +406,8 @@ async function assertPreviewChromeFits(page, label) {
     await assertPreviewChromeFits(englishGuide, 'English PC preview chrome');
     await englishGuide.locator('#settings-preview-mode').selectOption('phone');
     await assertPreviewChromeFits(englishGuide, 'English phone preview chrome');
+    assert.equal(await englishGuide.locator('#settings-inspector').evaluate((node) => node.scrollWidth <= node.clientWidth), true,
+      'English phone ratio panel fits the inspector');
     await englishGuide.getByRole('button', { name: 'How to make icon files with AI' }).click();
     assert.equal(await englishGuide.locator('#settings-icon-ai-guide').evaluate((node) => node.scrollWidth <= node.clientWidth), true,
       'English AI guide fits at 1100px');

@@ -804,6 +804,39 @@
   font-size: 11px;
   white-space: nowrap;
 }
+.phone-ratio-current {
+  font-weight: 700;
+}
+.phone-ratio-grids {
+  display: grid;
+  gap: 7px;
+}
+.phone-ratio-grids button {
+  display: flex;
+  min-width: 0;
+  padding: 8px 9px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-button);
+  text-align: left;
+}
+.phone-ratio-grids button.is-current {
+  border-color: var(--color-accent);
+}
+.phone-ratio-grids small {
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.phone-ratio-warning {
+  padding: 8px;
+  border-radius: 8px;
+  color: #fff;
+  background: #8b4b18;
+  overflow-wrap: anywhere;
+}
 .settings-preview-column {
   position: relative;
 }

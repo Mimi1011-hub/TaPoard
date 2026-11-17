@@ -22,6 +22,7 @@ import { ShortcutPacks } from './shortcut-packs.js';
 import { ConfirmDialog } from './confirm-dialog.js';
 import { presetPreview, renderPhoneAdvice, setupPreviewView, showIconGuide } from './preview-view.js';
 import { IconAiGuide } from './icon-ai-guide.js';
+import { PhoneRatioPanel } from './phone-ratio-panel.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -50,6 +51,7 @@ export class SettingsApp {
       i18n: this.i18n,
       onSelect: (selection) => {
         if (this.inspector) this.inspector.select(selection);
+        if (!selection) this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize || []);
       },
       onError: (message) => this.shell.showNotice(message),
     });
@@ -86,6 +88,15 @@ export class SettingsApp {
       confirmFn: this.confirmFn,
       onError: (message) => this.shell.showNotice(message),
     });
+    this.phoneRatioPanel = new PhoneRatioPanel({
+      editor: this.editor,
+      preview: this.preview,
+      previewRatio: this.nodes.previewRatio,
+      phoneSize: this.phonePreviewSize,
+      gridSize: this.gridSize,
+      i18n: this.i18n,
+    });
+    this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize || [], true);
     this.catalog = new Catalog({
       root: this.nodes.catalog,
       editor: this.editor,
@@ -216,7 +227,7 @@ export class SettingsApp {
         this.presets.render();
         this.pages.render();
         this.gridSize.render();
-        this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize || []);
+        this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize || [], true);
         this.backgroundSettings.orientationChanged();
       }),
     );
@@ -244,7 +255,7 @@ export class SettingsApp {
 
   setupPreviewView() { return setupPreviewView(this); }
 
-  renderPhoneAdvice(phone, phoneSize) { renderPhoneAdvice(this, phone, phoneSize); }
+  renderPhoneAdvice(phone, phoneSize, forcePanel) { renderPhoneAdvice(this, phone, phoneSize, forcePanel); }
 
   keydown(event) {
     if (event.key === 'Delete' && !/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) {

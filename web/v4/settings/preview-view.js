@@ -13,7 +13,7 @@ export async function setupPreviewView(app) {
     const phone = app.nodes.previewMode.value === 'phone';
     app.nodes.previewRatio.hidden = !phone;
     app.preview.setView(app.nodes.previewMode.value, app.nodes.previewRatio.value, [view.phoneWidth, view.phoneHeight]);
-    renderPhoneAdvice(app, phone, app.phonePreviewSize);
+    renderPhoneAdvice(app, phone, app.phonePreviewSize, true);
   };
   app.nodes.previewMode.value = view.options.previewMode || 'pc';
   app.nodes.previewRatio.value = view.options.previewRatio || 'auto';
@@ -27,9 +27,12 @@ export async function setupPreviewView(app) {
   app.editor.subscribe(() => renderPhoneAdvice(app, app.nodes.previewMode.value === 'phone', app.phonePreviewSize));
 }
 
-export function renderPhoneAdvice(app, phone, phoneSize) {
+export function renderPhoneAdvice(app, phone, phoneSize, forcePanel = false) {
   app.nodes.gridWarning.hidden = true;
-  if (!phone) return;
+  if (!phone) {
+    if (app.phoneRatioPanel && app.inspector && app.inspector.externalPanel === app.phoneRatioPanel) app.inspector.showPanel(null);
+    return;
+  }
   const orientation = app.preview.orientation;
   const ratio = app.nodes.previewRatio.value;
   const current = app.editor.deck[orientation];
@@ -38,6 +41,7 @@ export function renderPhoneAdvice(app, phone, phoneSize) {
     app.nodes.gridWarning.textContent = app.i18n.t(`settings.preview.${shape}Cells`);
     app.nodes.gridWarning.hidden = false;
   }
+  if (app.phoneRatioPanel && app.inspector && (forcePanel || !app.inspector.selection)) app.inspector.showPanel(app.phoneRatioPanel);
 }
 
 export function presetPreview(app, active, name) {

@@ -19,7 +19,13 @@ export class Inspector {
   }
 
   select(selection) {
+    this.externalPanel = null;
     this.selection = selection;
+    this.render();
+  }
+
+  showPanel(panel) {
+    this.externalPanel = panel;
     this.render();
   }
 
@@ -29,6 +35,10 @@ export class Inspector {
 
   render() {
     clear(this.root);
+    if (this.externalPanel) {
+      this.externalPanel.render(this.root);
+      return;
+    }
     this.root.appendChild(this.title());
     if (!this.selection) {
       this.root.appendChild(el('p', '', this.i18n.t('settings.inspector.empty')));
