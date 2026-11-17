@@ -284,6 +284,7 @@
   "presets.safetyTexts": "文字を入力するボタン {count} 個",
   "presets.safetyNote": "が入っています。中身を確かめてから使ってください。",
   "presets.safetyNone": "アプリ・URL・文字入力を実行するボタンはありません。",
+  "presets.safetyDevices": "この PC に無い音の装置へ切り替えるボタン {count} 個は、読み込みません。",
   "presets.deleteConfirm": "プリセット「{name}」を削除しますか？",
   "presets.namePrompt": "プリセットの名前を入力してください。",
   "presets.otherSide": "このプリセットは{side}用です。",

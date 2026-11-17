@@ -132,6 +132,20 @@ public static class CustomPresetTests
             new ActionStep { type = "app", path = executable },
             new ActionStep { type = "url", url = "https://example.com/" },
         };
+        settings.apps.Add(new AppEntry
+        {
+            id = "known-device", name = "Headset", type = "audioDevice", deviceTarget = "speaker", deviceId = "known-speaker", orientation = "landscape",
+        });
+        CustomPreset sound = Json.Deserialize<CustomPreset>(Json.Serialize(preset));
+        sound.items[0] = Item("Headset", "audioDevice", "", 0);
+        sound.items[0].deviceTarget = "speaker"; sound.items[0].deviceId = "known-speaker"; sound.items[0].deviceName = "Private name";
+        sound.items.Add(Item("Other", "audioDevice", "", 1));
+        sound.items[1].deviceTarget = "speaker"; sound.items[1].deviceId = "missing-speaker";
+        byte[] soundFile = PresetFiles.Export(new[] { sound });
+        Check(!Encoding.UTF8.GetString(soundFile).Contains("Private name"), "preset files leave out audio device names");
+        PresetImport soundImport = PresetFiles.Read(soundFile, controller);
+        Check(soundImport.presets[0].items.Count == 1 && soundImport.presets[0].items[0].deviceId == "known-speaker"
+            && soundImport.safety.skippedDevices == 1, "sound switches work on the same PC and are left out when the device is missing");
         PresetSafety safety = PresetFiles.Safety(new[] { risky });
         Check(safety.apps == 2 && safety.urls == 2 && safety.texts == 1 && safety.paths.Count == 2,
             "preset safety counts action types and application paths");

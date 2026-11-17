@@ -28,6 +28,8 @@ sealed class PresetSafety
     public int urls { get; set; }
     public int texts { get; set; }
     public List<string> paths { get; set; }
+    // Sound output/input buttons left out because this PC has no such device.
+    public int skippedDevices { get; set; }
 }
 
 sealed class PresetImport
@@ -77,14 +79,18 @@ static class PresetFiles
             throw new Exception(Text.Get("source.presetfiles.format"));
         if (file.presets.Count > MaxPresets) throw new Exception(Text.Get("source.presetfiles.count"));
         var result = new List<CustomPreset>();
+        int skipped = 0;
         foreach (PresetTransfer value in file.presets)
         {
             CustomPreset preset = ToPreset(value);
             Clean(preset.items);
+            skipped += DropMissingDevices(preset, controller);
             Validate(preset, controller);
             result.Add(preset);
         }
-        return new PresetImport { presets = result, safety = Safety(result) };
+        PresetSafety safety = Safety(result);
+        safety.skippedDevices = skipped;
+        return new PresetImport { presets = result, safety = safety };
     }
 
     internal static PresetSafety Safety(IEnumerable<CustomPreset> presets)
@@ -189,6 +195,23 @@ static class PresetFiles
         }
     }
 
+    // A sound output/input button keeps its device id in the file, so it still works on the same PC.
+    // On a PC without that device the button is left out instead of failing the whole file.
+    static int DropMissingDevices(CustomPreset preset, DeckController controller)
+    {
+        if (preset.items == null) return 0;
+        return preset.items.RemoveAll(item =>
+        {
+            if (!IsAudioDevice(item)) return false;
+            try
+            {
+                controller.ResolveAudioDevice(new AppEntry { type = item.type, deviceId = item.deviceId, deviceTarget = item.deviceTarget });
+                return false;
+            }
+            catch { return true; }
+        });
+    }
+
     static void Mark(bool[,] used, FaderV3 value, int columns, int rows)
     {
         if (value == null) return;
@@ -215,8 +238,13 @@ static class PresetFiles
         foreach (DeckItem item in items ?? new List<DeckItem>())
         {
             var value = Json.Deserialize<Dictionary<string, object>>(Json.Serialize(item));
-            foreach (string key in new[] { "id", "customIcon", "iconPack", "iconPackItem", "deviceId", "deviceTarget", "deviceName" })
+            foreach (string key in new[] { "id", "customIcon", "iconPack", "iconPackItem", "deviceName" })
                 value.Remove(key);
+            if (!IsAudioDevice(item))
+            {
+                value.Remove("deviceId");
+                value.Remove("deviceTarget");
+            }
             result.Add(value);
         }
         return result;
@@ -230,15 +258,24 @@ static class PresetFiles
             item.customIcon = null;
             item.iconPack = null;
             item.iconPackItem = null;
-            item.deviceId = null;
-            item.deviceTarget = null;
+            // The device name is shown text from this PC; a sound switch keeps its device id so it still works on the same PC.
             item.deviceName = null;
+            if (!IsAudioDevice(item))
+            {
+                item.deviceId = null;
+                item.deviceTarget = null;
+            }
             foreach (ActionStep step in item.steps ?? new List<ActionStep>())
             {
                 step.deviceId = null;
                 step.deviceTarget = null;
             }
         }
+    }
+
+    static bool IsAudioDevice(DeckItem item)
+    {
+        return item != null && String.Equals(item.type, "audioDevice", StringComparison.OrdinalIgnoreCase);
     }
 
     static T Copy<T>(T value) { return Json.Deserialize<T>(Json.Serialize(value)); }

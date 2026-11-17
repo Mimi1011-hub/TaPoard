@@ -96,7 +96,8 @@ export class PresetFiles {
     if (safety.urls) values.push(this.i18n.t('presets.safetyUrls', { count: safety.urls }));
     if (safety.texts) values.push(this.i18n.t('presets.safetyTexts', { count: safety.texts }));
     const summary = values.join(this.i18n.t('presets.safetySeparator'));
-    box.appendChild(el('p', '', values.length ? `${summary} ${this.i18n.t('presets.safetyNote')}` : this.i18n.t('presets.safetyNone')));
+    box.appendChild(el('p', '', values.length ? `${summary}${this.i18n.t('presets.safetyNote')}` : this.i18n.t('presets.safetyNone')));
+    if (safety.skippedDevices) box.appendChild(el('p', '', this.i18n.t('presets.safetyDevices', { count: safety.skippedDevices })));
     if (safety.paths && safety.paths.length) {
       const paths = el('ul');
       safety.paths.forEach((path) => paths.appendChild(el('li', '', path)));
