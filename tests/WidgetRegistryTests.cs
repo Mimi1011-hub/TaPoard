@@ -147,7 +147,23 @@ class WidgetRegistryTests
         legacyMetric.options = new Dictionary<string, object> { { "primary", "gpu" }, { "gpuId", "luid_0x00000000_0x0000abcd" } };
         WidgetRegistry.ValidateAndNormalize(legacyMetric);
         Check((string)legacyMetric.options["gpuName"] == "", "2.0 metrics without a GPU name still load");
+        var media = Entry("nowPlaying", 1);
+        media.width = 2;
+        media.height = 1;
+        WidgetRegistry.ValidateAndNormalize(media);
+        Check((bool)media.options["showArt"] && (bool)media.options["showControls"] && (bool)media.options["showProgress"],
+            "now playing options default to visible");
+        string[] mediaSizes = { "2x1", "2x2", "3x2", "4x2", "3x3", "4x3", "4x4" };
+        foreach (string shape in mediaSizes)
+        {
+            string[] parts = shape.Split('x');
+            media.width = Int32.Parse(parts[0]);
+            media.height = Int32.Parse(parts[1]);
+            WidgetRegistry.ValidateDimensions(media);
+        }
+        media.options["unknown"] = true;
+        Reject(delegate { WidgetRegistry.ValidateAndNormalize(media); }, "now playing rejects unknown options");
         var definitions = WidgetRegistry.PublicDefinitions() as List<object>;
-        Check(definitions != null && definitions.Count == 12, "all current widget definitions are public");
+        Check(definitions != null && definitions.Count == 13, "all current widget definitions are public");
     }
 }

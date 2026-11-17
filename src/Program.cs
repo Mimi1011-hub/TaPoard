@@ -23,6 +23,7 @@ partial class Program
     internal static readonly LookController LookApi = new LookController(State, desktop, DeckApi);
     internal static readonly InputController InputApi = new InputController(State, desktop, DeckApi);
     internal static readonly SystemController SystemApi = new SystemController(State, desktop);
+    internal static readonly MediaController MediaApi = new MediaController(State, desktop);
     static readonly ApiRouter<ApiRequest> api = BuildApi();
     static TcpListener server;
     static NotifyIcon tray;
@@ -174,10 +175,13 @@ partial class Program
                 LoadLanguage();
                 LoadSettings();
                 WeatherService.Initialize(Data, delegate { lock (State.Gate) Signal(); });
+                MediaService.Initialize(State.Host.MediaSession, delegate { lock (State.Gate) Signal(); });
                 DisplaySubscriptions.Changed = delegate
                 {
                     MetricsSampler.OnSubscriptionsChanged();
-                    lock (State.Gate) WeatherService.SetActive(DisplaySubscriptions.Current().weather.Count != 0, State.Config);
+                    var subscriptions = DisplaySubscriptions.Current();
+                    MediaService.SetActive(subscriptions.media.Count != 0);
+                    lock (State.Gate) WeatherService.SetActive(subscriptions.weather.Count != 0, State.Config);
                 };
                 MetricsSampler.Changed = delegate
                 {
@@ -190,7 +194,6 @@ partial class Program
                 State.Lan = lan;
                 File.WriteAllText(Path.Combine(Root, "network-status.txt"), lan.Status);
                 StartServer();
-                ProbeMediaSession();
                 ui = new Control();
                 var handle = ui.Handle;
                 CreateTrayIcon();
@@ -227,6 +230,7 @@ partial class Program
                 DisplaySubscriptions.Changed = null;
                 DisplaySubscriptions.ClearAll();
                 MetricsSampler.SetActive(false);
+                MediaService.Stop();
                 WeatherService.Stop();
                 InputSessions.ClearAll();
                 if (lan != null)
@@ -237,18 +241,6 @@ partial class Program
                     appIcon.Dispose();
             }
         }
-    }
-
-    static void ProbeMediaSession()
-    {
-        ThreadPool.QueueUserWorkItem(delegate
-        {
-            MediaState media = State.Host.MediaSession.Current();
-            string title = (media.title ?? "").Replace("\r", " ").Replace("\n", " ");
-            string line = String.Format("{0:o}\tavailable={1}\tactive={2}\ttitle={3}{4}",
-                DateTime.UtcNow, media.available, media.active, title, Environment.NewLine);
-            File.AppendAllText(Path.Combine(Data, "media-session.log"), line);
-        });
     }
 
     // Loads settings-v3.json, or reads settings-v2.json once when v3 does not exist.

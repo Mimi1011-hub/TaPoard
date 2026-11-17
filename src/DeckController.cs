@@ -14,6 +14,7 @@ sealed class DeckRuntimeState
     internal object audio;
     internal object metrics;
     internal object weather;
+    internal object media;
     internal bool phoneConnected;
     internal bool pcWindowOpen;
     internal object background;
@@ -94,6 +95,7 @@ sealed class DeckController : ControllerBase
             response["audio"] = runtime.audio;
             response["metrics"] = runtime.metrics;
             response["weather"] = runtime.weather;
+            response["media"] = runtime.media;
             response["phoneConnected"] = runtime.phoneConnected;
             response["pcWindowOpen"] = runtime.pcWindowOpen;
             response["inputSessions"] = runtime.inputSessions;
@@ -126,6 +128,7 @@ sealed class DeckController : ControllerBase
             audio = AudioControl.Read(),
             metrics = MetricsSampler.PublicSnapshot(),
             weather = WeatherService.PublicSnapshot(state.Config),
+            media = MediaService.PublicSnapshot(),
             phoneConnected = state.PhoneConnected,
             pcWindowOpen = PcWindowService.IsOpen,
             background = DeckBackgrounds.Public(state.Config.background),
@@ -174,6 +177,7 @@ sealed class DeckController : ControllerBase
                     audio = AudioControl.Read(),
                     metrics = MetricsSampler.PublicSnapshot(),
                     weather = WeatherService.PublicSnapshot(state.Config),
+                    media = MediaService.PublicSnapshot(),
                     phoneConnected = state.PhoneConnected,
                     pcWindowOpen = PcWindowService.IsOpen,
                     background = DeckBackgrounds.Public(state.Config.background),

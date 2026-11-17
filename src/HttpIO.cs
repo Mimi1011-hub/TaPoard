@@ -44,11 +44,17 @@ static class HttpIO
         WriteResponse(stream, code, type, body, "");
     }
 
+    internal static void ReplyCachedBytes(Stream stream, int code, string type, byte[] body, string cacheControl)
+    {
+        WriteResponse(stream, code, type, body, "Cache-Control: " + cacheControl + "\r\n");
+    }
+
     internal static void WriteResponse(Stream stream, int code, string contentType, byte[] body, string extraHeaders)
     {
+        string cache = extraHeaders.IndexOf("Cache-Control:", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : "Cache-Control: no-store\r\n";
         byte[] headers = Encoding.ASCII.GetBytes("HTTP/1.1 " + code + " " + (code == 200 ? "OK" : "Error")
             + "\r\nContent-Type: " + contentType + "\r\nContent-Length: " + body.Length
-            + "\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n"
+            + "\r\nConnection: close\r\n" + cache + "X-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n"
             + extraHeaders + "\r\n");
         stream.Write(headers, 0, headers.Length);
         stream.Write(body, 0, body.Length);

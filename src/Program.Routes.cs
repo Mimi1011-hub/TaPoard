@@ -11,6 +11,7 @@ partial class Program
         LookApi.Register(router);
         InputApi.Register(router);
         SystemApi.Register(router);
+        MediaApi.Register(router);
         return router;
     }
 

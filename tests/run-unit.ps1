@@ -7,7 +7,7 @@ Set-Location $root
 New-Item -ItemType Directory -Force tests\bin | Out-Null
 $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $tests = @(
-    'SettingsV2Tests', 'SettingsV3Tests', 'WidgetRegistryTests', 'BuildInfoTests', 'LayoutV2Tests', 'DisplaySubscriptionTests', 'ConnectLinksTests',
+    'SettingsV2Tests', 'SettingsV3Tests', 'WidgetRegistryTests', 'BuildInfoTests', 'LayoutV2Tests', 'DisplaySubscriptionTests', 'MediaSessionTests', 'ConnectLinksTests',
     'InputSessionTests', 'MetricsSamplerTests', 'GpuMetricsTests', 'WeatherServiceTests', 'UrlImportTests', 'Release103Tests',
     'HostTests', 'PageUndoTests', 'SyncHubTests', 'ApiRouterTests', 'ApiRouteTableTests', 'ApiStatusTests', 'ControllerTests', 'DeckV3SaveTests',
     'WebFilesTests', 'ShortcutPacksTests', 'CustomPresetTests', 'BackgroundTransformTests', 'TextTests', 'SourceTextTests'

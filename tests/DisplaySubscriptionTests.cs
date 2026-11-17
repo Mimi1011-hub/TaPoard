@@ -32,6 +32,7 @@ class DisplaySubscriptionTests
             Widget("metrics-1", "metrics"),
             Widget("weather-1", "weather"),
             Widget("clock-1", "clock"),
+            Widget("media-1", "nowPlaying"),
         };
         Func<DateTime> originalClock = DisplaySubscriptions.Clock;
         Action originalChanged = DisplaySubscriptions.Changed;
@@ -45,7 +46,7 @@ class DisplaySubscriptionTests
             DisplaySubscriptions.Update(
                 "device-a:view-a",
                 apps,
-                new[] { "metrics-1", "weather-1", "clock-1", "unknown" },
+                new[] { "metrics-1", "weather-1", "media-1", "clock-1", "unknown" },
                 true,
                 true
             );
@@ -53,6 +54,7 @@ class DisplaySubscriptionTests
             Check(first.sessions == 1, "one visible browser view creates one lease");
             Check(first.metrics.SetEquals(new[] { "metrics-1" }), "only configured metrics widgets are subscribed");
             Check(first.weather.SetEquals(new[] { "weather-1" }), "only configured weather widgets are subscribed");
+            Check(first.media.SetEquals(new[] { "media-1" }), "only configured media widgets are subscribed");
             Check(first.timerArmed, "one expiry timer is armed while a lease exists");
 
             DisplaySubscriptions.Update("device-b:view-b", apps, new[] { "metrics-1" }, true, true);
@@ -63,6 +65,7 @@ class DisplaySubscriptionTests
             DisplaySubscriptions.PruneNow();
             var metricsExpired = DisplaySubscriptions.Current();
             Check(metricsExpired.metrics.Count == 0, "metrics leases expire after ten seconds without renewal");
+            Check(metricsExpired.media.Count == 0, "media leases expire after ten seconds without renewal");
             Check(metricsExpired.weather.SetEquals(new[] { "weather-1" }), "weather lease survives the shorter metrics timeout");
             Check(metricsExpired.sessions == 1, "empty view leases are removed on expiry");
 

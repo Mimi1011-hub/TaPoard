@@ -11,20 +11,23 @@ static class DisplaySubscriptions
         internal string key;
         internal HashSet<string> metrics = new HashSet<string>(StringComparer.Ordinal);
         internal HashSet<string> weather = new HashSet<string>(StringComparer.Ordinal);
+        internal HashSet<string> media = new HashSet<string>(StringComparer.Ordinal);
         internal DateTime metricsExpires;
         internal DateTime weatherExpires;
+        internal DateTime mediaExpires;
     }
 
     internal sealed class Snapshot
     {
         internal readonly HashSet<string> metrics;
         internal readonly HashSet<string> weather;
+        internal readonly HashSet<string> media;
         internal readonly int sessions;
         internal readonly bool timerArmed;
 
-        internal Snapshot(HashSet<string> metrics, HashSet<string> weather, int sessions, bool timerArmed)
+        internal Snapshot(HashSet<string> metrics, HashSet<string> weather, HashSet<string> media, int sessions, bool timerArmed)
         {
-            this.metrics = metrics; this.weather = weather; this.sessions = sessions; this.timerArmed = timerArmed;
+            this.metrics = metrics; this.weather = weather; this.media = media; this.sessions = sessions; this.timerArmed = timerArmed;
         }
     }
 
@@ -48,11 +51,13 @@ static class DisplaySubscriptions
         if (requested.Count > 40) throw new Exception(Text.Get("source.displaysubscriptions.2"));
         var metrics = new HashSet<string>(StringComparer.Ordinal);
         var weather = new HashSet<string>(StringComparer.Ordinal);
+        var media = new HashSet<string>(StringComparer.Ordinal);
         foreach (var app in configured)
         {
             if (!requested.Contains(app.id)) continue;
             if (String.Equals(app.type, "metrics", StringComparison.OrdinalIgnoreCase)) metrics.Add(app.id);
             else if (String.Equals(app.type, "weather", StringComparison.OrdinalIgnoreCase)) weather.Add(app.id);
+            else if (String.Equals(app.type, "nowPlaying", StringComparison.OrdinalIgnoreCase)) media.Add(app.id);
         }
         DateTime now = Clock(); bool changed;
         lock (Sync)
@@ -68,13 +73,15 @@ static class DisplaySubscriptions
             {
                 changed |= !lease.metrics.SetEquals(metrics); lease.metrics = metrics;
                 lease.metricsExpires = metrics.Count == 0 ? DateTime.MinValue : now.AddSeconds(10);
+                changed |= !lease.media.SetEquals(media); lease.media = media;
+                lease.mediaExpires = media.Count == 0 ? DateTime.MinValue : now.AddSeconds(10);
             }
             if (renewWeather)
             {
                 changed |= !lease.weather.SetEquals(weather); lease.weather = weather;
                 lease.weatherExpires = weather.Count == 0 ? DateTime.MinValue : now.AddSeconds(60);
             }
-            if (lease.metrics.Count == 0 && lease.weather.Count == 0) { Leases.Remove(key); changed = true; }
+            if (lease.metrics.Count == 0 && lease.weather.Count == 0 && lease.media.Count == 0) { Leases.Remove(key); changed = true; }
             ArmLocked(now);
         }
         if (changed && Changed != null) Changed();
@@ -94,6 +101,7 @@ static class DisplaySubscriptions
             {
                 if (lease.metrics.Count != 0) lease.metricsExpires = now.AddSeconds(10);
                 if (lease.weather.Count != 0) lease.weatherExpires = now.AddSeconds(60);
+                if (lease.media.Count != 0) lease.mediaExpires = now.AddSeconds(10);
             }
             ArmLocked(now);
         }
@@ -104,10 +112,12 @@ static class DisplaySubscriptions
     {
         var metrics = new HashSet<string>(StringComparer.Ordinal);
         var weather = new HashSet<string>(StringComparer.Ordinal);
+        var media = new HashSet<string>(StringComparer.Ordinal);
         foreach (var app in configured)
         {
             if (String.Equals(app.type, "metrics", StringComparison.OrdinalIgnoreCase)) metrics.Add(app.id);
             else if (String.Equals(app.type, "weather", StringComparison.OrdinalIgnoreCase)) weather.Add(app.id);
+            else if (String.Equals(app.type, "nowPlaying", StringComparison.OrdinalIgnoreCase)) media.Add(app.id);
         }
         bool changed = false;
         lock (Sync)
@@ -116,9 +126,11 @@ static class DisplaySubscriptions
             {
                 changed |= lease.metrics.RemoveWhere(id => !metrics.Contains(id)) > 0;
                 changed |= lease.weather.RemoveWhere(id => !weather.Contains(id)) > 0;
+                changed |= lease.media.RemoveWhere(id => !media.Contains(id)) > 0;
             }
             var empty = new List<string>();
-            foreach (var pair in Leases) if (pair.Value.metrics.Count == 0 && pair.Value.weather.Count == 0) empty.Add(pair.Key);
+            foreach (var pair in Leases)
+                if (pair.Value.metrics.Count == 0 && pair.Value.weather.Count == 0 && pair.Value.media.Count == 0) empty.Add(pair.Key);
             foreach (string key in empty) Leases.Remove(key);
             ArmLocked(Clock());
         }
@@ -146,8 +158,14 @@ static class DisplaySubscriptions
             ArmLocked(now);
             var metrics = new HashSet<string>(StringComparer.Ordinal);
             var weather = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var lease in Leases.Values) { metrics.UnionWith(lease.metrics); weather.UnionWith(lease.weather); }
-            snapshot = new Snapshot(metrics, weather, Leases.Count, timerArmed);
+            var media = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var lease in Leases.Values)
+            {
+                metrics.UnionWith(lease.metrics);
+                weather.UnionWith(lease.weather);
+                media.UnionWith(lease.media);
+            }
+            snapshot = new Snapshot(metrics, weather, media, Leases.Count, timerArmed);
         }
         if (changed && Changed != null) Changed();
         return snapshot;
@@ -168,7 +186,8 @@ static class DisplaySubscriptions
             var lease = pair.Value;
             if (lease.metrics.Count != 0 && lease.metricsExpires <= now) { lease.metrics.Clear(); changed = true; }
             if (lease.weather.Count != 0 && lease.weatherExpires <= now) { lease.weather.Clear(); changed = true; }
-            if (lease.metrics.Count == 0 && lease.weather.Count == 0) empty.Add(pair.Key);
+            if (lease.media.Count != 0 && lease.mediaExpires <= now) { lease.media.Clear(); changed = true; }
+            if (lease.metrics.Count == 0 && lease.weather.Count == 0 && lease.media.Count == 0) empty.Add(pair.Key);
         }
         foreach (string key in empty) Leases.Remove(key);
         return changed;
@@ -181,6 +200,7 @@ static class DisplaySubscriptions
         {
             if (lease.metrics.Count != 0 && lease.metricsExpires < earliest) earliest = lease.metricsExpires;
             if (lease.weather.Count != 0 && lease.weatherExpires < earliest) earliest = lease.weatherExpires;
+            if (lease.media.Count != 0 && lease.mediaExpires < earliest) earliest = lease.mediaExpires;
         }
         if (earliest == DateTime.MaxValue)
         {

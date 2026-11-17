@@ -30,6 +30,7 @@ static class WidgetRegistry
         Add(result, "touchpad", "source.widgetregistry.9", new[] { "3x2", "2x3" }, true);
         Add(result, "keypad", "source.widgetregistry.10", new[] { "4x4", "4x5" }, true);
         Add(result, "slideshow", "source.widgetregistry.11", SlideshowSizes(), true);
+        Add(result, "nowPlaying", "source.widgetregistry.32", new[] { "2x1", "2x2", "3x2", "4x2", "3x3", "4x3", "4x4" }, true);
         return result;
     }
 
@@ -194,6 +195,13 @@ static class WidgetRegistry
         {
             if (DeckLayout.Width(app) != 4 || (DeckLayout.Height(app) != 4 && DeckLayout.Height(app) != 5))
                 throw new Exception(Text.Get("source.widgetregistry.22"));
+            RejectUnknown(source, normalized);
+        }
+        else if (definition.type == "nowPlaying")
+        {
+            normalized["showArt"] = BooleanValue(source, "showArt", true);
+            normalized["showControls"] = BooleanValue(source, "showControls", true);
+            normalized["showProgress"] = BooleanValue(source, "showProgress", true);
             RejectUnknown(source, normalized);
         }
         app.options = normalized;
