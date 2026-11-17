@@ -32,6 +32,11 @@ export const catalogGroups = [
     ],
   },
   {
+    id: 'nowPlaying',
+    category: 'widget',
+    items: [item('widget-now-playing', 'nowPlaying', 'catalog.desc.nowPlaying')],
+  },
+  {
     id: 'mouse',
     category: 'widget',
     items: [

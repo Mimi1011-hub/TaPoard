@@ -7,6 +7,7 @@ import { touchpadDetails } from './touchpad-details.js';
 import { hotkeyDetails } from './hotkey-details.js';
 import { audioDeviceDetails } from './audio-device-details.js';
 import { weatherDetails } from './weather-details.js';
+import { nowPlayingDetails } from './now-playing-details.js';
 
 const builders = {
   clock: clockDetails,
@@ -17,6 +18,7 @@ const builders = {
   hotkey: hotkeyDetails,
   audioDevice: audioDeviceDetails,
   weather: weatherDetails,
+  nowPlaying: nowPlayingDetails,
 };
 
 // Adds the settings that only one kind of item has. Every change goes through updateItem, so it is saved and undoable.

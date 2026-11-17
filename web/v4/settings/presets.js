@@ -173,7 +173,7 @@ export class Presets {
       else if (item.type === 'wheel' || item.type === 'touchpad') icon = widgetGlyphNode('mouse');
       else if (item.type === 'keypad') icon = widgetGlyphNode('keyboard');
       else if (widgetMarks[item.type]) icon = widgetMarks[item.type];
-      else if (item.type === 'slideshow') icon = widgetGlyphNode('');
+      else if (item.type === 'slideshow' || item.type === 'nowPlaying') icon = widgetGlyphNode('');
       else icon = iconNode(item);
       const details = custom ? customItemHelp(item, this.i18n) : {
         name: item.name, description: item.description || '', sends: item.sends ? this.i18n.t('presets.sends', { keys: item.sends }) : '',

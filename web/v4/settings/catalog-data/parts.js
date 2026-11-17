@@ -1,6 +1,6 @@
 import { catalogGroups } from './base.js';
 
-const ids = ['info', 'mouse', 'photo', 'keyboard'];
+const ids = ['info', 'nowPlaying', 'mouse', 'photo', 'keyboard'];
 const audio = catalogGroups.find((group) => group.id === 'audio');
 
 export const parts = [

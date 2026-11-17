@@ -38,6 +38,9 @@ for (const language of ['ja', 'en']) {
   assert.match(wheel.description, new RegExp(t.t('catalog.desc.noPageSwipe').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.equal(customItemHelp({ name: 'Clock', type: 'clock', options: { style: 'digital' } }, t).name,
     t.t('catalog.item.digitalClock'));
+  const nowPlaying = customItemHelp({ name: 'Old', type: 'nowPlaying', options: {} }, t);
+  assert.equal(nowPlaying.name, t.t('catalog.item.nowPlaying'));
+  assert.equal(nowPlaying.description, t.t('catalog.desc.nowPlaying'));
 
   const output = customItemHelp({ name: 'Output', type: 'audioDevice', deviceTarget: 'speaker', deviceName: 'Speakers' }, t);
   assert.match(output.description, /Speakers/);

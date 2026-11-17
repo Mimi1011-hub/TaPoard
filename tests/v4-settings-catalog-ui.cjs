@@ -31,6 +31,7 @@ const definitions = [
   { type: 'touchpad', sizes: ['3x2', '2x3'] },
   { type: 'slideshow', sizes: ['3x3'] },
   { type: 'keypad', sizes: ['4x4', '4x5'] },
+  { type: 'nowPlaying', sizes: ['2x1', '2x2', '3x2', '4x2', '3x3', '4x3', '4x4'] },
 ];
 const json = (res, status, value) => {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -60,6 +61,9 @@ const validWidgetSize = (item) => {
   if (item.type === 'touchpad') return item.width === 3 && item.height === 2 || item.width === 2 && item.height === 3;
   if (item.type === 'keypad') return item.width === 4 && (item.height === 4 || item.height === 5);
   if (item.type === 'slideshow') return item.width >= 3 && item.width <= 8 && item.height >= 3 && item.height <= 8;
+  if (item.type === 'nowPlaying') {
+    return ['2x1', '2x2', '3x2', '4x2', '3x3', '4x3', '4x4'].includes(`${item.width}x${item.height}`);
+  }
   return true;
 };
 function makePng() {
@@ -276,6 +280,25 @@ const waitFor = async (check, message) => {
     await waitFor(() => posts.length === sizeBefore + 1, 'chosen widget size save');
     assert(posts.at(-1).deck.landscape.pages[0].items.some((entry) => entry.type === 'clock'
       && entry.options.style === 'digital' && entry.width === 2 && entry.height === 1));
+    await page.locator('.catalog-back').click();
+    await page.getByRole('button', { name: /^音楽/ }).click();
+    const nowPlaying = page.locator('[data-action="widget-now-playing"]');
+    await nowPlaying.click();
+    assert.deepEqual(await nowPlaying.locator('xpath=..').locator('.catalog-sizes button').allTextContents(),
+      ['2×1', '2×2', '3×2', '4×2', '3×3', '4×3', '4×4']);
+    const mediaBefore = posts.length;
+    await nowPlaying.locator('xpath=..').getByRole('button', { name: '2×1', exact: true }).click();
+    await waitFor(() => posts.length === mediaBefore + 1, 'now playing save');
+    const mediaItem = posts.at(-1).deck.landscape.pages[0].items.find((entry) => entry.type === 'nowPlaying');
+    assert.deepEqual(mediaItem.options, { showArt: true, showControls: true, showProgress: true });
+    assert.equal(await page.locator('.settings-preview .now-playing-title').innerText(), '曲名');
+    await page.locator('.preview-hit[aria-label="再生中の曲"]').click();
+    const details = page.locator('.settings-inspector .inspector-details');
+    for (const label of ['アルバムの絵を出す', '操作のボタンを出す', '進み具合を出す']) {
+      assert.equal(await details.getByText(label, { exact: true }).count(), 1, `now playing detail: ${label}`);
+    }
+    await page.getByRole('button', { name: 'このボタンを削除' }).click();
+    await waitFor(() => posts.length === mediaBefore + 2, 'now playing delete save');
     await page.locator('.catalog-back').click();
     await page.getByRole('button', { name: /マウス/ }).click();
     const verticalWheel = page.locator('[data-action="widget-wheel-vertical"]');

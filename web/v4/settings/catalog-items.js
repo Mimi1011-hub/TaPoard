@@ -21,6 +21,9 @@ export function catalogSizes(action, definitions) {
   if (action === 'widget-keypad') return ['4x4', '4x5'];
   if (action === 'widget-weather-now' || action.indexOf('widget-metrics-') === 0 && !action.endsWith('overview')) return ['1x1'];
   if (action === 'widget-weather-days' || action === 'widget-metrics-overview') return ['2x2'];
+  if (action === 'widget-now-playing') {
+    return (definitions.get('nowPlaying') || {}).sizes || ['2x1', '2x2', '3x2', '4x2', '3x3', '4x3', '4x4'];
+  }
   if (action.indexOf('widget-slideshow-') === 0) return (definitions.get('slideshow') || {}).sizes || ['3x3'];
   return null;
 }
@@ -61,6 +64,12 @@ export function controlFromAction(action) {
 
 export function catalogItem(action, name, category) {
   action = canonicalCatalogAction(action);
+  if (action === 'widget-now-playing') {
+    const value = base(name, 'nowPlaying', 'widget', 2, 1);
+    value.hideLabel = true;
+    value.options = { showArt: true, showControls: true, showProgress: true };
+    return value;
+  }
   const slideshow = /^widget-slideshow-([3-8])x([3-8])$/.exec(action);
   if (slideshow) {
     const value = base(name, 'slideshow', 'widget', Number(slideshow[1]), Number(slideshow[2]));
