@@ -265,6 +265,16 @@ static class IconStyles
         return changed;
     }
 
+    internal static byte[] ExportPresets(string data, string id, out string name)
+    {
+        lock (Gate)
+        {
+            IconStyle style = Read(data, id);
+            name = style.name;
+            return PresetFiles.Export(PresetFiles.FromDeck(style.deck, style.name));
+        }
+    }
+
     internal static void Rename(string data, string id, string name)
     {
         lock (Gate)

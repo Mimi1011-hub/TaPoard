@@ -99,6 +99,46 @@ static class PresetFiles
         return result;
     }
 
+    internal static List<CustomPreset> FromDeck(Settings settings, string name)
+    {
+        if (settings == null) throw new Exception(Text.Get("source.presetfiles.invalid"));
+        DeckV3 deck = SettingsMigration.ToV3(settings).deck;
+        var result = new List<CustomPreset>();
+        AddPages(result, deck.landscape, "landscape", name, "source.presetfiles.landscapeName");
+        AddPages(result, deck.portrait, "portrait", name, "source.presetfiles.portraitName");
+        return result;
+    }
+
+    static void AddPages(List<CustomPreset> result, OrientationV3 side, string orientation, string name, string nameKey)
+    {
+        for (int index = 0; index < side.pages.Count; index++)
+        {
+            PageV3 page = side.pages[index];
+            FaderV3 speaker = Effective(side.faders.speaker, page.faders, false);
+            FaderV3 mic = Effective(side.faders.mic, page.faders, true);
+            if ((page.items == null || page.items.Count == 0) && speaker == null && mic == null) continue;
+            result.Add(new CustomPreset
+            {
+                name = Text.Get(nameKey, name, index + 1), orientation = orientation,
+                columns = side.columns, rows = side.rows, speaker = speaker, mic = mic,
+                items = Copy(page.items ?? new List<DeckItem>()),
+            });
+        }
+    }
+
+    static FaderV3 Effective(FaderV3 shared, PageFadersV3 page, bool mic)
+    {
+        if (page == null) return shared.off ? null : Copy(shared);
+        if (mic ? page.micHidden : page.speakerHidden) return null;
+        ControlPlacement own = mic ? page.mic : page.speaker;
+        if (own == null) return shared.off ? null : Copy(shared);
+        return new FaderV3
+        {
+            row = own.row, column = own.column, width = own.width, height = own.height,
+            backgroundOpacity = own.backgroundOpacity, hideValue = own.hideValue, iconColor = own.iconColor,
+        };
+    }
+
     static void Count(string type, string path, PresetSafety result)
     {
         if (String.Equals(type, "app", StringComparison.OrdinalIgnoreCase))

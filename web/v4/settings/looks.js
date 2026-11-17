@@ -1,4 +1,5 @@
 import { clear, el } from '../core/dom.js';
+import { downloadPreset } from './preset-files.js';
 
 const two = (value) => String(value).padStart(2, '0');
 
@@ -70,6 +71,7 @@ export class Looks {
     clear(this.root);
     this.root.appendChild(el('h3', '', this.i18n.t('looks.title')));
     this.root.appendChild(el('p', 'saved-note', this.i18n.t('looks.note')));
+    this.root.appendChild(el('p', 'saved-note', this.i18n.t('looks.exportNote')));
     const form = el('div', 'looks-form'), name = el('input');
     name.type = 'text'; name.maxLength = 40; name.placeholder = this.defaultName();
     name.setAttribute('aria-label', this.i18n.t('looks.name'));
@@ -100,6 +102,7 @@ export class Looks {
     const actions = el('div', 'saved-actions');
     actions.append(
       this.button('looks.apply', '', () => this.apply(style)),
+      this.button('looks.export', 'is-subtle', () => this.export(style)),
       this.button('looks.rename', 'is-subtle', () => {
         const next = this.promptFn(this.i18n.t('looks.renamePrompt'), style.name);
         if (next !== null && next !== undefined) this.post('rename', { id: style.id, name: next });
@@ -111,6 +114,15 @@ export class Looks {
     );
     row.append(swatch, text, actions);
     return row;
+  }
+
+  async export(style) {
+    try {
+      const response = await this.api.post('/api/icon-styles/export', { id: style.id }, 30000);
+      downloadPreset(this.documentObject, response);
+    } catch (error) {
+      this.onError(error.serverError || error.message);
+    }
   }
 
   apply(style) {

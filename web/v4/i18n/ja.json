@@ -312,6 +312,8 @@
   "looks.rowNote": "{date}・ボタン {count} 個",
   "looks.hasImage": "・背景画像あり",
   "looks.apply": "この画面に戻す",
+  "looks.export": "書き出す",
+  "looks.exportNote": "ボタンの配置をプリセットのファイルにします。背景は入りません。",
   "looks.rename": "名前を変える",
   "looks.renamePrompt": "新しい名前",
   "looks.delete": "削除",

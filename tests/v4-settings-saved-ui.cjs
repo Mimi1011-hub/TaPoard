@@ -41,6 +41,7 @@ const presets = [
   { id: 'simple', name: 'Simple', note: 'Just the basics', setup: '', landscape: presetLayout(4, 3), portrait: presetLayout(3, 4) },
 ];
 let customPresets = [];
+let importAvailable = 1;
 let styles = [{ id: 'style-1', name: `Old ${evil}`, created: '2026-11-01T10:05:00', count: 3, customCount: 0, color: '#14213d', color2: '', hasImage: false }];
 const backups = [{ id: 'backup-1', time: '2026/10/01 12:00', landscape: 4, portrait: 2 }];
 
@@ -104,7 +105,7 @@ const server = http.createServer(async (req, res) => {
           { index: 1, name: 'Second import', orientation: 'portrait', columns: 3, rows: 4, buttons: 2 },
         ],
         safety: { apps: 1, urls: 1, texts: 0, paths: ['C:\\Apps\\stream.exe'] },
-        available: 1,
+        available: importAvailable,
       });
     }
     if (name === 'presets/import') {
@@ -124,6 +125,10 @@ const server = http.createServer(async (req, res) => {
     if (name === 'icon-styles/save') {
       styles = styles.concat({ id: `style-${styles.length + 1}`, name: body.name, created: '2026-11-15T22:00:00', count: 1, color: '', color2: '', hasImage: false });
       return json(res, 200, { ok: true });
+    }
+    if (name === 'icon-styles/export') {
+      const value = JSON.stringify({ format: 'tapoard-preset', version: 1, presets: [{ name: 'Page 1' }, { name: 'Page 2' }] });
+      return json(res, 200, { name: 'Old _.tppreset', data: Buffer.from(value).toString('base64') });
     }
     if (name === 'icon-styles/rename') { styles.find((style) => style.id === body.id).name = body.name; return json(res, 200, { ok: true }); }
     if (name === 'icon-styles/delete') { styles = styles.filter((style) => style.id !== body.id); return json(res, 200, { ok: true }); }
@@ -257,6 +262,22 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     await waitFor(() => names(from).includes('POST icon-styles/save'), 'look saved');
     assert.equal(calls.at(-1).body.name, 'Evening');
     await waitFor(async () => (await page.locator('.saved-row').count()) === 4, 'saved look listed');
+    assert.match(await page.locator('#settings-section-saved').innerText(), /背景は入りません/);
+    const lookDownload = page.waitForEvent('download');
+    await page.locator('.saved-row').first().getByRole('button', { name: '書き出す' }).click();
+    const exportedLook = await lookDownload;
+    assert.equal(exportedLook.suggestedFilename(), 'Old _.tppreset');
+    const exportedPath = await exportedLook.path();
+    importAvailable = 30;
+    await page.locator('.settings-nav [data-section="presets"]').click();
+    await page.locator('input[type="file"][accept*="tppreset"]').setInputFiles(exportedPath);
+    const lookImport = page.locator('.preset-import-dialog');
+    await lookImport.waitFor();
+    await lookImport.locator('input').first().uncheck();
+    await lookImport.getByRole('button', { name: '読み込む', exact: true }).click();
+    await waitFor(async () => (await page.locator('.preset-tab[aria-pressed="true"] strong').innerText()) === 'Second import',
+      'selected saved-screen page imported');
+    await page.locator('.settings-nav [data-section="saved"]').click();
     await page.locator('.saved-row').first().getByRole('button', { name: '名前を変える' }).click();
     await waitFor(() => names(from).includes('POST icon-styles/rename'), 'look renamed');
     await waitFor(async () => (await page.locator('.saved-row').first().locator('strong').innerText()) === 'Renamed', 'new name shown');

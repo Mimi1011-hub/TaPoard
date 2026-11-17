@@ -312,6 +312,8 @@
   "looks.rowNote": "{date} · {count} buttons",
   "looks.hasImage": " · background image",
   "looks.apply": "Go back to this",
+  "looks.export": "Export",
+  "looks.exportNote": "This makes a preset file from the button layout. The background is not included.",
   "looks.rename": "Rename",
   "looks.renamePrompt": "New name",
   "looks.delete": "Delete",

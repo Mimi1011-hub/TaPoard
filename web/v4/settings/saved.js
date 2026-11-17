@@ -17,6 +17,7 @@ export class Saved {
     };
     const shared = {
       api: this.api, editor: this.editor, preview: this.preview, i18n: this.i18n,
+      documentObject: this.documentObject,
       confirmFn: this.confirmFn, promptFn: this.promptFn, onError: this.onError, onNotice: this.onNotice,
     };
     this.looks = new Looks(Object.assign({ root: block(), settle: this.settle }, shared));

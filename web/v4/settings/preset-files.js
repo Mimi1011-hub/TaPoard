@@ -7,7 +7,7 @@ function base64(bytes) {
   return btoa(value);
 }
 
-function download(documentObject, response) {
+export function downloadPreset(documentObject, response) {
   const raw = atob(response.data);
   const bytes = new Uint8Array(raw.length);
   for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
@@ -128,7 +128,7 @@ export class PresetFiles {
 
   async export(ids) {
     try {
-      download(this.documentObject, await this.api.post('/api/presets/export', { ids }, 15000));
+      downloadPreset(this.documentObject, await this.api.post('/api/presets/export', { ids }, 15000));
     } catch (error) {
       this.onError(error.serverError || error.message);
     }
