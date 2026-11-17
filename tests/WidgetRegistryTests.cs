@@ -163,7 +163,21 @@ class WidgetRegistryTests
         }
         media.options["unknown"] = true;
         Reject(delegate { WidgetRegistry.ValidateAndNormalize(media); }, "now playing rejects unknown options");
+        var calendar = Entry("calendar", 1);
+        WidgetRegistry.ValidateAndNormalize(calendar);
+        Check((string)calendar.options["weekStart"] == "sunday" && (string)calendar.options["holidays"] == "japan",
+            "calendar options use Japanese Sunday-first defaults");
+        calendar.options["weekStart"] = "monday";
+        calendar.options["holidays"] = "none";
+        calendar.width = 2;
+        calendar.height = 1;
+        WidgetRegistry.ValidateAndNormalize(calendar);
+        calendar.width = 3;
+        calendar.height = 3;
+        WidgetRegistry.ValidateDimensions(calendar);
+        calendar.options["holidays"] = "other";
+        Reject(delegate { WidgetRegistry.ValidateAndNormalize(calendar); }, "calendar rejects unsupported holiday countries");
         var definitions = WidgetRegistry.PublicDefinitions() as List<object>;
-        Check(definitions != null && definitions.Count == 13, "all current widget definitions are public");
+        Check(definitions != null && definitions.Count == 14, "all current widget definitions are public");
     }
 }

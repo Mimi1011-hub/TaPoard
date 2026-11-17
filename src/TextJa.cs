@@ -546,6 +546,7 @@ static class TextJa
         { "source.widgetregistry.30", "{0} の設定が正しくありません。" },
         { "source.widgetregistry.31", "未対応の部品設定です: " },
         { "source.widgetregistry.32", "再生中の曲" },
+        { "source.widgetregistry.33", "カレンダー" },
         { "source.media.1", "音楽の操作が正しくありません。" },
         { "source.media.2", "見るだけの画面からは操作できません。" },
         { "source.webview2host.1", "Microsoft Edge WebView2 ランタイムが見つかりません。" },

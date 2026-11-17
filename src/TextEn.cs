@@ -546,6 +546,7 @@ static class TextEn
         { "source.widgetregistry.30", "The setting \"{0}\" is not valid." },
         { "source.widgetregistry.31", "Unsupported widget setting: " },
         { "source.widgetregistry.32", "Now playing" },
+        { "source.widgetregistry.33", "Calendar" },
         { "source.media.1", "The media command is invalid." },
         { "source.media.2", "A view-only screen cannot control media." },
         { "source.webview2host.1", "Microsoft Edge WebView2 Runtime was not found." },

@@ -31,6 +31,7 @@ static class WidgetRegistry
         Add(result, "keypad", "source.widgetregistry.10", new[] { "4x4", "4x5" }, true);
         Add(result, "slideshow", "source.widgetregistry.11", SlideshowSizes(), true);
         Add(result, "nowPlaying", "source.widgetregistry.32", new[] { "2x1", "2x2", "3x2", "4x2", "3x3", "4x3", "4x4" }, true);
+        Add(result, "calendar", "source.widgetregistry.33", new[] { "1x1", "2x1", "3x3" }, true);
         return result;
     }
 
@@ -202,6 +203,12 @@ static class WidgetRegistry
             normalized["showArt"] = BooleanValue(source, "showArt", true);
             normalized["showControls"] = BooleanValue(source, "showControls", true);
             normalized["showProgress"] = BooleanValue(source, "showProgress", true);
+            RejectUnknown(source, normalized);
+        }
+        else if (definition.type == "calendar")
+        {
+            normalized["weekStart"] = EnumValue(source, "weekStart", "sunday", new[] { "sunday", "monday" });
+            normalized["holidays"] = EnumValue(source, "holidays", "japan", new[] { "japan", "none" });
             RejectUnknown(source, normalized);
         }
         app.options = normalized;
