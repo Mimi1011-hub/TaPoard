@@ -51,7 +51,6 @@ i18n.init().then(() => {
       layoutTools: document.querySelector('#settings-layout-tools'),
       previewMode: document.querySelector('#settings-preview-mode'),
       previewRatio: document.querySelector('#settings-preview-ratio'),
-      gridAdvice: document.querySelector('#settings-grid-advice'),
       gridWarning: document.querySelector('#settings-grid-warning'),
       iconGuide: document.querySelector('#settings-icon-ai-guide'),
       saveStatus: document.querySelector('#settings-save-status'),

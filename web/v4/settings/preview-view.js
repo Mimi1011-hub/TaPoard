@@ -1,5 +1,4 @@
-import { clear, el } from '../core/dom.js';
-import { gridShape, recommendedGrids } from './phone-grid-advice.js';
+import { gridShape } from './phone-grid-advice.js';
 
 // The preview's "view" choice (PC window or phone ratio) and the recommended grid sizes for the chosen phone ratio.
 export async function setupPreviewView(app) {
@@ -8,8 +7,8 @@ export async function setupPreviewView(app) {
   app.phonePreviewSize = [view.phoneWidth, view.phoneHeight];
   const automatic = app.nodes.previewRatio.querySelector('option[value="auto"]');
   automatic.textContent = view.phoneWidth && view.phoneHeight
-    ? app.i18n.t('settings.preview.autoPhoneSize', { width: view.phoneWidth, height: view.phoneHeight })
-    : app.i18n.t('settings.preview.autoPhone');
+    ? app.i18n.t('settings.preview.autoSize', { width: view.phoneWidth, height: view.phoneHeight })
+    : app.i18n.t('settings.preview.auto');
   const apply = () => {
     const phone = app.nodes.previewMode.value === 'phone';
     app.nodes.previewRatio.hidden = !phone;
@@ -29,19 +28,10 @@ export async function setupPreviewView(app) {
 }
 
 export function renderPhoneAdvice(app, phone, phoneSize) {
-  clear(app.nodes.gridAdvice);
-  app.nodes.gridAdvice.hidden = !phone;
   app.nodes.gridWarning.hidden = true;
   if (!phone) return;
   const orientation = app.preview.orientation;
   const ratio = app.nodes.previewRatio.value;
-  app.nodes.gridAdvice.appendChild(el('span', '', app.i18n.t('settings.preview.recommended')));
-  recommendedGrids(ratio, phoneSize, orientation).forEach((grid) => {
-    const button = el('button', '', `${grid.columns} × ${grid.rows}`);
-    button.type = 'button';
-    button.addEventListener('click', () => app.gridSize.set(grid.columns, grid.rows));
-    app.nodes.gridAdvice.appendChild(button);
-  });
   const current = app.editor.deck[orientation];
   const shape = gridShape(ratio, phoneSize, orientation, current.columns, current.rows);
   if (shape) {

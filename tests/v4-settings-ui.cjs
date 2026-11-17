@@ -178,6 +178,21 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
   await page.mouse.move(overlay.x + (column + 0.5) * overlay.width / columns, overlay.y + (row + 0.5) * overlay.height / rows, { steps: 8 });
   await page.mouse.up();
 }
+async function assertPreviewChromeFits(page, label) {
+  const result = await page.evaluate(() => {
+    const column = document.querySelector('.settings-preview-column').getBoundingClientRect();
+    const toolbar = document.querySelector('.settings-preview-toolbar').getBoundingClientRect();
+    const tools = document.querySelector('.settings-layout-tools').getBoundingClientRect();
+    const visible = (selector) => Array.from(document.querySelectorAll(selector)).filter((node) => !node.hidden)
+      .map((node) => node.getBoundingClientRect());
+    const boxes = visible('.settings-preview-toolbar button, .settings-preview-toolbar select, .settings-layout-tools > *');
+    return {
+      oneLine: toolbar.height <= 48 && tools.height <= 42 && boxes.every((box) => box.height <= 38),
+      inside: boxes.every((box) => box.right <= column.right + 1),
+    };
+  });
+  assert(result.oneLine && result.inside, `${label}: ${JSON.stringify(result)}`);
+}
 
 (async () => {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -210,7 +225,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.equal(await oldAppearance.locator('[data-section="background"].is-active').count(), 1, 'old appearance link opens background');
     await oldAppearance.close();
 
-    const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 700 } });
+    const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1100, height: 640 } });
     page.setDefaultTimeout(5000);
     page.on('pageerror', (error) => errors.push(String(error)));
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
@@ -218,6 +233,7 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await page.locator('.preview-hit[data-kind="item"]').waitFor();
     assert(!page.url().includes('#'), 'admin hash is removed');
     assert.equal(await page.locator('.deck-button').count(), 1, 'preview contains the configured button');
+    await assertPreviewChromeFits(page, 'Japanese PC preview chrome');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, '1100px has no horizontal scroll');
     const glyphBounds = await page.evaluate(async () => {
       const { presetIconNode } = await import('/v4/deck/icons.js');
@@ -239,19 +255,13 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     await page.locator('#settings-preview-ratio').selectOption('16:9');
     const phoneAspect = await page.locator('.settings-preview-screen').evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
     assert(phoneAspect > pcAspect, 'smartphone view changes the preview ratio');
+    await assertPreviewChromeFits(page, 'Japanese phone preview chrome');
     await waitFor(() => pcOptions.previewMode === 'phone', 'preview view stored');
     const phoneDragPosts = posts.length;
     await dragToCell(page, page.locator('.preview-hit[data-kind="item"]'), 0, 1);
     await waitFor(() => posts.length === phoneDragPosts + 1, 'smartphone-ratio drag save');
     assert.equal(posts.at(-1).deck.landscape.pages[0].items[0].column, 1, 'smartphone-ratio drag uses the intended cell');
     assert.match(await page.locator('#settings-grid-warning').innerText(), /横長/);
-    const advicePosts = posts.length;
-    await page.locator('#settings-grid-advice button').first().click();
-    await waitFor(() => posts.length === advicePosts + 1, 'recommended grid save');
-    assert.equal(posts.at(-1).deck.landscape.columns, 7);
-    assert.equal(posts.at(-1).deck.landscape.rows, 4);
-    await page.locator('#settings-undo').click();
-    await waitFor(() => posts.length === advicePosts + 2, 'recommended grid undo');
     await page.locator('#settings-preview-mode').selectOption('pc');
 
     await page.locator('.deck-button').click({ force: true });
@@ -372,8 +382,11 @@ async function dragToCell(page, locator, row, column, columns = 4, rows = 3) {
     assert.match(await page.locator('.icon-ai-prompt').innerText(), /512×512/);
     await page.getByRole('button', { name: '戻る' }).click();
     assert.equal(await page.locator('#settings-preview').isVisible(), true, 'back returns to the layout preview');
-    const englishGuide = await browser.newPage({ locale: 'en-US', viewport: { width: 1100, height: 700 } });
+    const englishGuide = await browser.newPage({ locale: 'en-US', viewport: { width: 1100, height: 640 } });
     await englishGuide.goto(`${base}/v4/settings.html#admin=test&section=iconPacks`);
+    await assertPreviewChromeFits(englishGuide, 'English PC preview chrome');
+    await englishGuide.locator('#settings-preview-mode').selectOption('phone');
+    await assertPreviewChromeFits(englishGuide, 'English phone preview chrome');
     await englishGuide.getByRole('button', { name: 'How to make icon files with AI' }).click();
     assert.equal(await englishGuide.locator('#settings-icon-ai-guide').evaluate((node) => node.scrollWidth <= node.clientWidth), true,
       'English AI guide fits at 1100px');

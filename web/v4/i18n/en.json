@@ -20,6 +20,7 @@
   "settings.preview.phone": "Phone",
   "settings.preview.ratio": "Screen ratio",
   "settings.preview.auto": "Auto",
+  "settings.preview.autoSize": "Auto ({width}×{height})",
   "settings.preview.tablet": "4:3 (tablet)",
   "settings.preview.autoPhone": "Auto (last connected phone)",
   "settings.preview.autoPhoneSize": "Auto (last connected phone: {width}×{height})",

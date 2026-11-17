@@ -20,6 +20,7 @@
   "settings.preview.phone": "スマートフォン",
   "settings.preview.ratio": "画面比率",
   "settings.preview.auto": "自動",
+  "settings.preview.autoSize": "自動（{width}×{height}）",
   "settings.preview.tablet": "4:3（タブレット）",
   "settings.preview.autoPhone": "自動（最後につないだスマホ）",
   "settings.preview.autoPhoneSize": "自動（最後につないだスマホ: {width}×{height}）",

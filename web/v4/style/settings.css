@@ -597,12 +597,26 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+.settings-preview-toolbar h2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .settings-toolbar-actions,
 .orientation-switch {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.settings-toolbar-actions {
+  flex: 0 0 auto;
+  min-width: 0;
 }
 .preview-view-field {
   display: flex;
@@ -619,6 +633,7 @@
   border: 1px solid var(--color-border);
   border-radius: 7px;
   background: var(--color-button);
+  max-width: 92px;
 }
 .settings-preview-toolbar button {
   padding: 7px 11px;
@@ -626,6 +641,7 @@
   border-radius: 8px;
   background: var(--color-button);
   cursor: pointer;
+  white-space: nowrap;
 }
 .orientation-switch button.is-active {
   border-color: #4c6f9e;
@@ -638,6 +654,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  overflow: hidden;
+}
+.settings-pages {
+  flex: 1 1 auto;
+}
+.settings-grid-size {
+  flex: 0 0 auto;
 }
 .settings-pages {
   position: relative;
@@ -766,20 +789,6 @@
   color: var(--color-muted);
   font-size: 10px;
   white-space: nowrap;
-}
-.settings-grid-advice {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--color-muted);
-  font-size: 10px;
-  white-space: nowrap;
-}
-.settings-grid-advice button {
-  padding: 4px 6px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-button);
 }
 .settings-grid-warning {
   position: absolute;
