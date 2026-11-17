@@ -36,6 +36,22 @@ const presetLayout = (columns, rows) => ({
       row: 0, column: columns - 1, width: 1, height: 1 },
   ],
 });
+const customPresetLayout = () => ({
+  columns: 5,
+  rows: 4,
+  speaker: null,
+  mic: null,
+  items: [
+    { ...item('standard', 'Microphone', 0, 0), iconKey: 'microphone' },
+    { ...item('app', 'ChatGPT', 0, 1), type: 'app', action: null, category: 'app', path: 'C:\\Apps\\ChatGPT.exe',
+      icon: 'data:image/png;base64,iVBORw0KGgo=' },
+    { ...item('pack', 'Pack icon', 0, 2), iconKey: 'star', iconPack: 'pack-1', iconPackItem: 'heart',
+      customIcon: 'data:image/png;base64,iVBORw0KGgo=' },
+    { ...item('clock', 'Clock', 1, 0), type: 'clock', category: 'widget', width: 2 },
+    { ...item('wheel', 'Wheel', 1, 2), type: 'wheel', category: 'widget', height: 2 },
+    { ...item('keypad', 'Keypad', 0, 3), type: 'keypad', category: 'widget', width: 2, height: 4 },
+  ],
+});
 const presets = [
   { id: 'streamer', name: `Streamer ${evil}`, note: 'For streaming', setup: 'Set the same keys.', landscape: presetLayout(5, 3), portrait: presetLayout(3, 5) },
   { id: 'simple', name: 'Simple', note: 'Just the basics', setup: '', landscape: presetLayout(4, 3), portrait: presetLayout(3, 4) },
@@ -80,7 +96,9 @@ const server = http.createServer(async (req, res) => {
     if (name === 'shortcut-packs') return json(res, 200, { packs: [], maxPacks: 20, maxShortcuts: 300 });
     if (name === 'presets') return json(res, 200, { presets: presets.concat(customPresets) });
     if (name === 'presets/save') {
-      const layout = presetLayout(deck[body.orientation].columns, deck[body.orientation].rows);
+      const layout = body.name === 'My preset'
+        ? customPresetLayout()
+        : presetLayout(deck[body.orientation].columns, deck[body.orientation].rows);
       customPresets.push({ id: '1234567890abcdef1234567890abcdef', name: body.name, note: '', setup: '', custom: true,
         orientation: body.orientation, [body.orientation]: layout });
       return json(res, 200, { ok: true });
@@ -226,6 +244,11 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     await page.getByRole('button', { name: '今のページをプリセットに追加' }).click();
     await waitFor(() => names(from).includes('POST presets/save'), 'custom preset saved');
     await waitFor(async () => (await page.locator('.preset-tab').count()) === 3, 'custom preset listed');
+    await page.locator('.preset-tab').last().click();
+    const customHelp = page.locator('.preset-help-row').filter({ has: page.locator('.preset-help-icon > *') });
+    assert.equal(await customHelp.count(), 6, 'every custom preset item has an icon');
+    assert.equal(await page.locator('.preset-help-row .preset-help-icon').evaluateAll((nodes) =>
+      nodes.some((node) => !node.firstElementChild || node.textContent.trim() === '?')), false, 'custom preset icons are never empty or unknown');
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: '書き出す' }).last().click();
     assert.equal((await download).suggestedFilename(), 'My preset.tppreset');

@@ -1,5 +1,5 @@
 import { clear, el } from '../core/dom.js';
-import { presetIconNode } from '../deck/icons.js';
+import { iconNode, presetIconNode, widgetGlyphNode } from '../deck/icons.js';
 import { PresetFiles } from './preset-files.js';
 
 const widgetMarks = { clock: '🕒', weather: '⛅', metrics: '📈' };
@@ -106,7 +106,7 @@ export class Presets {
     card.appendChild(apply);
     if (preset.setup) card.appendChild(el('p', 'saved-note', preset.setup));
     card.appendChild(el('h4', '', this.i18n.t('presets.help')));
-    if (layout) card.appendChild(this.help(layout));
+    if (layout) card.appendChild(this.help(layout, preset.custom));
     this.root.appendChild(card);
   }
 
@@ -155,7 +155,7 @@ export class Presets {
     if (first) this.showPreview(first);
   }
 
-  help(layout) {
+  help(layout, custom) {
     const help = el('div', 'preset-help');
     const row = (icon, name, what, sends) => {
       const line = el('div', 'preset-help-row'), mark = el('span', 'preset-help-icon'), body = el('div');
@@ -167,7 +167,12 @@ export class Presets {
       help.appendChild(line);
     };
     (layout.items || []).forEach((item) => {
-      const icon = item.icon ? presetIconNode(item.icon) : (widgetMarks[item.type] || '');
+      let icon;
+      if (!custom) icon = item.icon ? presetIconNode(item.icon) : (widgetMarks[item.type] || '');
+      else if (item.type === 'wheel' || item.type === 'touchpad') icon = widgetGlyphNode('mouse');
+      else if (item.type === 'keypad') icon = widgetGlyphNode('keyboard');
+      else if (widgetMarks[item.type] || item.type === 'slideshow') icon = widgetGlyphNode('');
+      else icon = iconNode(item);
       row(icon, item.name, item.description || '', item.sends ? this.i18n.t('presets.sends', { keys: item.sends }) : '');
     });
     const direct = this.i18n.t('presets.direct');
