@@ -1,6 +1,7 @@
 import { el } from '../core/dom.js';
 import { WeatherPlace } from './weather-place.js';
 import { LanguageSetting } from './language-setting.js';
+import { ThemeSetting } from './theme-setting.js';
 
 export class General {
   constructor(options) {
@@ -11,6 +12,8 @@ export class General {
     this.root.appendChild(el('h2', '', this.i18n.t('settings.nav.general')));
     this.language = new LanguageSetting(this);
     this.language.mount(this.root);
+    this.theme = new ThemeSetting(this);
+    this.theme.mount(this.root);
     const label = el('label', 'settings-field', this.i18n.t('general.keepAwake'));
     this.keepAwake = el('input', '');
     this.keepAwake.type = 'checkbox';

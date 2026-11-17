@@ -332,6 +332,12 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     const general = page.locator('#settings-section-general');
     await waitFor(async () => (await general.locator('.general-about').innerText()).includes('4.0-test'), 'version');
     assert.equal(await general.locator('.general-about').innerText(), 'バージョン 4.0-test');
+    const theme = general.locator('.theme-setting');
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    assert.equal(await theme.getByRole('button', { name: 'ダーク' }).getAttribute('aria-pressed'), 'true');
+    assert.equal(await theme.getByRole('button', { name: 'ライト' }).isDisabled(), true);
+    assert.equal(await theme.getByRole('button', { name: 'ライト' }).getAttribute('title'), 'ライトモードは未実装です。');
+    assert.match(await theme.innerText(), /ライトモードは未実装です。/);
     await general.locator('input[type="checkbox"]').check();
     await waitFor(() => deck.keepAwake === true, 'keep awake saved');
     await page.locator('#settings-undo').click();
@@ -435,6 +441,13 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
       assert(!/[ぁ-んァ-ヶ一-龠]/.test(withoutLanguageName), `${name} has no Japanese text in English`);
       await shot(`english-${name}`);
       await noOverflow(name);
+      if (name === 'general') {
+        const englishTheme = page.locator('#settings-section-general .theme-setting');
+        assert.equal(await englishTheme.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed'), 'true');
+        assert.equal(await englishTheme.getByRole('button', { name: 'Light' }).isDisabled(), true);
+        assert.equal(await englishTheme.getByRole('button', { name: 'Light' }).getAttribute('title'), 'Light mode is not available yet.');
+        assert.match(await englishTheme.innerText(), /Light mode is not available yet\./);
+      }
       if (name === 'connection') {
         const heights = await page.locator('#settings-section-connection .orientation-switch button').evaluateAll((nodes) =>
           nodes.map((node) => node.getBoundingClientRect().height));
