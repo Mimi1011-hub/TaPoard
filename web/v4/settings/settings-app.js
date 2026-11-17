@@ -20,9 +20,8 @@ import { General } from './general.js';
 import { AppImport } from './app-import.js';
 import { ShortcutPacks } from './shortcut-packs.js';
 import { ConfirmDialog } from './confirm-dialog.js';
-import { presetPreview, renderPhoneAdvice, setupPreviewView, showIconGuide } from './preview-view.js';
+import { presetPreview, renderPhoneAdvice, setupPhoneRatioPanel, setupPreviewView, showIconGuide } from './preview-view.js';
 import { IconAiGuide } from './icon-ai-guide.js';
-import { PhoneRatioPanel } from './phone-ratio-panel.js';
 
 export class SettingsApp {
   constructor(options) {
@@ -88,15 +87,7 @@ export class SettingsApp {
       confirmFn: this.confirmFn,
       onError: (message) => this.shell.showNotice(message),
     });
-    this.phoneRatioPanel = new PhoneRatioPanel({
-      editor: this.editor,
-      preview: this.preview,
-      previewRatio: this.nodes.previewRatio,
-      phoneSize: this.phonePreviewSize,
-      gridSize: this.gridSize,
-      i18n: this.i18n,
-    });
-    this.renderPhoneAdvice(this.nodes.previewMode.value === 'phone', this.phonePreviewSize || [], true);
+    setupPhoneRatioPanel(this);
     this.catalog = new Catalog({
       root: this.nodes.catalog,
       editor: this.editor,

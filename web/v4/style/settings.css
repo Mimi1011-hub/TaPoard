@@ -654,7 +654,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  overflow: hidden;
 }
 .settings-pages {
   flex: 1 1 auto;
@@ -758,7 +757,6 @@
   position: absolute;
   z-index: 30;
   top: calc(100% + 4px);
-  right: 0;
   display: grid;
   width: 130px;
   padding: 5px;

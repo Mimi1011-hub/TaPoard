@@ -89,7 +89,10 @@ export class Pages {
   }
 
   openMenu(wrap, index) {
+    const again = this.menu && this.menuIndex === index;
     this.closeMenu();
+    if (again) return;
+    this.menuIndex = index;
     const menu = el('div', 'settings-page-menu');
     const action = (key, run, disabled) => {
       const button = el('button', '', this.i18n.t(key)); button.type = 'button'; button.disabled = !!disabled;
@@ -99,7 +102,10 @@ export class Pages {
     action('settings.page.previous', () => this.move(index, index - 1), index === 0);
     action('settings.page.next', () => this.move(index, index + 1), index === this.pages().length - 1);
     action('settings.page.delete', () => this.remove(index), this.pages().length === 1);
-    wrap.appendChild(menu); this.menu = menu;
+    // The tab strip scrolls (and clips), so the menu hangs from the page area, under the tab's right edge.
+    this.root.appendChild(menu); this.menu = menu;
+    const left = wrap.getBoundingClientRect().right - this.root.getBoundingClientRect().left - menu.offsetWidth;
+    menu.style.left = `${Math.max(0, left)}px`;
   }
 
   openList() {

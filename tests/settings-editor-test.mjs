@@ -93,14 +93,14 @@ const text = (key, values = {}) => {
   const patterns = {
     'settings.grid.pageNamed': `${values.number} (${values.name})`,
     'settings.grid.pageSeparator': ', ',
-    'settings.grid.morePages': `, and ${values.count} more pages`,
+    'settings.grid.morePages': `, and ${values.count} more`,
     'settings.grid.overflowMany': `Pages ${values.pages} would overflow.`,
   };
   return patterns[key];
 };
 assert.equal(
   overflowText(overflowResult.pages, manyOverflow.orientation('landscape'), { t: text }),
-  'Pages 1 (Home), 2 (Stream), 3, 4, 5, and 1 more pages would overflow.',
+  'Pages 1 (Home), 2 (Stream), 3, 4, 5, and 1 more would overflow.',
   'overflow summary includes names and caps pages at five',
 );
 

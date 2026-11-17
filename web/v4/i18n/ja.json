@@ -60,7 +60,7 @@
   "settings.grid.title": "枠数",
   "settings.grid.columns": "列",
   "settings.grid.rows": "行",
-  "settings.grid.rearrange": "（{count} 個のボタンが入りません）。空いている所へ並べ直しますか？",
+  "settings.grid.rearrange": "{count} 個のボタンが入りません。空いている所へ並べ直しますか？",
   "settings.grid.cannotFit": "フェーダーが新しい枠に入りません。フェーダーを小さくするか削除してから、枠数を変えてください。",
   "settings.grid.pageNamed": "{number}（{name}）",
   "settings.grid.pageSeparator": "・",

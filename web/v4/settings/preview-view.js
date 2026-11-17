@@ -1,4 +1,14 @@
 import { gridShape } from './phone-grid-advice.js';
+import { PhoneRatioPanel } from './phone-ratio-panel.js';
+
+// The right-hand "phone screen ratio" guide; it replaces the selected-button settings when the phone view changes.
+export function setupPhoneRatioPanel(app) {
+  app.phoneRatioPanel = new PhoneRatioPanel({
+    editor: app.editor, preview: app.preview, previewRatio: app.nodes.previewRatio,
+    phoneSize: app.phonePreviewSize, gridSize: app.gridSize, i18n: app.i18n,
+  });
+  app.renderPhoneAdvice(app.nodes.previewMode.value === 'phone', app.phonePreviewSize || [], true);
+}
 
 // The preview's "view" choice (PC window or phone ratio) and the recommended grid sizes for the chosen phone ratio.
 export async function setupPreviewView(app) {

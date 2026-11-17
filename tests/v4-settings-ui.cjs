@@ -558,7 +558,16 @@ async function assertPreviewChromeFits(page, label) {
     await page.getByRole('button', { name: 'ページ一覧' }).click();
     assert.equal(await page.locator('.settings-page-list-row').count(), 2, 'page list shows every numbered page');
     assert.match(await page.locator('.settings-page-list-row').last().innerText(), /2 Work · 0/);
+    const onTop = (selector) => page.locator(selector).evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      return box.height > 40 && node.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+    });
+    assert.equal(await onTop('.settings-page-list'), true, 'page list is not clipped by the toolbar');
     await page.getByRole('button', { name: 'ページ一覧' }).click();
+    await page.locator('.settings-page-tab').nth(1).locator('.settings-page-more').click();
+    assert.equal(await onTop('.settings-page-menu'), true, 'page menu is not clipped by the scrolling tab strip');
+    await page.locator('.settings-page-tab').nth(1).locator('.settings-page-more').click();
+    assert.equal(await page.locator('.settings-page-menu').count(), 0, 'the ⋮ button closes its menu again');
 
     const undoPosts = posts.length;
     await page.keyboard.press('Control+Z');
