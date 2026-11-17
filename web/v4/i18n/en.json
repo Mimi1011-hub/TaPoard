@@ -929,6 +929,7 @@
   "details.calendarSunday": "Sunday",
   "details.calendarMonday": "Monday",
   "details.calendarHolidays": "Show Japanese holidays",
+  "details.calendarHolidaysEnglish": "Holidays are not shown when the language is English.",
   "details.metricsTitle": "PC info",
   "details.metricsCpu": "CPU usage",
   "details.metricsMemory": "Memory usage",

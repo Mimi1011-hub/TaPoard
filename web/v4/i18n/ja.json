@@ -929,6 +929,7 @@
   "details.calendarSunday": "日曜",
   "details.calendarMonday": "月曜",
   "details.calendarHolidays": "日本の祝日を出す",
+  "details.calendarHolidaysEnglish": "言語が英語のときは祝日を出しません。",
   "details.metricsTitle": "PC情報の表示",
   "details.metricsCpu": "CPU使用率",
   "details.metricsMemory": "メモリ使用率",

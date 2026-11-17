@@ -12,6 +12,10 @@ export function calendarDetails(context) {
   holidays.type = 'checkbox';
   holidays.checked = context.options.holidays !== 'none';
   holidays.dataset.option = 'holidays';
+  holidays.disabled = context.i18n.language === 'en';
   holidays.addEventListener('change', () => context.change('holidays', holidays.checked ? 'japan' : 'none'));
   field(context.root, context.t('details.calendarHolidays'), holidays);
+  if (context.i18n.language === 'en') {
+    context.root.appendChild(el('p', 'inspector-note', context.t('details.calendarHolidaysEnglish')));
+  }
 }

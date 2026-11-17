@@ -16,7 +16,7 @@ export class CalendarWidget {
     this.item = item;
     const options = item.options || {};
     this.weekStart = options.weekStart === 'monday' ? 'monday' : 'sunday';
-    this.country = options.holidays === 'none' ? 'none' : 'japan';
+    this.country = this.context.i18n.language === 'en' || options.holidays === 'none' ? 'none' : 'japan';
     this.shape = `${item.width || 1}x${item.height || 1}`;
     node.classList.add('calendar-widget', `calendar-${this.shape}`);
     this.context.documentObject.addEventListener('visibilitychange', this.visibility);

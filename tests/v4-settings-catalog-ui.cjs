@@ -296,6 +296,8 @@ const waitFor = async (check, message) => {
     const calendarDetails = page.locator('.settings-inspector .inspector-details');
     assert.equal(await calendarDetails.getByText('週の始まり', { exact: true }).count(), 1);
     assert.equal(await calendarDetails.getByText('日本の祝日を出す', { exact: true }).count(), 1);
+    assert.equal(await calendarDetails.locator('input[data-option="holidays"]').isEnabled(), true);
+    assert.equal(await calendarDetails.getByText('言語が英語のときは祝日を出しません。').count(), 0);
     await calendarDetails.locator('select[data-option="weekStart"]').selectOption('monday');
     await waitFor(() => posts.length === calendarBefore + 2, 'calendar week start save');
     await calendarDetails.locator('input[data-option="holidays"]').uncheck();
@@ -304,6 +306,8 @@ const waitFor = async (check, message) => {
     assert.deepEqual(changedCalendar.options, { weekStart: 'monday', holidays: 'none' });
     await page.getByRole('button', { name: 'このボタンを削除' }).click();
     await waitFor(() => posts.length === calendarBefore + 4, 'calendar delete save');
+    await page.locator('#settings-undo').click();
+    await waitFor(() => posts.length === calendarBefore + 5, 'calendar delete undo');
     await page.locator('.catalog-back').click();
     await page.getByRole('button', { name: /^音楽/ }).click();
     const nowPlaying = page.locator('[data-action="widget-now-playing"]');
@@ -428,7 +432,12 @@ const waitFor = async (check, message) => {
     assert.equal(iconPack.icons.length, 1, 'only the referenced picture is imported');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
     const english = await browser.newPage({ locale: 'en-US', viewport: { width: 1100, height: 700 } });
+    await english.addInitScript(() => localStorage.setItem('tapoard-lang', 'en'));
     await english.goto(`${base}/v4/settings.html#admin=test`);
+    await english.locator('.preview-hit[aria-label="カレンダー"]').click();
+    const englishCalendarDetails = english.locator('.settings-inspector .inspector-details');
+    assert.equal(await englishCalendarDetails.locator('input[data-option="holidays"]').isDisabled(), true);
+    assert.equal(await englishCalendarDetails.getByText('Holidays are not shown when the language is English.').count(), 1);
     await english.locator('.settings-catalog-search').fill('Swiping between pages does not work on this part.');
     assert.equal(await english.locator('.settings-catalog-item').count(), 6, 'English shows six gesture parts');
     assert.equal(await english.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
