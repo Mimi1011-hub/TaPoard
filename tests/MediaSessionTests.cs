@@ -42,6 +42,16 @@ class MediaSessionTests
         Check(rejected, "unknown media commands are rejected");
         MediaService.Stop();
 
+        Check(MediaApps.Name("SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify") == "Spotify" && MediaApps.Name("Chrome") == "Chrome"
+            && MediaApps.Name("Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic") == "Media Player"
+            && MediaApps.Name(@"C:\Tools\Player.exe") == "Player" && MediaApps.Name("") == "", "app ids become short names");
+        var before = new MediaState { available = true, active = true, title = "Song", playing = true, position = 10, duration = 100 };
+        var moved = new MediaState { available = true, active = true, title = "Song", playing = true, position = 11, duration = 100 };
+        var jumped = new MediaState { available = true, active = true, title = "Song", playing = true, position = 40, duration = 100 };
+        Check(MediaService.Same(before, moved, 1) && !MediaService.Same(before, jumped, 1), "playback moving on is not a change, a seek is");
+        before.playing = false;
+        Check(!MediaService.Same(before, moved, 30), "a paused position that moves is a change");
+
         byte[] source;
         using (var image = new Bitmap(1000, 500))
         using (var output = new MemoryStream())

@@ -42,6 +42,7 @@ export class NowPlayingWidget {
     this.options = Object.assign({ showArt: true, showControls: true, showProgress: true }, item.options || {});
     this.shape = `${item.width || 1}x${item.height || 1}`;
     node.classList.add('now-playing-widget', `now-playing-${this.shape}`);
+    node.classList.toggle('now-playing-labelled', !item.hideLabel && !!item.name);
     if (this.shape === '2x1' && !this.context.preview) node.addEventListener('click', this.compactClick);
     this.update(state);
     this.timer = setInterval(() => this.updateProgress(), 250);

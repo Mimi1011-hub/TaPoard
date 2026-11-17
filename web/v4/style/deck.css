@@ -633,6 +633,64 @@
 .now-playing-4x3 {
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
 }
+/* The widget name sits at the bottom of the tile: keep the buttons above it. */
+.now-playing-labelled {
+  padding-bottom: 14px;
+}
+.now-playing-controls button {
+  min-height: 24px;
+  font-size: 13px;
+  line-height: 1;
+}
+.now-playing-controls.is-large button {
+  min-height: 34px;
+  font-size: 19px;
+}
+/* 3x3 and 4x4: the picture is the largest square that fits above the text. */
+.now-playing-3x3 .now-playing-art,
+.now-playing-4x4 .now-playing-art {
+  width: 100%;
+  flex: 1 1 0;
+  aspect-ratio: auto;
+  background: none;
+  container-type: size;
+}
+.now-playing-3x3 .now-playing-art > *,
+.now-playing-4x4 .now-playing-art > * {
+  display: flex;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #293653;
+}
+.keys-light .now-playing-widget {
+  color: #1d2331;
+}
+.keys-light .now-playing-artist,
+.keys-light .now-playing-album,
+.keys-light .now-playing-app,
+.keys-light .now-playing-time {
+  color: #4b5568;
+}
+.keys-light .now-playing-controls button {
+  color: #1d2331;
+  background: #1d23311a;
+}
+.keys-light .now-playing-track {
+  background: #1d233126;
+}
+.keys-light .now-playing-2x2 .now-playing-content,
+.keys-light .now-playing-2x2 .now-playing-controls button {
+  color: #ffffff;
+}
+.keys-light .now-playing-2x2 .now-playing-artist {
+  color: #ffffffb3;
+}
+.keys-light .now-playing-2x2 .now-playing-controls button {
+  background: #ffffff17;
+}
 .now-playing-message {
   align-self: center;
   font-size: clamp(9px, 3vw, 16px);

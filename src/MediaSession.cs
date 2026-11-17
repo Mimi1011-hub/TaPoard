@@ -68,6 +68,28 @@ static class MediaArt
     }
 }
 
+static class MediaApps
+{
+    // Turns the app id Windows reports (an AUMID such as "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify" or "chrome.exe") into a short name.
+    internal static string Name(string id)
+    {
+        if (String.IsNullOrWhiteSpace(id)) return "";
+        string lower = id.ToLowerInvariant();
+        string[,] known = {
+            { "spotify", "Spotify" }, { "applemusic", "Apple Music" }, { "zunemusic", "Media Player" }, { "msedge", "Edge" },
+            { "chrome", "Chrome" }, { "firefox", "Firefox" }, { "vlc", "VLC" }, { "itunes", "iTunes" }, { "amazonmusic", "Amazon Music" },
+        };
+        for (int i = 0; i < known.GetLength(0); i++)
+            if (lower.Contains(known[i, 0])) return known[i, 1];
+        string name = id;
+        int bang = name.LastIndexOf('!');
+        if (bang >= 0 && bang < name.Length - 1) name = name.Substring(bang + 1);
+        name = name.Substring(Math.Max(name.LastIndexOf('\\'), name.LastIndexOf('/')) + 1);
+        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) name = name.Substring(0, name.Length - 4);
+        return name.Length > 40 ? name.Substring(0, 40) : name;
+    }
+}
+
 static class MediaService
 {
     const int Interval = 1000;
@@ -78,6 +100,8 @@ static class MediaService
     static bool running;
     static bool timerArmed;
     static MediaState latest = Empty();
+    static DateTime latestAt = DateTime.MinValue;
+    internal static Func<DateTime> Clock = delegate { return DateTime.UtcNow; };
 
     internal static void Initialize(IMediaSession value, Action onChanged)
     {
@@ -142,22 +166,32 @@ static class MediaService
         try { next = session.Current() ?? Empty(); }
         catch { next = Empty(); }
         Action notify = null;
+        DateTime now = Clock();
         lock (Sync)
         {
             if (!running) return;
-            if (!Same(latest, next)) notify = changed;
+            if (!Same(latest, next, (now - latestAt).TotalSeconds)) notify = changed;
             latest = Copy(next);
+            latestAt = now;
             timerArmed = true;
             Timer.Change(Interval, Timeout.Infinite);
         }
         if (notify != null) notify();
     }
 
-    static bool Same(MediaState a, MediaState b)
+    // A position that moved on as playback would have is not a change: screens move the bar on their own between samples.
+    internal static bool Same(MediaState a, MediaState b, double seconds)
     {
         return a.available == b.available && a.active == b.active && a.title == b.title && a.artist == b.artist && a.album == b.album
             && a.app == b.app && a.playing == b.playing && a.canPlayPause == b.canPlayPause && a.canNext == b.canNext
-            && a.canPrevious == b.canPrevious && a.position == b.position && a.duration == b.duration && a.artVersion == b.artVersion;
+            && a.canPrevious == b.canPrevious && SamePosition(a, b, seconds) && a.duration == b.duration && a.artVersion == b.artVersion;
+    }
+
+    static bool SamePosition(MediaState a, MediaState b, double seconds)
+    {
+        if (a.position == null || b.position == null) return a.position == b.position;
+        double expected = a.position.Value + (a.playing ? Math.Max(0, seconds) : 0);
+        return Math.Abs(b.position.Value - expected) < 2;
     }
 
     static MediaState Empty() { return new MediaState { available = false, active = false, artVersion = "" }; }
