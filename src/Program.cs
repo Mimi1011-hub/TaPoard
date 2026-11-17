@@ -200,7 +200,11 @@ partial class Program
                 Text.Changed += RefreshTrayText;
                 InitPcWindow();
                 string startup = StartupMode();
-                if (startup != "none")
+                if (Array.IndexOf(args, "--installing") >= 0)
+                {
+                    // The installer opens the window itself after its completion message.
+                }
+                else if (startup != "none")
                 {
                     // Opening the PC window replaces opening the browser settings at startup.
                     try
