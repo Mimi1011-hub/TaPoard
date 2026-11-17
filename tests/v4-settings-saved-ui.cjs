@@ -64,9 +64,12 @@ const server = http.createServer(async (req, res) => {
     for await (const chunk of req) text += chunk;
     const body = text ? JSON.parse(text) : {};
     const name = url.pathname.slice(5);
-    if (name === 'v3/language') return json(res, 200, {
-      preference: 'ja', language: 'ja', languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
-    });
+    if (name === 'v3/language') {
+      const language = String(req.headers['accept-language'] || '').startsWith('en') ? 'en' : 'ja';
+      return json(res, 200, {
+        preference: language, language, languages: [{ id: 'ja', name: '日本語' }, { id: 'en', name: 'English' }],
+      });
+    }
     if (req.method === 'POST' || name === 'v3/deck') calls.push({ name: `${req.method} ${name}`, body });
     if (name === 'v3/deck' && req.method === 'GET') return json(res, 200, { version: String(version), deck, widgetDefinitions: [{ type: 'hotkey', sizes: ['1x1'] }] });
     if (name === 'v3/deck') { deck = body.deck; return changed(res); }
@@ -89,6 +92,33 @@ const server = http.createServer(async (req, res) => {
     if (name === 'presets/apply') {
       deck[body.orientation].pages[body.page].items = [item('preset', 'Mute', 0, 0)];
       return changed(res);
+    }
+    if (name === 'presets/export') {
+      const value = JSON.stringify({ format: 'tapoard-preset', version: 1, presets: [] });
+      return json(res, 200, { name: 'My preset.tppreset', data: Buffer.from(value).toString('base64') });
+    }
+    if (name === 'presets/import' && !body.selected) {
+      return json(res, 200, {
+        presets: [
+          { index: 0, name: 'Imported', orientation: 'landscape', columns: 4, rows: 3, buttons: 1 },
+          { index: 1, name: 'Second import', orientation: 'portrait', columns: 3, rows: 4, buttons: 2 },
+        ],
+        safety: { apps: 1, urls: 1, texts: 0, paths: ['C:\\Apps\\stream.exe'] },
+        available: 1,
+      });
+    }
+    if (name === 'presets/import') {
+      const added = body.selected.map((index) => ({
+        id: `imported-${index}`,
+        name: index ? 'Second import' : 'Imported',
+        note: '',
+        setup: '',
+        custom: true,
+        orientation: index ? 'portrait' : 'landscape',
+        [index ? 'portrait' : 'landscape']: presetLayout(index ? 3 : 4, index ? 4 : 3),
+      }));
+      customPresets.push(...added);
+      return json(res, 200, { presets: added });
     }
     if (name === 'icon-styles' && req.method === 'GET') return json(res, 200, { styles, maxStyles: 20 });
     if (name === 'icon-styles/save') {
@@ -124,6 +154,7 @@ const names = (from) => calls.slice(from).map((call) => call.name);
 
 (async () => {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
   const errors = [];
   let browser;
   try {
@@ -134,7 +165,7 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
     let promptAnswer = 'Renamed';
     page.on('dialog', (dialog) => (dialog.type() === 'prompt' ? dialog.accept(promptAnswer) : dialog.accept()));
-    await page.goto(`http://127.0.0.1:${server.address().port}/v4/settings.html#admin=test`);
+    await page.goto(`${base}/v4/settings.html#admin=test`);
     await page.locator('.preview-hit[data-kind="item"]').first().waitFor();
 
     // Presets have their own section; choosing one replaces the preview with a read-only sample.
@@ -190,13 +221,30 @@ const names = (from) => calls.slice(from).map((call) => call.name);
     await page.getByRole('button', { name: '今のページをプリセットに追加' }).click();
     await waitFor(() => names(from).includes('POST presets/save'), 'custom preset saved');
     await waitFor(async () => (await page.locator('.preset-tab').count()) === 3, 'custom preset listed');
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: '書き出す' }).last().click();
+    assert.equal((await download).suggestedFilename(), 'My preset.tppreset');
+    const presetFile = Buffer.from(JSON.stringify({ format: 'tapoard-preset', version: 1, presets: [] }));
+    await page.locator('input[type="file"][accept*="tppreset"]').setInputFiles({
+      name: 'shared.tppreset', mimeType: 'application/json', buffer: presetFile,
+    });
+    const importDialog = page.locator('.preset-import-dialog');
+    await importDialog.waitFor();
+    assert.equal(await importDialog.locator('input:checked').count(), 1, 'capacity checks only the number that can be added');
+    assert.equal(await importDialog.locator('input:disabled').count(), 1, 'capacity disables additional presets');
+    assert.match(await importDialog.innerText(), /Imported.*横向き 4×3.*ボタン 1 個/s);
+    assert.match(await importDialog.innerText(), /stream\.exe/);
+    await importDialog.getByRole('button', { name: '読み込む', exact: true }).click();
+    await waitFor(() => names(from).includes('POST presets/import'), 'preset file imported');
+    await waitFor(async () => (await page.locator('.preset-tab').count()) === 4, 'imported preset listed');
+    assert.equal(await page.locator('.preset-tab[aria-pressed="true"] strong').innerText(), 'Imported');
     promptAnswer = 'Preset renamed';
     await page.getByRole('button', { name: '名前を変える' }).last().click();
     await waitFor(() => names(from).includes('POST presets/rename'), 'custom preset renamed');
     await waitFor(async () => (await page.locator('.preset-tab').last().innerText()).includes('Preset renamed'), 'renamed preset shown');
     await page.getByRole('button', { name: '削除' }).last().click();
     await waitFor(() => names(from).includes('POST presets/delete'), 'custom preset deleted');
-    await waitFor(async () => (await page.locator('.preset-tab').count()) === 2, 'custom preset removed');
+    await waitFor(async () => (await page.locator('.preset-tab').count()) === 3, 'custom preset removed');
     promptAnswer = 'Renamed';
     await page.locator('.settings-nav [data-section="saved"]').click();
 
@@ -248,6 +296,12 @@ const names = (from) => calls.slice(from).map((call) => call.name);
 
     assert.equal(await page.evaluate(() => window.hacked), undefined, 'names from the PC never run as HTML');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, 'no horizontal scroll at 1100px');
+    const english = await browser.newPage({ locale: 'en-US', viewport: { width: 1100, height: 700 } });
+    await english.goto(`${base}/v4/settings.html#admin=test&section=presets`);
+    await english.getByRole('button', { name: 'Add this page as a preset' }).waitFor();
+    assert.equal(await english.getByRole('button', { name: 'Import presets' }).count(), 1);
+    assert.equal(await english.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
+    await english.close();
     assert.deepEqual(errors, [], `console errors: ${errors.join('\n')}`);
     console.log('PASS v4 settings saved: presets, looks, backups, save-first order, PC-side undo and text safety');
   } finally {

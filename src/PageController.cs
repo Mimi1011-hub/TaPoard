@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 sealed class PageController : ControllerBase
 {
@@ -20,6 +21,8 @@ sealed class PageController : ControllerBase
         api.Post("/api/presets/rename", ApiAccess.Admin, delegate(ApiRequest r) { RenamePreset(r, r.input); });
         api.Post("/api/presets/delete", ApiAccess.Admin, delegate(ApiRequest r) { DeletePreset(r, r.input); });
         api.Post("/api/presets/apply", ApiAccess.Admin, delegate(ApiRequest r) { ApplyPreset(r, r.input); });
+        api.Post("/api/presets/import", ApiAccess.Admin, delegate(ApiRequest r) { ImportPresets(r, r.input); });
+        api.Post("/api/presets/export", ApiAccess.Admin, delegate(ApiRequest r) { ExportPresets(r, r.input); });
     }
 
     internal void GetPresets(ApiRequest r)
@@ -49,6 +52,55 @@ sealed class PageController : ControllerBase
     {
         customPresets.Delete(Convert.ToString(input["id"]));
         HttpIO.ReplyJson(r.stream, 200, new { ok = true });
+    }
+
+    internal void ExportPresets(ApiRequest r, Dictionary<string, object> input)
+    {
+        object raw;
+        object[] source = input.TryGetValue("ids", out raw) ? raw as object[] : null;
+        if (source == null || source.Length < 1) throw new Exception(Text.Get("source.presetfiles.selection"));
+        var ids = new List<string>();
+        foreach (object id in source) ids.Add(Convert.ToString(id));
+        byte[] bytes = customPresets.Export(ids);
+        string name = ids.Count == 1 ? customPresets.Read().Find(value => value.id == ids[0]).name : "TaPoard presets";
+        name = Regex.Replace(name, "[\\/:*?\"<>|]", "_").Trim();
+        if (name.Length == 0) name = "TaPoard preset";
+        HttpIO.ReplyJson(r.stream, 200, new { name = name + ".tppreset", data = Convert.ToBase64String(bytes) });
+    }
+
+    internal void ImportPresets(ApiRequest r, Dictionary<string, object> input)
+    {
+        object raw;
+        string encoded = input.TryGetValue("data", out raw) ? Convert.ToString(raw) : "";
+        byte[] bytes;
+        try { bytes = Convert.FromBase64String(encoded); }
+        catch { throw new Exception(Text.Get("source.presetfiles.invalid")); }
+        PresetImport parsed = PresetFiles.Read(bytes, deck);
+        object[] chosen = input.TryGetValue("selected", out raw) ? raw as object[] : null;
+        if (chosen == null)
+        {
+            var previews = new List<object>();
+            for (int index = 0; index < parsed.presets.Count; index++)
+            {
+                CustomPreset preset = parsed.presets[index];
+                previews.Add(new
+                {
+                    index = index, name = preset.name, orientation = preset.orientation,
+                    columns = preset.columns, rows = preset.rows, buttons = preset.items.Count,
+                });
+            }
+            HttpIO.ReplyJson(r.stream, 200, new
+            {
+                presets = previews, safety = parsed.safety, available = Math.Max(0, CustomPresets.Max - customPresets.Read().Count),
+            });
+            return;
+        }
+        var selected = new List<int>();
+        foreach (object index in chosen) selected.Add(Convert.ToInt32(index));
+        List<CustomPreset> added = customPresets.Import(parsed.presets, selected);
+        var publicAdded = new List<object>();
+        foreach (CustomPreset preset in added) publicAdded.Add(customPresets.Public(preset));
+        HttpIO.ReplyJson(r.stream, 200, new { presets = publicAdded });
     }
 
     internal string ReadOrientation(Dictionary<string, object> input)

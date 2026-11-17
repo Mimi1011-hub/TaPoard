@@ -1019,6 +1019,35 @@
   background: #202b3a !important;
   cursor: pointer;
 }
+.preset-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.preset-import-dialog {
+  width: min(620px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text);
+  background: var(--color-panel);
+}
+.preset-import-list,
+.preset-import-safety {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0;
+}
+.preset-import-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.preset-import-safety li {
+  overflow-wrap: anywhere;
+}
 .saved-count {
   color: var(--color-muted);
   font-size: 10px;

@@ -101,6 +101,7 @@ export class Pages {
     action('settings.page.rename', () => this.rename(wrap, index));
     action('settings.page.previous', () => this.move(index, index - 1), index === 0);
     action('settings.page.next', () => this.move(index, index + 1), index === this.pages().length - 1);
+    action('settings.page.addPreset', () => this.onPreset(this.orientation(), index));
     action('settings.page.delete', () => this.remove(index), this.pages().length === 1);
     // The tab strip scrolls (and clips), so the menu hangs from the page area, under the tab's right edge.
     this.root.appendChild(menu); this.menu = menu;
@@ -128,6 +129,7 @@ export class Pages {
       action('settings.page.rename', () => this.rename(wrap, index));
       action('settings.page.previous', () => this.move(index, index - 1), index === 0);
       action('settings.page.next', () => this.move(index, index + 1), index === this.pages().length - 1);
+      action('settings.page.addPreset', () => this.onPreset(this.orientation(), index));
       action('settings.page.delete', () => this.remove(index), this.pages().length === 1);
       panel.appendChild(row);
     });

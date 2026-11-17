@@ -17,6 +17,7 @@ const backgroundRequests = [];
 const packCreates = [];
 const packAdds = [];
 const imageRequests = [];
+const presetSaves = [];
 let background = { color: '', color2: '', image: '', landscape: { fit: 'cover', x: 50, y: 50, zoom: 1 }, portrait: { fit: 'cover', x: 50, y: 50, zoom: 1 }, keys: '', dim: 0, blur: 0, keyClear: 0 };
 let packs = [];
 let pcOptions = { previewMode: 'pc', previewRatio: 'auto' };
@@ -126,6 +127,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/background/image' && req.method === 'GET') return json(res, 200, { data: '' });
     if (url.pathname === '/api/background/image/delete') { background = { ...background, image: '' }; return json(res, 200, { background }); }
     if (url.pathname === '/api/presets') return json(res, 200, { presets: [] });
+    if (url.pathname === '/api/presets/save') {
+      presetSaves.push(JSON.parse(body));
+      return json(res, 200, { ok: true });
+    }
     if (url.pathname === '/api/icon-styles') return json(res, 200, { styles: [], maxStyles: 20 });
     if (url.pathname === '/api/backups') return json(res, 200, { backups: [] });
     return json(res, 404, { error: 'not found' });
@@ -558,14 +563,19 @@ async function assertPreviewChromeFits(page, label) {
     await page.getByRole('button', { name: 'ページ一覧' }).click();
     assert.equal(await page.locator('.settings-page-list-row').count(), 2, 'page list shows every numbered page');
     assert.match(await page.locator('.settings-page-list-row').last().innerText(), /2 Work · 0/);
+    assert.equal(await page.locator('.settings-page-list-row').last().getByRole('button', { name: 'プリセットに追加' }).count(), 1);
     const onTop = (selector) => page.locator(selector).evaluate((node) => {
       const box = node.getBoundingClientRect();
       return box.height > 40 && node.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
     });
     assert.equal(await onTop('.settings-page-list'), true, 'page list is not clipped by the toolbar');
-    await page.getByRole('button', { name: 'ページ一覧' }).click();
+    page.once('dialog', (dialog) => dialog.accept('Work preset'));
+    await page.locator('.settings-page-list-row').last().getByRole('button', { name: 'プリセットに追加' }).click();
+    await waitFor(() => presetSaves.length === 1, 'page list saves a preset');
+    assert.deepEqual(presetSaves[0], { name: 'Work preset', orientation: 'landscape', page: 1 });
     await page.locator('.settings-page-tab').nth(1).locator('.settings-page-more').click();
     assert.equal(await onTop('.settings-page-menu'), true, 'page menu is not clipped by the scrolling tab strip');
+    assert.equal(await page.locator('.settings-page-menu').getByRole('button', { name: 'プリセットに追加' }).count(), 1);
     await page.locator('.settings-page-tab').nth(1).locator('.settings-page-more').click();
     assert.equal(await page.locator('.settings-page-menu').count(), 0, 'the ⋮ button closes its menu again');
 

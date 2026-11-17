@@ -50,6 +50,8 @@ public static class ApiRouteTableTests
                 "POST /api/presets/rename Admin",
                 "POST /api/presets/delete Admin",
                 "POST /api/presets/apply Admin",
+                "POST /api/presets/import Admin",
+                "POST /api/presets/export Admin",
                 "POST /api/audio Paired",
                 "POST /api/weather/search Admin",
                 "POST /api/weather/location Admin",

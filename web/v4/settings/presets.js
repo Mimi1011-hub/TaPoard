@@ -1,5 +1,6 @@
 import { clear, el } from '../core/dom.js';
 import { presetIconNode } from '../deck/icons.js';
+import { PresetFiles } from './preset-files.js';
 
 const widgetMarks = { clock: '🕒', weather: '⛅', metrics: '📈' };
 
@@ -9,6 +10,13 @@ export class Presets {
     Object.assign(this, options);
     this.presets = [];
     this.selected = '';
+    this.files = new PresetFiles({
+      api: this.api,
+      i18n: this.i18n,
+      documentObject: this.documentObject,
+      onError: this.onError,
+      onImported: (presets) => this.imported(presets),
+    });
   }
 
   async load() {
@@ -57,10 +65,12 @@ export class Presets {
   render() {
     clear(this.root);
     this.root.appendChild(el('h2', '', this.i18n.t('presets.title')));
+    const actions = el('div', 'preset-file-actions');
     const add = el('button', 'saved-primary', this.i18n.t('presets.addCurrent'));
     add.type = 'button';
     add.addEventListener('click', () => this.saveCurrent());
-    this.root.appendChild(add);
+    actions.append(add, this.files.importButton());
+    this.root.appendChild(actions);
     const page = this.preview.page() + 1;
     this.root.appendChild(el('p', 'saved-note', this.i18n.t('presets.target', { side: this.side(), page })));
     if (!this.presets.length) return;
@@ -103,8 +113,10 @@ export class Presets {
   customActions(preset) {
     const actions = el('div', 'saved-actions');
     const rename = el('button', '', this.i18n.t('presets.rename'));
+    const exportButton = el('button', '', this.i18n.t('presets.export'));
     const remove = el('button', '', this.i18n.t('presets.delete'));
-    rename.type = 'button'; remove.type = 'button';
+    rename.type = 'button'; exportButton.type = 'button'; remove.type = 'button';
+    exportButton.addEventListener('click', () => this.files.export([preset.id]));
     rename.addEventListener('click', async () => {
       const name = this.promptFn(this.i18n.t('presets.namePrompt'), preset.name);
       if (!name) return;
@@ -118,18 +130,29 @@ export class Presets {
       this.closePreview();
       await this.load();
     });
-    actions.append(rename, remove);
+    actions.append(exportButton, rename, remove);
     return actions;
   }
 
   async saveCurrent() {
+    return this.savePage(this.preview.orientation, this.preview.page());
+  }
+
+  async savePage(orientation, page) {
     this.closePreview();
     const name = this.promptFn(this.i18n.t('presets.namePrompt'), '');
     if (!name) return;
     await this.api.post('/api/presets/save', {
-      name, orientation: this.preview.orientation, page: this.preview.page(),
+      name, orientation, page,
     }, 10000);
     await this.load();
+  }
+
+  async imported(presets) {
+    if (presets.length) this.selected = presets[0].id;
+    await this.load();
+    const first = this.presets.find((preset) => preset.id === this.selected);
+    if (first) this.showPreview(first);
   }
 
   help(layout) {

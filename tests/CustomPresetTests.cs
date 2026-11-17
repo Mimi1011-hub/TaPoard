@@ -102,6 +102,10 @@ public static class CustomPresetTests
             && imported.presets[0].items[0].path == executable, "preset file round trip keeps the preset");
         Check(!exportedText.Contains("customIcon") && !exportedText.Contains("deviceId")
             && imported.presets[0].items[0].customIcon == null, "preset files remove private icons and audio devices");
+        var importStore = new CustomPresets(Path.Combine(root, "file-import"));
+        importStore.Import(imported.presets, new List<int> { 0 });
+        importStore.Import(imported.presets, new List<int> { 0 });
+        Check(importStore.Read()[1].name == "Shared (2)", "imported presets receive a unique name");
 
         Reject(Encoding.UTF8.GetBytes("{broken"), controller, "broken preset files are rejected");
         Reject(Encoding.UTF8.GetBytes(exportedText.Replace("tapoard-preset", "other")), controller,

@@ -60,6 +60,7 @@ static class TextJa
         { "source.presetfiles.count", "1つのファイルに入れられるプリセットは40個までです。" },
         { "source.presetfiles.format", "TaPoardのプリセットのファイルではありません。" },
         { "source.presetfiles.invalid", "プリセットの内容が正しくありません。" },
+        { "source.presetfiles.selection", "読み込むプリセットの選び方が正しくありません。" },
         { "source.deckcontroller.1", "ほかの所で設定が変わりました。読み直してください。" },
         { "source.deckcontroller.2", "表示セッションが正しくありません。" },
         { "source.deckcontroller.6", "操作の並びは 4.1 で使えるようになります。" },

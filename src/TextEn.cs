@@ -60,6 +60,7 @@ static class TextEn
         { "source.presetfiles.count", "A file can contain up to 40 presets." },
         { "source.presetfiles.format", "This is not a TaPoard preset file." },
         { "source.presetfiles.invalid", "The preset contents are not valid." },
+        { "source.presetfiles.selection", "The selected presets are not valid." },
         { "source.deckcontroller.1", "The settings were changed somewhere else. Reload and try again." },
         { "source.deckcontroller.2", "The display session is not valid." },
         { "source.deckcontroller.6", "Action sequences will be available in 4.1." },

@@ -167,6 +167,7 @@ export class SettingsApp {
       editor: this.editor,
       preview: this.preview,
       i18n: this.i18n,
+      documentObject: this.documentObject,
       confirmFn: this.confirmFn,
       promptFn: this.promptFn,
       serverChange: this.saved.serverChange,
@@ -174,6 +175,7 @@ export class SettingsApp {
       onPreview: (active, name) => this.presetPreview(active, name),
     });
     await this.presets.load();
+    this.pages.onPreset = (orientation, page) => this.presets.savePage(orientation, page);
     this.connect = new Connect({
       root: this.nodes.sections.connection,
       api: this.api,

@@ -25,7 +25,7 @@ sealed class CustomPreset
 
 sealed class CustomPresets
 {
-    const int Max = 30;
+    internal const int Max = 30;
     readonly string path;
     readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
@@ -77,6 +77,33 @@ sealed class CustomPresets
         var values = Read();
         values.Remove(Find(values, id));
         Write(values);
+    }
+
+    internal byte[] Export(List<string> ids)
+    {
+        var values = Read();
+        var selected = new List<CustomPreset>();
+        foreach (string id in ids) selected.Add(Find(values, id));
+        return PresetFiles.Export(selected);
+    }
+
+    internal List<CustomPreset> Import(List<CustomPreset> source, List<int> selected)
+    {
+        var values = Read();
+        var added = new List<CustomPreset>();
+        var seen = new HashSet<int>();
+        foreach (int index in selected)
+        {
+            if (!seen.Add(index) || index < 0 || index >= source.Count || values.Count >= Max)
+                throw new Exception(Text.Get("source.presetfiles.selection"));
+            CustomPreset preset = Copy(source[index]);
+            preset.id = Guid.NewGuid().ToString("N");
+            preset.name = UniqueName(values, preset.name);
+            values.Add(preset);
+            added.Add(preset);
+        }
+        Write(values);
+        return added;
     }
 
     internal object Public(CustomPreset preset)
@@ -162,6 +189,19 @@ sealed class CustomPresets
         name = (name ?? "").Trim();
         if (name.Length < 1 || name.Length > 40) throw new Exception(Text.Get("source.custompresets.name"));
         return name;
+    }
+
+    string UniqueName(List<CustomPreset> values, string name)
+    {
+        if (!values.Exists(value => String.Equals(value.name, name, StringComparison.OrdinalIgnoreCase))) return name;
+        for (int number = 2; number < 1000; number++)
+        {
+            string suffix = " (" + number + ")";
+            string baseName = name.Substring(0, Math.Min(name.Length, 40 - suffix.Length)).TrimEnd();
+            string candidate = baseName + suffix;
+            if (!values.Exists(value => String.Equals(value.name, candidate, StringComparison.OrdinalIgnoreCase))) return candidate;
+        }
+        throw new Exception(Text.Get("source.presetfiles.selection"));
     }
 
     void ValidateStored(CustomPreset preset)
