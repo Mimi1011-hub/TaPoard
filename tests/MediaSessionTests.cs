@@ -40,6 +40,13 @@ class MediaSessionTests
         bool rejected = false;
         try { MediaService.Command("bad"); } catch { rejected = true; }
         Check(rejected, "unknown media commands are rejected");
+        MediaService.SetActive(false);
+        MediaState stopped = MediaService.PublicSnapshot();
+        Check(stopped.available && stopped.title == "Song" && !MediaService.TimerArmed,
+            "stopping an idle media lease keeps the last supported state");
+        fake.state = new MediaState { available = true, active = true, title = "Changed", artVersion = "art-2" };
+        MediaService.SetActive(true);
+        Check(fake.reads == 2 && MediaService.PublicSnapshot().title == "Changed", "media sampling resumes after a visible lease returns");
         MediaService.Stop();
 
         Check(MediaApps.Name("SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify") == "Spotify" && MediaApps.Name("Chrome") == "Chrome"

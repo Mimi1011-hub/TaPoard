@@ -61,11 +61,16 @@ class DisplaySubscriptionTests
             var shared = DisplaySubscriptions.Current();
             Check(shared.sessions == 2 && shared.metrics.Count == 1, "multiple views share a deduplicated widget union");
 
-            now = now.AddSeconds(11);
+            now = now.AddSeconds(16);
+            DisplaySubscriptions.PruneNow();
+            var duringSync = DisplaySubscriptions.Current();
+            Check(duringSync.metrics.Count == 1, "metrics leases survive a fifteen-second sync wait");
+            Check(duringSync.media.Count == 1, "media leases survive a fifteen-second sync wait");
+            now = now.AddSeconds(15);
             DisplaySubscriptions.PruneNow();
             var metricsExpired = DisplaySubscriptions.Current();
-            Check(metricsExpired.metrics.Count == 0, "metrics leases expire after ten seconds without renewal");
-            Check(metricsExpired.media.Count == 0, "media leases expire after ten seconds without renewal");
+            Check(metricsExpired.metrics.Count == 0, "metrics leases expire after thirty seconds without renewal");
+            Check(metricsExpired.media.Count == 0, "media leases expire after thirty seconds without renewal");
             Check(metricsExpired.weather.SetEquals(new[] { "weather-1" }), "weather lease survives the shorter metrics timeout");
             Check(metricsExpired.sessions == 1, "empty view leases are removed on expiry");
 
@@ -85,15 +90,22 @@ class DisplaySubscriptionTests
             DisplaySubscriptions.Update("device-c:view-c", apps, new[] { "metrics-1" }, true, true);
             for (int i = 0; i < 4; i++)
             {
-                now = now.AddSeconds(8);
+                now = now.AddSeconds(15);
                 DisplaySubscriptions.Touch("device-c:view-c");
             }
-            Check(DisplaySubscriptions.Current().metrics.SetEquals(new[] { "metrics-1" }), "sync keeps a visible metrics lease alive past ten seconds");
+            Check(DisplaySubscriptions.Current().metrics.SetEquals(new[] { "metrics-1" }), "touch keeps a visible metrics lease alive");
             DisplaySubscriptions.Touch("unknown-view");
             Check(DisplaySubscriptions.Current().sessions == 1, "touching an unknown view creates no lease");
-            now = now.AddSeconds(11);
+            now = now.AddSeconds(31);
             DisplaySubscriptions.PruneNow();
             Check(DisplaySubscriptions.Current().sessions == 0, "a closed view expires once sync stops");
+
+            DisplaySubscriptions.Update("device-d:view-d", apps, new[] { "media-1" }, true, true);
+            now = now.AddSeconds(31);
+            DisplaySubscriptions.PruneNow();
+            DisplaySubscriptions.Update("device-d:view-d", apps, new[] { "media-1" }, true, true);
+            Check(DisplaySubscriptions.Current().media.SetEquals(new[] { "media-1" }), "a visible media lease is rebuilt after expiry");
+            DisplaySubscriptions.ClearAll();
 
             DisplaySubscriptions.Update("device-a:view-a", apps, new[] { "weather-1" }, true, true);
             DisplaySubscriptions.RemoveUnknown(new[] { Widget("metrics-1", "metrics") });

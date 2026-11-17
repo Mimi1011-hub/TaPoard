@@ -143,6 +143,7 @@ sealed class DeckController : ControllerBase
         lock (state.Gate)
         {
             state.TouchPhone(r.local);
+            TouchDisplaySubscriptions(r);
             state.Sync.Wait(known, 15000);
             // The visible IDs were sent before the wait and may be stale: only renew, never re-plan.
             RenewRuntimeSessions(r);
@@ -207,9 +208,16 @@ sealed class DeckController : ControllerBase
         if (String.IsNullOrEmpty(viewId)) return;
         string raw = HttpIO.QueryValue(r.target, "visibleIds") ?? "";
         string identity = ViewIdentity(r, viewId);
-        DisplaySubscriptions.Update(identity, state.Config.apps, raw.Length == 0 ? new string[0] : raw.Split(','), false, true);
+        DisplaySubscriptions.Update(identity, state.Config.apps, raw.Length == 0 ? new string[0] : raw.Split(','), raw.Length != 0, true);
         DisplaySubscriptions.Touch(identity);
         InputSessions.Touch(identity);
+    }
+
+    internal void TouchDisplaySubscriptions(ApiRequest r)
+    {
+        string viewId = HttpIO.QueryValue(r.target, "viewId");
+        if (String.IsNullOrEmpty(viewId)) return;
+        DisplaySubscriptions.Touch(ViewIdentity(r, viewId));
     }
 
     internal string ViewIdentity(ApiRequest r, string viewId)

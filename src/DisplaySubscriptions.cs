@@ -72,9 +72,9 @@ static class DisplaySubscriptions
             if (renewMetrics)
             {
                 changed |= !lease.metrics.SetEquals(metrics); lease.metrics = metrics;
-                lease.metricsExpires = metrics.Count == 0 ? DateTime.MinValue : now.AddSeconds(10);
+                lease.metricsExpires = metrics.Count == 0 ? DateTime.MinValue : now.AddSeconds(30);
                 changed |= !lease.media.SetEquals(media); lease.media = media;
-                lease.mediaExpires = media.Count == 0 ? DateTime.MinValue : now.AddSeconds(10);
+                lease.mediaExpires = media.Count == 0 ? DateTime.MinValue : now.AddSeconds(30);
             }
             if (renewWeather)
             {
@@ -99,9 +99,9 @@ static class DisplaySubscriptions
             Lease lease;
             if (Leases.TryGetValue(key, out lease))
             {
-                if (lease.metrics.Count != 0) lease.metricsExpires = now.AddSeconds(10);
+                if (lease.metrics.Count != 0) lease.metricsExpires = now.AddSeconds(30);
                 if (lease.weather.Count != 0) lease.weatherExpires = now.AddSeconds(60);
-                if (lease.media.Count != 0) lease.mediaExpires = now.AddSeconds(10);
+                if (lease.media.Count != 0) lease.mediaExpires = now.AddSeconds(30);
             }
             ArmLocked(now);
         }

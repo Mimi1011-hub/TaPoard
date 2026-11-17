@@ -235,6 +235,7 @@ async function prepare(page, errors) {
     assert(mediaCommands.some((entry) => entry.command === 'playPause'), 'media control sends its command');
     mediaState = { available: true, active: false, artVersion: '' }; revision += 1;
     await page.waitForFunction(() => document.querySelector('.now-playing-message')?.textContent.includes('ありません'));
+    assert.doesNotMatch(await page.locator('.now-playing-message').innerText(), /使えません/);
     mediaState = { available: false, active: false, artVersion: '' }; revision += 1;
     await page.waitForFunction(() => document.querySelector('.now-playing-message')?.textContent.includes('使えません'));
     mediaState = {

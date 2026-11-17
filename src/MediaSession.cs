@@ -122,7 +122,6 @@ static class MediaService
             running = active;
             timerArmed = false;
             Timer.Change(Timeout.Infinite, Timeout.Infinite);
-            if (!active) latest = Empty();
         }
         if (active) Sample();
     }
