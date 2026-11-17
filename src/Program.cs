@@ -168,8 +168,12 @@ partial class Program
         using (var mutex = new Mutex(true, "Local\\TaPoard", out first))
         {
             if (!first)
+            {
+                SingleInstance.SignalRunning(SingleInstance.EventName, args);
                 return;
+            }
             Application.EnableVisualStyles();
+            SingleInstance showSignal = null;
             try
             {
                 LoadLanguage();
@@ -199,6 +203,10 @@ partial class Program
                 CreateTrayIcon();
                 Text.Changed += RefreshTrayText;
                 InitPcWindow();
+                showSignal = new SingleInstance(SingleInstance.EventName, delegate
+                {
+                    ui.BeginInvoke((Action)OpenPcWindowFromTray);
+                });
                 string startup = StartupMode();
                 if (Array.IndexOf(args, "--installing") >= 0)
                 {
@@ -228,6 +236,8 @@ partial class Program
             }
             finally
             {
+                if (showSignal != null)
+                    showSignal.Dispose();
                 PcWindowService.Close();
                 if (server != null)
                     server.Stop();

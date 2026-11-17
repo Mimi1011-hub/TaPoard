@@ -10,7 +10,7 @@ $tests = @(
     'SettingsV2Tests', 'SettingsV3Tests', 'WidgetRegistryTests', 'BuildInfoTests', 'LayoutV2Tests', 'DisplaySubscriptionTests', 'MediaSessionTests', 'ConnectLinksTests',
     'InputSessionTests', 'MetricsSamplerTests', 'GpuMetricsTests', 'WeatherServiceTests', 'UrlImportTests', 'Release103Tests',
     'HostTests', 'PageUndoTests', 'SyncHubTests', 'ApiRouterTests', 'ApiRouteTableTests', 'ApiStatusTests', 'ControllerTests', 'DeckV3SaveTests',
-    'WebFilesTests', 'ShortcutPacksTests', 'CustomPresetTests', 'BackgroundTransformTests', 'TextTests', 'SourceTextTests'
+    'WebFilesTests', 'ShortcutPacksTests', 'CustomPresetTests', 'BackgroundTransformTests', 'TextTests', 'SourceTextTests', 'SingleInstanceTests'
 )
 $failed = @()
 foreach ($test in $tests) {
