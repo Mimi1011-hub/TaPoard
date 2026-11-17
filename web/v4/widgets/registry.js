@@ -1,4 +1,5 @@
 import { ClockWidget } from './clock.js';
+import { CalendarWidget } from './calendar.js';
 import { FaderWidget } from './fader.js';
 import { MetricsWidget } from './metrics.js';
 import { NowPlayingWidget } from './now-playing.js';
@@ -10,6 +11,7 @@ import { WheelWidget } from './wheel.js';
 
 export const widgetTypes = {
   clock: ClockWidget,
+  calendar: CalendarWidget,
   weather: WeatherWidget,
   metrics: MetricsWidget,
   nowPlaying: NowPlayingWidget,

@@ -25,6 +25,7 @@ function widgetAction(item) {
   if (item.type === 'keypad') return 'widget-keypad';
   if (item.type === 'slideshow') return 'widget-slideshow-3x3';
   if (item.type === 'nowPlaying') return 'widget-now-playing';
+  if (item.type === 'calendar') return 'widget-calendar';
   return '';
 }
 
@@ -48,7 +49,7 @@ function widgetHelp(item, i18n) {
 }
 
 export function customItemHelp(item, i18n) {
-  if (['clock', 'weather', 'metrics', 'wheel', 'touchpad', 'keypad', 'slideshow', 'nowPlaying'].indexOf(item.type) >= 0) {
+  if (['clock', 'weather', 'metrics', 'wheel', 'touchpad', 'keypad', 'slideshow', 'nowPlaying', 'calendar'].indexOf(item.type) >= 0) {
     return widgetHelp(item, i18n);
   }
   if (item.type === 'app') {

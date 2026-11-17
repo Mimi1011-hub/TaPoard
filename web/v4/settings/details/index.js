@@ -1,5 +1,6 @@
 import { el } from '../../core/dom.js';
 import { clockDetails } from './clock-details.js';
+import { calendarDetails } from './calendar-details.js';
 import { metricsDetails } from './metrics-details.js';
 import { wheelDetails } from './wheel-details.js';
 import { slideshowDetails } from './slideshow-details.js';
@@ -11,6 +12,7 @@ import { nowPlayingDetails } from './now-playing-details.js';
 
 const builders = {
   clock: clockDetails,
+  calendar: calendarDetails,
   metrics: metricsDetails,
   wheel: wheelDetails,
   slideshow: slideshowDetails,

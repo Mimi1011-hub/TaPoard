@@ -405,6 +405,103 @@
   background: var(--color-accent);
 }
 
+.calendar-widget {
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.calendar-today-month,
+.calendar-week-month,
+.calendar-today-weekday {
+  color: var(--color-muted);
+  font-size: clamp(8px, 2.4vw, 13px);
+}
+.calendar-today-date {
+  font-size: clamp(28px, 10vw, 64px);
+  line-height: 0.9;
+}
+.calendar-holiday-name {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--color-danger);
+  font-size: clamp(6px, 1.8vw, 10px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-week-month {
+  align-self: flex-start;
+}
+.calendar-week-row,
+.calendar-month-weekdays,
+.calendar-month-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.calendar-week-row {
+  flex: 1;
+  align-items: center;
+}
+.calendar-day {
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: var(--color-text);
+  text-align: center;
+}
+.calendar-week-row .calendar-day {
+  flex-direction: column;
+  gap: 2px;
+}
+.calendar-day small {
+  color: inherit;
+  font-size: clamp(6px, 1.7vw, 9px);
+}
+.calendar-day b {
+  display: grid;
+  width: clamp(18px, 5vw, 30px);
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  font-size: clamp(9px, 3vw, 17px);
+}
+.calendar-day.is-today b,
+.calendar-today-date.is-today {
+  color: #111827;
+  background: var(--color-accent);
+  border-radius: 999px;
+}
+.calendar-today-date.is-today {
+  padding: 4px 10px;
+}
+.calendar-day.is-red {
+  color: var(--color-danger);
+}
+.calendar-day.is-blue {
+  color: #4d8dff;
+}
+.calendar-day.is-outside {
+  opacity: 0.25;
+}
+.calendar-month-heading {
+  font-size: clamp(11px, 3.6vw, 19px);
+}
+.calendar-month-weekdays {
+  flex: 0 0 auto;
+  font-size: clamp(7px, 1.9vw, 10px);
+}
+.calendar-month-grid {
+  flex: 1;
+  grid-auto-rows: minmax(0, 1fr);
+}
+.calendar-month-grid .calendar-day b {
+  width: clamp(16px, 4.4vw, 26px);
+  font-size: clamp(8px, 2.4vw, 13px);
+}
+
 .weather-widget,
 .metrics-widget {
   flex-direction: column;

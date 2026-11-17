@@ -77,7 +77,7 @@ if ($state.schemaVersion -ne 3 -or !$state.deck.landscape -or !$state.deck.portr
 Write-Host 'PASS v3 deck state is available to paired devices'
 if ([string]::IsNullOrWhiteSpace($state.version)) { throw 'State version missing' }
 if ($state.appVersion -notmatch '^4\.0(?:\+(?:[0-9a-f]{7,40}\.dirty|source|unknown))?$') { throw ('Unexpected app version: ' + $state.appVersion) }
-if (@($state.widgetDefinitions).Count -ne 13) { throw 'Widget definitions missing or duplicated' }
+if (@($state.widgetDefinitions).Count -ne 14) { throw 'Widget definitions missing or duplicated' }
 foreach ($orientation in @($state.deck.landscape, $state.deck.portrait)) {
     foreach ($app in @($orientation.items)) {
         if ($app.PSObject.Properties.Name -contains 'path' -or $app.PSObject.Properties.Name -contains 'args' -or $app.PSObject.Properties.Name -contains 'url' -or $app.PSObject.Properties.Name -contains 'text') {

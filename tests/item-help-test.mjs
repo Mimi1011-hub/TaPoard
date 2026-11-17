@@ -41,6 +41,9 @@ for (const language of ['ja', 'en']) {
   const nowPlaying = customItemHelp({ name: 'Old', type: 'nowPlaying', options: {} }, t);
   assert.equal(nowPlaying.name, t.t('catalog.item.nowPlaying'));
   assert.equal(nowPlaying.description, t.t('catalog.desc.nowPlaying'));
+  const calendar = customItemHelp({ name: 'Old', type: 'calendar', options: {} }, t);
+  assert.equal(calendar.name, t.t('catalog.item.calendar'));
+  assert.equal(calendar.description, t.t('catalog.desc.calendar'));
 
   const output = customItemHelp({ name: 'Output', type: 'audioDevice', deviceTarget: 'speaker', deviceName: 'Speakers' }, t);
   assert.match(output.description, /Speakers/);

@@ -22,6 +22,7 @@ export const catalogGroups = [
     items: [
       item('widget-clock-digital', 'digitalClock', 'catalog.desc.chooseSize'),
       item('widget-clock-analog', 'analogClock', '2×2'),
+      item('widget-calendar', 'calendar', 'catalog.desc.calendar'),
       item('widget-weather-now', 'weatherNow', '1×1'),
       item('widget-weather-days', 'weatherDays', '2×2'),
       item('widget-metrics-cpu', 'cpu', '1×1'),

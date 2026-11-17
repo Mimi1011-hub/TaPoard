@@ -139,7 +139,8 @@ export class Catalog {
     const orientation = this.preview.current();
     sizes.forEach((size) => {
       const parts = size.split('x').map(Number);
-      const button = el('button', '', size.replace('x', '×'));
+      const suffix = action === 'widget-calendar' ? ` ${this.i18n.t(`catalog.size.calendar.${size}`)}` : '';
+      const button = el('button', '', size.replace('x', '×') + suffix);
       button.type = 'button';
       button.disabled = parts[0] > orientation.columns || parts[1] > orientation.rows;
       button.draggable = !button.disabled;

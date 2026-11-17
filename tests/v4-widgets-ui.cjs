@@ -47,7 +47,13 @@ function deckState() {
     const [width, height] = shape.split('x').map(Number);
     return { faders: { speakerHidden: true, micHidden: true }, items: [placement(`media-${index}`, 'nowPlaying', 0, 0, width, height)] };
   });
-  const pages = [{ faders: null, items }].concat(mediaPages, [{ faders: { speakerHidden: true, micHidden: true }, items: [] }]);
+  const calendarPages = ['1x1', '2x1', '3x3'].map((shape, index) => {
+    const [width, height] = shape.split('x').map(Number);
+    return { faders: { speakerHidden: true, micHidden: true }, items: [placement(`calendar-${index}`, 'calendar', 0, 0, width, height)] };
+  });
+  const pages = [{ faders: null, items }].concat(mediaPages, calendarPages, [
+    { faders: { speakerHidden: true, micHidden: true }, items: [] },
+  ]);
   return {
     schemaVersion: 3, revision, version, current: { portrait: currentPage, landscape: currentPage },
     deck: {
@@ -59,6 +65,7 @@ function deckState() {
       { type: 'clock', displayOnly: true }, { type: 'metrics', displayOnly: true }, { type: 'weather', displayOnly: true },
       { type: 'slideshow', displayOnly: true }, { type: 'wheel', displayOnly: true },
       { type: 'nowPlaying', displayOnly: true },
+      { type: 'calendar', displayOnly: true },
       { type: 'future', displayOnly: true },
     ],
     audio: { speakerVolume: 20, speakerMuted: false, speakerAvailable: true, micVolume: 42, micMuted: true, micAvailable: true },
@@ -132,6 +139,14 @@ async function prepare(page, errors) {
     browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe' });
     const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 320, height: 700 } });
     await prepare(page, errors);
+    await page.addInitScript(() => {
+      const NativeDate = Date;
+      window.__calendarNow = new NativeDate(2026, 10, 3, 12).getTime();
+      window.Date = class extends NativeDate {
+        constructor(...args) { super(...(args.length ? args : [window.__calendarNow])); }
+        static now() { return window.__calendarNow; }
+      };
+    });
     await page.goto(`${base}/v4/#connect=test`);
     await page.locator('.metrics-widget').waitFor();
     assert.match(await page.locator('.clock-time').innerText(), /^\d\d:\d\d:\d\d$/);
@@ -231,6 +246,32 @@ async function prepare(page, errors) {
     await page.waitForFunction(() => document.querySelector('.now-playing-picture'));
     assert(artRequests.includes('art-one') && artRequests.includes('art-two'), 'album art URL follows artVersion');
     await page.getByRole('button', { name: '次のページ' }).click();
+    assert.equal(await page.locator('.calendar-today-date').innerText(), '3');
+    assert.equal(await page.locator('.calendar-today-weekday').innerText(), '火');
+    assert.equal(await page.locator('.calendar-holiday-name').innerText(), '文化の日');
+    const windowChanged = await page.evaluate(() => {
+      window.__calendarNow = new Date(2026, 10, 4, 12).getTime();
+      document.dispatchEvent(new Event('visibilitychange'));
+      return window.__calendarNow;
+    });
+    assert(windowChanged > 0);
+    await page.waitForFunction(() => document.querySelector('.calendar-today-date')?.textContent === '4');
+    await page.getByRole('button', { name: '次のページ' }).click();
+    await page.locator('.calendar-week-row').waitFor();
+    assert.equal(await page.locator('.calendar-week-row .calendar-day').count(), 7);
+    assert.equal(await page.locator('.calendar-week-row .is-today').count(), 1);
+    await page.getByRole('button', { name: '次のページ' }).click();
+    assert.equal(await page.locator('.calendar-month-heading').innerText(), '2026年11月');
+    assert.equal(await page.locator('.calendar-month-grid .is-today').count(), 1);
+    assert.equal(await page.locator('.calendar-month-weekdays .calendar-day').first().innerText(), '日');
+    assert.equal(await page.locator('.calendar-3x3').evaluate((node) => node.scrollWidth <= node.clientWidth
+      && node.scrollHeight <= node.clientHeight), true, 'calendar month fits at 320px');
+    await page.getByRole('button', { name: '画面と接続の設定' }).click();
+    await page.locator('.language-row select').selectOption('en');
+    assert.equal(await page.locator('.calendar-month-heading').innerText(), 'November 2026');
+    assert.equal(await page.locator('.calendar-month-weekdays .calendar-day').first().innerText(), 'Sun');
+    await page.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Next page' }).click();
     await page.waitForFunction(() => document.querySelectorAll('.widget-tile').length === 0);
     assert(viewRequests.some((entry) => entry.visibleIds.length === 0), 'empty page announces no widgets');
 

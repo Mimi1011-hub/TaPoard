@@ -15,6 +15,7 @@ export function catalogSizes(action, definitions) {
   action = canonicalCatalogAction(action);
   if (action === 'widget-clock-digital') return ['2x1', '2x2'];
   if (action === 'widget-clock-analog') return ['2x2'];
+  if (action === 'widget-calendar') return (definitions.get('calendar') || {}).sizes || ['1x1', '2x1', '3x3'];
   if (action === 'widget-wheel-vertical') return ['1x1', '1x2'];
   if (action === 'widget-wheel-rotary') return ['2x2'];
   if (action === 'widget-touchpad-wide') return ['3x2', '2x3'];
@@ -64,6 +65,12 @@ export function controlFromAction(action) {
 
 export function catalogItem(action, name, category) {
   action = canonicalCatalogAction(action);
+  if (action === 'widget-calendar') {
+    const value = base(name, 'calendar', 'widget');
+    value.hideLabel = true;
+    value.options = { weekStart: 'sunday', holidays: 'japan' };
+    return value;
+  }
   if (action === 'widget-now-playing') {
     const value = base(name, 'nowPlaying', 'widget', 2, 1);
     value.hideLabel = true;

@@ -32,6 +32,7 @@ const definitions = [
   { type: 'slideshow', sizes: ['3x3'] },
   { type: 'keypad', sizes: ['4x4', '4x5'] },
   { type: 'nowPlaying', sizes: ['2x1', '2x2', '3x2', '4x2', '3x3', '4x3', '4x4'] },
+  { type: 'calendar', sizes: ['1x1', '2x1', '3x3'] },
 ];
 const json = (res, status, value) => {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -64,6 +65,7 @@ const validWidgetSize = (item) => {
   if (item.type === 'nowPlaying') {
     return ['2x1', '2x2', '3x2', '4x2', '3x3', '4x3', '4x4'].includes(`${item.width}x${item.height}`);
   }
+  if (item.type === 'calendar') return ['1x1', '2x1', '3x3'].includes(`${item.width}x${item.height}`);
   return true;
 };
 function makePng() {
@@ -280,6 +282,28 @@ const waitFor = async (check, message) => {
     await waitFor(() => posts.length === sizeBefore + 1, 'chosen widget size save');
     assert(posts.at(-1).deck.landscape.pages[0].items.some((entry) => entry.type === 'clock'
       && entry.options.style === 'digital' && entry.width === 2 && entry.height === 1));
+    const calendar = page.locator('[data-action="widget-calendar"]');
+    await calendar.click();
+    assert.deepEqual(await calendar.locator('xpath=..').locator('.catalog-sizes button').allTextContents(),
+      ['1×1 今日', '2×1 今週', '3×3 今月']);
+    const calendarBefore = posts.length;
+    await calendar.locator('xpath=..').getByRole('button', { name: '1×1 今日', exact: true }).click();
+    await waitFor(() => posts.length === calendarBefore + 1, 'calendar save');
+    const calendarItem = posts.at(-1).deck.landscape.pages[0].items.find((entry) => entry.type === 'calendar');
+    assert.deepEqual(calendarItem.options, { weekStart: 'sunday', holidays: 'japan' });
+    assert.match(await page.locator('.settings-preview .calendar-today-date').innerText(), /^\d{1,2}$/);
+    await page.locator('.preview-hit[aria-label="カレンダー"]').click();
+    const calendarDetails = page.locator('.settings-inspector .inspector-details');
+    assert.equal(await calendarDetails.getByText('週の始まり', { exact: true }).count(), 1);
+    assert.equal(await calendarDetails.getByText('日本の祝日を出す', { exact: true }).count(), 1);
+    await calendarDetails.locator('select[data-option="weekStart"]').selectOption('monday');
+    await waitFor(() => posts.length === calendarBefore + 2, 'calendar week start save');
+    await calendarDetails.locator('input[data-option="holidays"]').uncheck();
+    await waitFor(() => posts.length === calendarBefore + 3, 'calendar holiday save');
+    const changedCalendar = posts.at(-1).deck.landscape.pages[0].items.find((entry) => entry.type === 'calendar');
+    assert.deepEqual(changedCalendar.options, { weekStart: 'monday', holidays: 'none' });
+    await page.getByRole('button', { name: 'このボタンを削除' }).click();
+    await waitFor(() => posts.length === calendarBefore + 4, 'calendar delete save');
     await page.locator('.catalog-back').click();
     await page.getByRole('button', { name: /^音楽/ }).click();
     const nowPlaying = page.locator('[data-action="widget-now-playing"]');
