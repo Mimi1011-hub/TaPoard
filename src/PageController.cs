@@ -128,15 +128,6 @@ sealed class PageController : ControllerBase
         lock (state.Gate)
         {
             int pages = DeckLayout.Pages(state.Config, orientation);
-            if (r.isAdmin && requested == pages && pages < DeckLayout.MaxPages)
-            {
-                if (orientation == "portrait")
-                    state.Config.portraitPageCount = ++pages;
-                else
-                    state.Config.landscapePageCount = ++pages;
-                PageNames.Resize(state.Config);
-                state.Save();
-            }
             int selected = Math.Max(0, Math.Min(requested, pages - 1));
             if (orientation == "portrait")
                 state.PortraitPage = selected;

@@ -103,6 +103,16 @@ public static class ControllerTests
             v3 = Body(request);
             Assert(!v3.Contains("\"deck\":") && !v3.Contains("\"widgetDefinitions\":"), "unchanged v3 state omits deck and definitions");
 
+            request = Request("/api/page", new Dictionary<string, object> { { "page", 2 }, { "orientation", "landscape" } });
+            router.Find("POST", request.path, true)(request);
+            Assert(state.Config.landscapePageCount == 2 && state.LandscapePage == 1,
+                "admin page request past the end stays on the last page without adding one");
+            state.LandscapePage = 0;
+            request = Request("/api/page", new Dictionary<string, object> { { "page", 2 }, { "orientation", "landscape" } });
+            router.Find("POST", request.path, false)(request);
+            Assert(state.Config.landscapePageCount == 2 && state.LandscapePage == 1,
+                "paired page request past the end stays on the last page without adding one");
+
             long revision = state.Sync.Revision;
             request = Request("/api/audio", new Dictionary<string, object> { { "target", "speaker" }, { "volume", 40 }, { "final", true } });
             router.Find("POST", request.path, false)(request);
