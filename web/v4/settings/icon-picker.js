@@ -3,6 +3,7 @@ import { iconNode, presetGroups, presetIconNode } from '../deck/icons.js';
 import { iconWords } from './icon-words.js';
 import { makeCustomIcon } from './image-tools.js';
 import { safeImageSource } from '../core/image-source.js';
+import { packSections } from './icon-pack-sections.js';
 
 const colors = ['', '#3569c8', '#00827d', '#287d43', '#a65b00', '#b53846', '#a63783', '#714bc4', '#4d5665', '#15181e'];
 
@@ -101,7 +102,6 @@ export class IconPicker {
   group(name, values) {
     const section = el('section', 'icon-group');
     section.appendChild(el('h3', '', this.i18n.t(`icon.group.${name}`)));
-    const grid = el('div', 'icon-grid');
     values.forEach(([key]) => {
       const label = this.i18n.t(`icon.name.${key}`),
         button = el('button', 'icon-choice');
@@ -150,24 +150,36 @@ export class IconPicker {
             { root: this.dialog, rootMargin: '300px' },
           )
         : null;
-    pack.icons.forEach((icon) => {
-      if (!safeImageSource(icon.data)) return;
-      const button = el('button', 'icon-choice');
-      button.type = 'button';
-      button.dataset.search = `${icon.name} ${icon.tags || ''}`.toLowerCase();
-      const image = el('img', 'preset-icon');
-      image.alt = '';
-      if (observer) {
-        image.dataset.src = icon.data;
-        observer.observe(image);
-      } else image.src = icon.data;
-      button.append(image, el('span', '', icon.name));
-      button.addEventListener('click', () =>
-        this.choose({ iconKey: icon.key || '', iconColor: this.color, customIcon: icon.data, iconPack: pack.id, iconPackItem: icon.id }),
-      );
-      grid.appendChild(button);
+    const keys = presetGroups.flatMap(([, values]) => values.map(([key]) => key));
+    const keyOf = (icon) => {
+      if (keys.includes(icon.key)) return icon.key;
+      return keys.find((key) => this.i18n.t(`icon.name.${key}`) === icon.name) || '';
+    };
+    packSections(pack.icons, presetGroups, keyOf).forEach(({ title, icons }) => {
+      const section = el('section', 'icon-group');
+      const standard = presetGroups.some(([name]) => name === title) || title === 'other';
+      section.appendChild(el('h3', '', standard ? this.i18n.t(`icon.group.${title}`) : title));
+      const grid = el('div', 'icon-grid');
+      icons.forEach((icon) => {
+        if (!safeImageSource(icon.data)) return;
+        const button = el('button', 'icon-choice');
+        button.type = 'button';
+        button.dataset.search = `${icon.name} ${icon.tags || ''}`.toLowerCase();
+        const image = el('img', 'preset-icon');
+        image.alt = '';
+        if (observer) {
+          image.dataset.src = icon.data;
+          observer.observe(image);
+        } else image.src = icon.data;
+        button.append(image, el('span', '', icon.name));
+        button.addEventListener('click', () =>
+          this.choose({ iconKey: icon.key || '', iconColor: this.color, customIcon: icon.data, iconPack: pack.id, iconPackItem: icon.id }),
+        );
+        grid.appendChild(button);
+      });
+      section.appendChild(grid);
+      this.groups.appendChild(section);
     });
-    this.groups.appendChild(grid);
     this.filter();
   }
   choose(values) {
