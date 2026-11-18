@@ -719,7 +719,6 @@
   "connection.missingTitle": "接続されていません",
   "connection.missingMessage": "PCの TaPoard のQRコードを読み取ってください。",
   "deck.page": "{current} / {total}",
-  "deck.empty": "このページにボタンはありません",
   "deck.speaker": "スピーカー",
   "deck.microphone": "マイク",
   "deck.widgetPreparing": "この部品は準備中です",

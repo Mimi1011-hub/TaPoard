@@ -27,7 +27,6 @@ export class DeckGrid {
       else if (displayTypes.has(item.type) || ['wheel', 'touchpad', 'keypad'].includes(item.type)) container.appendChild(this.placeholder(item));
       else container.appendChild(this.button(item, state));
     });
-    if (!this.preview && !container.childNodes.length) container.appendChild(el('p', 'deck-empty', this.i18n.t('deck.empty')));
   }
 
   update(state) {

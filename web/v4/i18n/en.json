@@ -719,7 +719,6 @@
   "connection.missingTitle": "Not connected",
   "connection.missingMessage": "Scan the QR code shown by TaPoard on your PC.",
   "deck.page": "{current} / {total}",
-  "deck.empty": "There are no buttons on this page",
   "deck.speaker": "Speaker",
   "deck.microphone": "Microphone",
   "deck.widgetPreparing": "This widget is coming soon",
