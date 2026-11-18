@@ -102,6 +102,7 @@ export class IconPicker {
   group(name, values) {
     const section = el('section', 'icon-group');
     section.appendChild(el('h3', '', this.i18n.t(`icon.group.${name}`)));
+    const grid = el('div', 'icon-grid');
     values.forEach(([key]) => {
       const label = this.i18n.t(`icon.name.${key}`),
         button = el('button', 'icon-choice');
