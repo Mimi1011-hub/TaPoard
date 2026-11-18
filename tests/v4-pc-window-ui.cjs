@@ -6,6 +6,7 @@ const path = require('path');
 
 const inputs = [];
 const actions = [];
+const pageRequests = [];
 let revision = 1;
 let version = 'pc-one';
 const current = { portrait: 0, landscape: 0 };
@@ -26,6 +27,8 @@ function orientation() {
       { name: '配信', faders: null, items: [item('action-1', 'launch', 0, 0, 1, 1), item('wheel-1', 'wheel', 0, 1, 1, 2, { sensitivity: 12 })] },
       { name: '作業', faders: null, items: [item('action-2', 'launch', 0, 0, 1, 1)] },
       { name: '', faders: null, items: [item('action-3', 'launch', 0, 0, 1, 1)] },
+      { name: '四', faders: null, items: [item('action-4', 'launch', 0, 0, 1, 1)] },
+      { name: '五', faders: null, items: [item('action-5', 'launch', 0, 0, 1, 1)] },
     ],
   };
 }
@@ -63,7 +66,7 @@ const server = http.createServer(async (request, response) => {
       actions.push(JSON.parse(body)); json(response, 200, { ok: true }); return;
     }
     if (url.pathname === '/api/page') {
-      const value = JSON.parse(body); current[value.orientation] = value.page; revision += 1; version = `pc-${revision}`;
+      const value = JSON.parse(body); pageRequests.push(value); current[value.orientation] = value.page; revision += 1; version = `pc-${revision}`;
       json(response, 200, { ok: true }); return;
     }
     if (url.pathname === '/api/ping') { json(response, 200, { ok: true }); return; }
@@ -100,7 +103,7 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     await page.waitForFunction(() => !!window.tapoardPc && document.querySelector('[data-widget-id="wheel-1"]'));
     assert.equal(await page.locator('#topbar').isHidden(), true);
     assert.equal(await page.evaluate(() => typeof window.tapoardPc.set), 'function');
-    await page.waitForFunction(() => window.__hostMessages.includes('page:1/3'));
+    await page.waitForFunction(() => window.__hostMessages.includes('page:1/5'));
     await page.waitForFunction(() => window.__hostMessages.includes('pagename:配信'));
 
     await page.evaluate(() => { window.__hostMessages = []; });
@@ -113,16 +116,16 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     assert((await page.evaluate(() => window.__hostMessages)).includes('resize:bottomright'));
 
     await page.evaluate(() => window.tapoardPc.page(1));
-    await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
+    await page.waitForFunction(() => window.__hostMessages.includes('page:2/5'));
     await page.waitForFunction(() => window.__hostMessages.includes('pagename:作業'));
     const button = page.locator('.deck-button').filter({ hasText: 'action-2' }); await button.hover(); await page.mouse.wheel(0, 100);
-    await page.waitForFunction(() => window.__hostMessages.includes('page:3/3'));
+    await page.waitForFunction(() => window.__hostMessages.includes('page:3/5'));
     await page.waitForFunction(() => window.__hostMessages.includes('pagename:'));
-    await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
-    await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:1/3'));
+    await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:2/5'));
+    await page.evaluate(() => window.tapoardPc.page(-1)); await page.waitForFunction(() => window.__hostMessages.includes('page:1/5'));
 
     await page.evaluate(() => localStorage.setItem('tapoard-swipe', 'on'));
-    const swipe = async (target, whileMoving) => {
+    const swipe = async (target, whileMoving, delay = 0) => {
       await target.waitFor();
       let box = null;
       for (let attempt = 0; attempt < 5 && !box; attempt += 1) {
@@ -134,6 +137,7 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
       await page.mouse.down();
       await page.mouse.move(box.x + box.width * 0.1, box.y + box.height / 2, { steps: 8 });
       if (whileMoving) await whileMoving();
+      if (delay) await page.waitForTimeout(delay);
       await page.mouse.up();
     };
     const actionCount = actions.length;
@@ -141,13 +145,18 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     await swipe(page.locator('.deck-button').filter({ hasText: 'action-1' }), async () => {
       assert.match(await page.locator('#deck').evaluate((node) => node.style.transform), /translateX/);
     });
-    await page.waitForFunction(() => window.__hostMessages.includes('page:2/3'));
+    await page.waitForFunction(() => window.__hostMessages.includes('page:2/5'));
     await page.waitForFunction(() => document.querySelector('.deck-button').textContent.includes('action-2'));
     assert.equal(actions.length, actionCount, 'button swipe does not run its action');
     await page.evaluate(() => window.tapoardPc.page(-1));
     await page.waitForFunction(() => document.querySelector('.deck-button').textContent.includes('action-1'));
     const shortSwipePage = current.landscape;
-    const shortBox = await page.locator('.deck-button').filter({ hasText: 'action-1' }).boundingBox();
+    let shortBox = null;
+    for (let attempt = 0; attempt < 5 && !shortBox; attempt += 1) {
+      shortBox = await page.locator('.deck-button').filter({ hasText: 'action-1' }).boundingBox();
+      if (!shortBox) await page.waitForTimeout(40);
+    }
+    assert(shortBox, 'short swipe target is visible');
     await page.mouse.move(shortBox.x + shortBox.width / 2, shortBox.y + shortBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(shortBox.x + shortBox.width / 2 - 20, shortBox.y + shortBox.height / 2, { steps: 3 });
@@ -164,6 +173,30 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     await swipe(page.locator('.deck-button').filter({ hasText: 'action-1' }));
     await page.waitForTimeout(180);
     assert.equal(current.landscape, faderPage, 'disabled swiping does not change pages');
+
+    await page.evaluate(() => localStorage.setItem('tapoard-swipe', 'on'));
+    for (let index = 0; index < 4; index += 1) {
+      await page.evaluate(() => window.tapoardPc.page(1));
+      for (let attempt = 0; attempt < 30 && current.landscape !== index + 1; attempt += 1) await wait(20);
+    }
+    await page.waitForFunction(() => document.querySelector('.deck-button').textContent.includes('action-5'));
+    const edgeRequests = pageRequests.length;
+    const lastLabel = await page.evaluate(() => window.__hostMessages.filter((value) => value.startsWith('page:')).at(-1));
+    const lastButton = page.locator('.deck-button').filter({ hasText: 'action-5' });
+    await swipe(lastButton);
+    await swipe(lastButton, null, 950);
+    await swipe(page.locator('#deck'));
+    await swipe(page.locator('#deck'), null, 950);
+    await page.evaluate(() => window.tapoardPc.page(1));
+    await page.waitForTimeout(250);
+    assert.equal(pageRequests.length, edgeRequests, 'last page gestures and host next send no page request');
+    assert.equal(current.landscape, 4, 'last page stays selected');
+    assert.equal(await page.evaluate(() => window.__hostMessages.filter((value) => value.startsWith('page:')).at(-1)), lastLabel,
+      'last page label does not change');
+    for (let index = 0; index < 4; index += 1) {
+      await page.evaluate(() => window.tapoardPc.page(-1));
+      for (let attempt = 0; attempt < 30 && current.landscape !== 3 - index; attempt += 1) await wait(20);
+    }
 
     await page.evaluate(() => window.tapoardPc.set({ info: true, aspect: 'fill', viewOnly: true, resizable: true, barVisible: false }));
     await page.waitForFunction(() => !document.querySelector('.pc-info').hidden && document.querySelector('.pc-info').textContent.includes('接続中'));

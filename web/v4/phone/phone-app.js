@@ -89,6 +89,7 @@ export class PhoneApp {
       (page, orientation) => this.localPage(page, orientation),
       () => this.menu.open(),
       (error) => this.showError(error),
+      () => this.store.get(),
     );
     this.menu = new PhoneMenu(this.nodes.menu, {
       storage: this.storage,

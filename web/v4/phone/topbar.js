@@ -1,13 +1,14 @@
 import { clear, el, i18n as markI18n } from '../core/dom.js';
 
 export class TopBar {
-  constructor(container, api, i18n, onPage, onMenu, onError) {
+  constructor(container, api, i18n, onPage, onMenu, onError, state) {
     this.container = container;
     this.api = api;
     this.i18n = i18n;
     this.onPage = onPage;
     this.onMenu = onMenu;
     this.onError = onError;
+    this.state = state;
     this.page = 0;
     this.total = 1;
     this.orientation = 'landscape';
@@ -43,12 +44,15 @@ export class TopBar {
   }
 
   async move(delta) {
-    const page = Math.max(0, Math.min(this.total - 1, this.page + delta));
-    if (page === this.page) return;
+    const state = this.state && this.state();
+    const deck = state && state.deck && state.deck[this.orientation];
+    const total = deck && Array.isArray(deck.pages) && deck.pages.length ? deck.pages.length : this.total;
+    const page = this.page + delta;
+    if (page < 0 || page >= total || page === this.page) return;
     try {
       await this.api.post('/api/page', { page, orientation: this.orientation }, 5000);
       this.page = page;
-      this.update(this.page, this.total, this.orientation, '');
+      this.update(this.page, total, this.orientation, '');
       this.onPage(page, this.orientation);
     } catch (error) {
       this.onError(error);
