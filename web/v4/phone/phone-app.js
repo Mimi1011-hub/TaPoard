@@ -118,6 +118,7 @@ export class PhoneApp {
         deckNode: this.nodes.deck,
         deckShell: this.nodes.deck.parentNode,
         topbar: this.nodes.topbar,
+        pages: () => ({ page: this.topbar.page, total: this.topbar.total }),
         api: this.api,
         i18n: this.i18n,
         storage: this.storage,

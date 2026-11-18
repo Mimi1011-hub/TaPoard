@@ -184,6 +184,7 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
     const lastLabel = await page.evaluate(() => window.__hostMessages.filter((value) => value.startsWith('page:')).at(-1));
     const lastButton = page.locator('.deck-button').filter({ hasText: 'action-5' });
     await swipe(lastButton);
+    assert.equal(await page.locator('#deck').evaluate((node) => node.style.opacity), '', 'edge swipe does not slide the page out');
     await swipe(lastButton, null, 950);
     await swipe(page.locator('#deck'));
     await swipe(page.locator('#deck'), null, 950);

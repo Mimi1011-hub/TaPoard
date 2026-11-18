@@ -13,7 +13,7 @@ export class PcHost {
       deckNode: context.deckNode,
       post: (message) => this.post(message),
       movePage: (step) => context.movePage(step),
-      pages: () => ({ page: context.topbar.page, total: context.topbar.total }),
+      pages: context.pages,
       swipeEnabled: () => context.storage.getItem('tapoard-swipe') !== 'off',
     });
     this.resize = () => this.fitLayout(); context.windowObject.addEventListener('resize', this.resize);
