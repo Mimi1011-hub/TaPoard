@@ -65,6 +65,20 @@
   border-color: var(--color-accent);
   filter: brightness(1.14);
 }
+.deck-button.is-muted::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: min(70%, 72px);
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-danger);
+  filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #111);
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
+}
 .deck-button.device-selected {
   border-color: var(--color-success, #3e9b72);
   box-shadow: inset 0 0 0 1px var(--color-success, #3e9b72);

@@ -103,6 +103,12 @@ export class DeckGrid {
   }
 
   updateButton(button, state) {
+    const audio = state && state.audio;
+    const mute = button.item.action === 'audio-speaker-mute'
+      ? audio && audio.speakerAvailable !== false && audio.speakerMuted
+      : button.item.action === 'audio-mic-mute'
+        ? audio && audio.micAvailable !== false && audio.micMuted : false;
+    button.node.classList.toggle('is-muted', !!mute);
     if (button.item.type !== 'audioDevice') {
       if (!button.bound) this.bindPress(button.node, button.item);
       button.bound = true;

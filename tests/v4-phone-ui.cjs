@@ -10,6 +10,8 @@ const actionRequests = [];
 const current = { landscape: 0, portrait: 0 };
 const malicious = '<img src=x onerror=window.__injected=1>';
 let audioTest = false;
+let speakerMuted = true;
+let micMuted = false;
 let audioDevices = [
   { id: 'speaker-a', name: 'Speaker A', target: 'speaker', available: true, selected: true },
   { id: 'speaker-b', name: 'Speaker B', target: 'speaker', available: true, selected: false },
@@ -53,13 +55,20 @@ function state() {
       },
     },
     widgetDefinitions: [], current: { ...current }, background: null,
-    audio: { devices: audioDevices }, metrics: {}, weather: {}, phoneConnected: true, pcWindowOpen: false, inputSessions: [], pcLanguage: 'en',
+    audio: {
+      devices: audioDevices, speakerMuted, micMuted, speakerAvailable: true, micAvailable: true,
+    }, metrics: {}, weather: {}, phoneConnected: true, pcWindowOpen: false, inputSessions: [], pcLanguage: 'en',
   };
   if (audioTest) {
     value.deck.portrait.pages[0].items = audioDevices.map((device, index) => ({
-      ...item(`audio-${index}`, device.name, 1 + index, 1, 1, 1),
+      ...item(`audio-${index}`, device.name, 1, index, 1, 1),
       type: 'audioDevice', deviceId: device.id, deviceTarget: device.target,
-    }));
+    })).concat([
+      { ...item('speaker-mute', 'Speaker mute', 2, 0, 1, 1), action: 'audio-speaker-mute' },
+      { ...item('mic-mute', 'Mic mute', 2, 1, 2, 1), action: 'audio-mic-mute' },
+      { ...item('speaker-mute-tall', 'Speaker mute tall', 3, 0, 1, 2), action: 'audio-speaker-mute' },
+      { ...item('discord-mute', 'Discord mute', 3, 1, 1, 1), action: 'discord-mute' },
+    ]);
   }
   return value;
 }
@@ -240,9 +249,18 @@ async function assertPlacement(page, id, row, column, width, height) {
     assert.equal(await audioPage.locator('.device-selected .deck-label').innerText(), 'Speaker A');
     assert.equal(await audioPage.locator('.device-unavailable .deck-label').innerText(), 'Speaker C');
     assert.equal(await audioPage.getByText('未接続', { exact: true }).count(), 1);
+    const speakerMute = audioPage.locator('.deck-button').filter({ has: audioPage.locator('.deck-label', { hasText: /^Speaker mute$/ }) });
+    assert.equal(await speakerMute.evaluate((node) => node.classList.contains('is-muted')), true);
+    assert.equal(await audioPage.getByRole('button', { name: 'Mic mute' }).evaluate((node) => node.classList.contains('is-muted')), false);
+    assert.equal(await audioPage.getByRole('button', { name: 'Discord mute' }).evaluate((node) => node.classList.contains('is-muted')), false);
     audioDevices = audioDevices.map((device) => ({ ...device, selected: device.id === 'speaker-b' }));
+    speakerMuted = false;
+    micMuted = true;
     revision += 1;
     await audioPage.waitForFunction(() => document.querySelector('.device-selected .deck-label').textContent === 'Speaker B');
+    await audioPage.waitForFunction(() => [...document.querySelectorAll('.deck-button.is-muted')]
+      .some((node) => node.textContent.includes('Mic mute')));
+    assert.equal(await speakerMute.evaluate((node) => node.classList.contains('is-muted')), false);
     await audioPage.close();
     audioTest = false;
 
