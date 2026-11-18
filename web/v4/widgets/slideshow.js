@@ -40,7 +40,8 @@ export class SlideshowWidget {
 
   async load(step) {
     if (this.loading || this.context.documentObject.hidden || !this.item.id) return;
-    let target = this.index < 0 ? 0 : this.index + step;
+    // The picture count is unknown before the first answer, so a random first pick is a large number the PC wraps around.
+    let target = this.index < 0 ? (this.options.order === 'random' ? Math.floor(Math.random() * 100000) : 0) : this.index + step;
     if (this.options.order === 'random' && this.count > 1 && this.index >= 0) {
       target = Math.floor(Math.random() * (this.count - 1));
       if (target >= this.index) target += 1;
