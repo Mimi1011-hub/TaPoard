@@ -74,9 +74,9 @@
   width: min(70%, 72px);
   height: 5px;
   border-radius: 999px;
-  background: var(--color-danger);
+  background: #e5322d;
   filter: drop-shadow(0 0 1px #111) drop-shadow(0 0 1px #111);
-  transform: translate(-50%, -50%) rotate(45deg);
+  transform: translate(-50%, -50%) rotate(-45deg);
   pointer-events: none;
 }
 .deck-button.device-selected {
@@ -324,9 +324,9 @@
   width: 82%;
   height: 3px;
   border-radius: 999px;
-  background: var(--color-danger);
+  background: #e5322d;
   filter: drop-shadow(0 0 1px #111) drop-shadow(0 0 1px #111);
-  transform: translate(-50%, -50%) rotate(45deg);
+  transform: translate(-50%, -50%) rotate(-45deg);
   pointer-events: none;
 }
 .audio-mute svg {
