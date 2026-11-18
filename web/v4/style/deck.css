@@ -75,7 +75,7 @@
   height: 5px;
   border-radius: 999px;
   background: var(--color-danger);
-  filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #111);
+  filter: drop-shadow(0 0 1px #111) drop-shadow(0 0 1px #111);
   transform: translate(-50%, -50%) rotate(45deg);
   pointer-events: none;
 }
@@ -312,6 +312,22 @@
 }
 .audio-fader.muted .audio-mute {
   color: var(--color-danger);
+}
+.audio-fader.muted .audio-mute {
+  position: relative;
+}
+.audio-fader.muted .audio-mute::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 82%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-danger);
+  filter: drop-shadow(0 0 1px #111) drop-shadow(0 0 1px #111);
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
 }
 .audio-mute svg {
   width: 24px;
