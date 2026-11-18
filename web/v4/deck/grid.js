@@ -124,8 +124,8 @@ export class DeckGrid {
       button.badge = el('span', 'device-state-badge', this.i18n.t(key));
       button.node.appendChild(button.badge);
     }
-    if (!button.bound && status !== 'unavailable') this.bindPress(button.node, button.item);
-    button.bound = status !== 'unavailable';
+    if (!button.bound) this.bindPress(button.node, button.item);
+    button.bound = true;
   }
 
   bindPress(node, item) {

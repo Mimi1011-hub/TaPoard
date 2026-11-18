@@ -170,7 +170,7 @@ static class TextEn
         { "source.deckpresets.95", "Select all" },
         { "source.deckpresets.96", "Screen snip" },
         { "source.deckpresets.97", "Music and video" },
-        { "source.deckpresets.98", "Playback controls, volume fader, clock and weather" },
+        { "source.deckpresets.98", "Playback controls, volume, clock and weather" },
         { "source.deckpresets.99", "Play and skip use the media keys, so they control whichever app is playing, such as a browser or a music app." },
         { "source.deckpresets.100", "Previous track" },
         { "source.deckpresets.101", "Play/pause" },

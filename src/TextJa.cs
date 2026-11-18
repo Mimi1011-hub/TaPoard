@@ -170,7 +170,7 @@ static class TextJa
         { "source.deckpresets.95", "すべて選択" },
         { "source.deckpresets.96", "範囲スクショ" },
         { "source.deckpresets.97", "音楽・動画鑑賞" },
-        { "source.deckpresets.98", "再生操作・音量フェーダー・時計と天気" },
+        { "source.deckpresets.98", "再生操作・音量・時計と天気" },
         { "source.deckpresets.99", "再生・曲送りはメディアキーなので、ブラウザや音楽アプリなど再生中のアプリに効きます。" },
         { "source.deckpresets.100", "前の曲" },
         { "source.deckpresets.101", "再生/一時停止" },

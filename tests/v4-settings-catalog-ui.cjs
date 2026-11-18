@@ -138,8 +138,8 @@ const server = http.createServer(async (req, res) => {
     if (name === 'v3/state' || name === 'sync') return json(res, 200, state());
     if (name === 'pc-window') return json(res, 200, { options: { previewMode: 'pc', previewRatio: 'auto' }, phoneWidth: 0, phoneHeight: 0 });
     if (name === 'devices') return json(res, 200, { devices: [
-      { id: 'speaker-1', name: 'Speakers', target: 'speaker' },
-      { id: 'mic-1', name: 'Microphone', target: 'mic' },
+      { id: 'speaker-1', name: 'Speakers', target: 'speaker', available: true, selected: true },
+      { id: 'mic-1', name: 'Microphone', target: 'mic', available: true, selected: true },
     ] });
     if (name === 'shortcut-packs' && req.method === 'GET') {
       return json(res, 200, { packs: shortcutPacks, maxPacks: 20, maxShortcuts: 300 });
@@ -238,7 +238,12 @@ const waitFor = async (check, message) => {
       'only gesture parts show the page swipe exception',
     );
     await page.locator('.settings-catalog-search').fill('');
-    await page.getByRole('button', { name: /音量フェーダー/ }).click();
+    await page.getByRole('button', { name: /^音量(?:\s|$)/ }).click();
+    assert.deepEqual(
+      await page.locator('.settings-catalog-item').evaluateAll((nodes) => nodes.map((node) => node.dataset.action)),
+      ['control-speaker-fader', 'control-mic-fader', 'custom-audio-output', 'custom-audio-input'],
+      'volume contains both faders and both device selectors',
+    );
     const speakerFader = page.locator('[data-action="control-speaker-fader"]');
     await speakerFader.click();
     assert((await speakerFader.locator('xpath=..').locator('.catalog-sizes button').allTextContents()).includes('1×3'));
@@ -383,10 +388,14 @@ const waitFor = async (check, message) => {
     await waitFor(() => posts.length === before + 1, 'clipboard action save');
     assert(posts.at(-1).deck.landscape.pages[0].items.some((item) => item.text === 'Copied text'));
 
+    await page.locator('.catalog-back').click();
+    await page.getByRole('button', { name: /部品/ }).click();
+    await page.getByRole('button', { name: /^音量(?:\s|$)/ }).click();
     for (const action of ['custom-audio-output', 'custom-audio-input']) {
       before = posts.length;
       await page.locator(`[data-action="${action}"]`).dblclick();
       const audioDialog = page.getByRole('dialog');
+      assert.match(await audioDialog.locator('option').innerText(), /［使用中］/, 'selected device is marked in the picker');
       await audioDialog.locator('select').selectOption(action.endsWith('output') ? 'speaker-1' : 'mic-1');
       await audioDialog.getByRole('button', { name: '置く' }).click();
       await waitFor(() => posts.length === before + 1, `${action} save`);
@@ -395,8 +404,8 @@ const waitFor = async (check, message) => {
     }
     await new Promise((resolve) => setTimeout(resolve, 800));
     assert.equal(await page.locator('.deck-button').count(), 5, 'configured custom actions remain after saving');
-    await page.locator('.catalog-back').focus();
-    await page.keyboard.press('Escape');
+    await page.locator('.catalog-back').click();
+    await page.locator('.catalog-back').click();
 
     await page.getByRole('button', { name: 'アプリ別', exact: false }).click();
     const input = page.locator('input[accept=".tpshortcuts,.json"]');

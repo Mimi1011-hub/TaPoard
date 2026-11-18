@@ -10,6 +10,12 @@ import { readPackSource } from '../web/v4/settings/icon-pack-reader.js';
 
 const ids = catalogGroups.flatMap((group) => group.items.map((item) => item.id || item.action));
 assert.equal(new Set(ids).size, ids.length, 'catalog ids are unique');
+const volume = catalogGroups.find((group) => group.title === 'catalog.group.audioFaders');
+const launch = catalogGroups.find((group) => group.id === 'launch');
+['custom-audio-output', 'custom-audio-input'].forEach((action) => {
+  assert(volume.items.some((item) => item.action === action), `${action} is in volume`);
+  assert(!launch.items.some((item) => item.action === action), `${action} is not in launch`);
+});
 ['widget-clock-digital-wide', 'widget-wheel-vertical-tall', 'widget-touchpad-tall', 'widget-keypad-tall'].forEach((id) => {
   assert(!ids.includes(id), `${id} is merged into its component`);
   assert.notEqual(canonicalCatalogAction(id), id, `${id} remains readable as a recent-item alias`);

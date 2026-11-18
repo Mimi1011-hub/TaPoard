@@ -8,6 +8,6 @@ export const parts = [
     id: 'audio',
     title: 'catalog.group.audioFaders',
     note: 'catalog.note.audioFaders',
-    items: audio.items.filter((item) => item.action.indexOf('control-') === 0),
+    items: audio.items.filter((item) => item.action.indexOf('control-') === 0 || item.action.indexOf('custom-audio-') === 0),
   },
 ].concat(catalogGroups.filter((group) => ids.indexOf(group.id) >= 0));
