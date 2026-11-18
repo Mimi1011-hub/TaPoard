@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = '4.0-preview1'
+$version = '4.0'
 $releaseRoot = Join-Path $PSScriptRoot 'release'
 $stage = Join-Path $releaseRoot 'installer-payload'
 $verify = Join-Path $releaseRoot 'installer-verification'
@@ -36,6 +36,7 @@ $references = @('/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:Syst
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /define:WINRT_MEDIA /target:winexe `
     /win32icon:assets\TaPoard.ico /out:"$stage\TaPoard.exe" $references src\*.cs src\winrt\*.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Application package build failed.' }
+if ($env:TAPOARD_SIGN_THUMBPRINT) { & .\tools\sign-file.ps1 -Path "$stage\TaPoard.exe" }
 Copy-Item -LiteralPath web -Destination (Join-Path $stage 'web') -Recurse
 Copy-Item -LiteralPath packaging\setup-lan.ps1,packaging\remove-firewall.ps1,packaging\README.txt,packaging\README.en.txt -Destination $stage
 foreach ($scriptName in @('setup-lan.ps1','remove-firewall.ps1')) {
@@ -54,6 +55,7 @@ Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $payload -Compres
 $resourceArgument = '/resource:' + $payload + ',TaPoard.Payload.zip'
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize+ /target:winexe /win32icon:assets\TaPoard.ico /out:$installer $resourceArgument /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll installer\Installer.cs installer\InstallerText.cs $buildInfo.Path
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
+if ($env:TAPOARD_SIGN_THUMBPRINT) { & .\tools\sign-file.ps1 -Path $installer }
 
 $extractProcess = Start-Process -FilePath $installer -ArgumentList '/extract-only',('"' + $verify + '"') -Wait -PassThru -WindowStyle Hidden
 if ($extractProcess.ExitCode -ne 0) { throw 'Installer extraction verification failed.' }
