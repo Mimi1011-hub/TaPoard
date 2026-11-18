@@ -4,8 +4,8 @@ import { field } from './fields.js';
 export async function audioDeviceDetails(context) {
   const select = el('select', '');
   const saved = context.item.deviceId || '';
-  const add = (id, name) => {
-    const option = el('option', '', name);
+  const add = (id, name, suffix = '') => {
+    const option = el('option', '', `${name}${suffix}`);
     option.value = id;
     select.appendChild(option);
   };
@@ -25,7 +25,11 @@ export async function audioDeviceDetails(context) {
   if (!select.isConnected) return;
   select.textContent = '';
   if (!devices.some((device) => device.id === saved)) add(saved, context.item.deviceName || context.t('details.audioChoose'));
-  devices.forEach((device) => add(device.id, device.name));
+  devices.forEach((device) => {
+    const suffix = device.selected ? context.t('audio.deviceInUseOption')
+      : device.available === false ? context.t('audio.deviceUnavailableOption') : '';
+    add(device.id, device.name, suffix);
+  });
   select.value = saved;
   select.disabled = false;
   select.addEventListener('change', () => {

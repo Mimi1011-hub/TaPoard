@@ -77,7 +77,9 @@ export class CatalogInputDialog {
   deviceSelect(devices) {
     const select = el('select');
     devices.forEach((device) => {
-      const option = el('option', '', device.name);
+      const suffix = device.selected ? this.i18n.t('audio.deviceInUseOption')
+        : device.available === false ? this.i18n.t('audio.deviceUnavailableOption') : '';
+      const option = el('option', '', `${device.name}${suffix}`);
       option.value = device.id;
       select.appendChild(option);
     });

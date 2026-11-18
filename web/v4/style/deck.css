@@ -65,6 +65,35 @@
   border-color: var(--color-accent);
   filter: brightness(1.14);
 }
+.deck-button.device-selected {
+  border-color: var(--color-success, #3e9b72);
+  box-shadow: inset 0 0 0 1px var(--color-success, #3e9b72);
+}
+.deck-button.device-unavailable {
+  cursor: default;
+  filter: grayscale(0.55);
+  opacity: 0.48;
+}
+.device-state-badge {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  right: 4px;
+  max-width: calc(100% - 8px);
+  padding: 2px 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #fff;
+  background: #184b38;
+  font-size: clamp(8px, 2.2vw, 11px);
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.device-unavailable .device-state-badge {
+  background: var(--color-muted);
+}
 .app-icon,
 .preset-icon,
 .shortcut-icon,

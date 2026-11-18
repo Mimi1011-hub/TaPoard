@@ -1,6 +1,7 @@
 import { clear, el } from '../core/dom.js';
 import { iconNode, widgetGlyphNode } from './icons.js';
 import { faderTypes, isDisplayWidget, widgetTypes } from '../widgets/registry.js';
+import { audioDeviceState } from './audio-device-state.js';
 
 export class DeckGrid {
   constructor(context, onPress) {
@@ -8,6 +9,7 @@ export class DeckGrid {
     this.i18n = context.i18n;
     this.onPress = onPress;
     this.widgets = [];
+    this.buttons = [];
     this.preview = !!context.preview;
   }
 
@@ -23,16 +25,20 @@ export class DeckGrid {
     (page.items || []).forEach((item) => {
       if (isDisplayWidget(item.type)) this.mountWidget(container, item, widgetTypes[item.type], state);
       else if (displayTypes.has(item.type) || ['wheel', 'touchpad', 'keypad'].includes(item.type)) container.appendChild(this.placeholder(item));
-      else container.appendChild(this.button(item));
+      else container.appendChild(this.button(item, state));
     });
     if (!this.preview && !container.childNodes.length) container.appendChild(el('p', 'deck-empty', this.i18n.t('deck.empty')));
   }
 
-  update(state) { this.widgets.forEach((widget) => widget.update(state)); }
+  update(state) {
+    this.widgets.forEach((widget) => widget.update(state));
+    this.buttons.forEach((button) => this.updateButton(button, state));
+  }
 
   destroy() {
     this.widgets.forEach((widget) => widget.destroy());
     this.widgets = [];
+    this.buttons = [];
   }
 
   place(node, placement) {
@@ -72,7 +78,7 @@ export class DeckGrid {
     return node;
   }
 
-  button(item) {
+  button(item, state) {
     const node = el('button', 'deck-tile deck-button');
     node.type = 'button';
     const icon = iconNode(item);
@@ -87,9 +93,33 @@ export class DeckGrid {
       node.appendChild(label);
     } else node.appendChild(el('span', 'visually-hidden', item.name));
     if (typeof item.keyClear === 'number') node.dataset.keyClear = item.keyClear;
-    if (!this.preview) this.bindPress(node, item);
+    const button = { node, item, badge: null, bound: false };
+    if (!this.preview) {
+      this.buttons.push(button);
+      this.updateButton(button, state);
+    }
     this.place(node, item);
     return node;
+  }
+
+  updateButton(button, state) {
+    if (button.item.type !== 'audioDevice') {
+      if (!button.bound) this.bindPress(button.node, button.item);
+      button.bound = true;
+      return;
+    }
+    const status = audioDeviceState(button.item, state && state.audio && state.audio.devices);
+    button.node.classList.toggle('device-selected', status === 'selected');
+    button.node.classList.toggle('device-unavailable', status === 'unavailable');
+    if (button.badge) button.badge.remove();
+    button.badge = null;
+    if (status === 'selected' || status === 'unavailable') {
+      const key = status === 'selected' ? 'audio.deviceInUse' : 'audio.deviceUnavailable';
+      button.badge = el('span', 'device-state-badge', this.i18n.t(key));
+      button.node.appendChild(button.badge);
+    }
+    if (!button.bound && status !== 'unavailable') this.bindPress(button.node, button.item);
+    button.bound = status !== 'unavailable';
   }
 
   bindPress(node, item) {
@@ -107,7 +137,7 @@ export class DeckGrid {
       if (!start) return;
       const shouldPress = event.type === 'pointerup' && !start.moved && Date.now() - start.time < 600;
       start = null; node.classList.remove('is-pressed');
-      if (shouldPress) this.onPress(item);
+      if (shouldPress && !node.classList.contains('device-unavailable')) this.onPress(item);
     };
     node.addEventListener('pointerup', finish);
     node.addEventListener('pointercancel', finish);

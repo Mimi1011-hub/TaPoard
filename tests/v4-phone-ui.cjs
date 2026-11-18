@@ -9,6 +9,12 @@ const pageRequests = [];
 const actionRequests = [];
 const current = { landscape: 0, portrait: 0 };
 const malicious = '<img src=x onerror=window.__injected=1>';
+let audioTest = false;
+let audioDevices = [
+  { id: 'speaker-a', name: 'Speaker A', target: 'speaker', available: true, selected: true },
+  { id: 'speaker-b', name: 'Speaker B', target: 'speaker', available: true, selected: false },
+  { id: 'speaker-c', name: 'Speaker C', target: 'speaker', available: false, selected: false },
+];
 
 function faders() {
   return {
@@ -27,7 +33,7 @@ function item(id, name, row, column, width, height) {
 }
 
 function state() {
-  return {
+  const value = {
     schemaVersion: 3, revision, version: String(revision), appVersion: '4.0.0',
     deck: {
       keepAwake: false,
@@ -47,8 +53,15 @@ function state() {
       },
     },
     widgetDefinitions: [], current: { ...current }, background: null,
-    audio: {}, metrics: {}, weather: {}, phoneConnected: true, pcWindowOpen: false, inputSessions: [], pcLanguage: 'en',
+    audio: { devices: audioDevices }, metrics: {}, weather: {}, phoneConnected: true, pcWindowOpen: false, inputSessions: [], pcLanguage: 'en',
   };
+  if (audioTest) {
+    value.deck.portrait.pages[0].items = audioDevices.map((device, index) => ({
+      ...item(`audio-${index}`, device.name, 1 + index, 1, 1, 1),
+      type: 'audioDevice', deviceId: device.id, deviceTarget: device.target,
+    }));
+  }
+  return value;
 }
 
 function json(res, status, value) {
@@ -218,6 +231,21 @@ async function assertPlacement(page, id, row, column, width, height) {
     assert.equal(await narrow.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'English menu fits 320px');
     await narrow.close();
 
+    audioTest = true;
+    const audioPage = await browser.newPage({ locale: 'ja-JP', viewport: { width: 375, height: 667 } });
+    await collectErrors(audioPage, errors);
+    await audioPage.goto(`${base}/v4/#connect=test`);
+    await audioPage.getByText('使用中', { exact: true }).waitFor();
+    assert.equal(await audioPage.locator('.device-selected').getAttribute('aria-label'), null);
+    assert.equal(await audioPage.locator('.device-selected .deck-label').innerText(), 'Speaker A');
+    assert.equal(await audioPage.locator('.device-unavailable .deck-label').innerText(), 'Speaker C');
+    assert.equal(await audioPage.getByText('未接続', { exact: true }).count(), 1);
+    audioDevices = audioDevices.map((device) => ({ ...device, selected: device.id === 'speaker-b' }));
+    revision += 1;
+    await audioPage.waitForFunction(() => document.querySelector('.device-selected .deck-label').textContent === 'Speaker B');
+    await audioPage.close();
+    audioTest = false;
+
     const unauthorized = await browser.newPage({ locale: 'ja-JP', viewport: { width: 375, height: 667 } });
     await collectErrors(unauthorized, errors, true);
     await unauthorized.goto(`${base}/v4/#connect=bad`);
@@ -225,7 +253,7 @@ async function assertPlacement(page, id, row, column, width, height) {
     assert.equal(await unauthorized.locator('#disconnected h1').innerText(), '接続されていません');
     await unauthorized.close();
     assert.deepEqual(errors, []);
-    console.log('PASS v4 phone UI: v3 grid positions, paging, swipe preference, action, local keep-awake, live language, auth loss, text safety and 320px width');
+    console.log('PASS v4 phone UI: grid, paging, swipe, action, audio device state, language, auth, text safety and width');
   } finally {
     if (browser) await browser.close();
     server.closeAllConnections();
