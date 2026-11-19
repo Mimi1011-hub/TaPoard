@@ -318,6 +318,9 @@ const savedItem = (id) => deck.landscape.pages[0].items.find((value) => value.id
     await pc.locator('input[name="autoHideBar"]').check();
     await waitFor(() => pcOptions.buttonSize === 'large' && pcOptions.autoHideBar === true, 'PC window saved');
     assert.equal(pcOptions.opacity, 100, 'the whole set of options is sent');
+    assert.ok((await pc.innerText()).includes('常に最前面'), 'the Always on top field name');
+    assert.ok((await pc.innerText()).includes('すぐ反映'), 'the Always on top hint');
+    assert.deepEqual(await pc.locator('select[name="startTopmost"] option').allInnerTexts(), ['前回の状態を使う', '常にオン', '常にオフ']);
     assert.equal(await pc.getByRole('button', { name: 'PC 用ウィンドウを開く' }).isDisabled(), false);
     await pc.getByRole('button', { name: '全画面で開く' }).click();
     await waitFor(() => last('pc-window/open'), 'open sent');

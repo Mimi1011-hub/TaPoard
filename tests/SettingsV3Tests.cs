@@ -260,6 +260,11 @@ class SettingsV3Tests
         try
         {
             MigrationTests();
+            Check(PcWindowOptions.TopmostAfterChange("last", "on", false), "topmost: last -> on turns it on");
+            Check(!PcWindowOptions.TopmostAfterChange("last", "off", true), "topmost: last -> off turns it off");
+            Check(PcWindowOptions.TopmostAfterChange("on", "on", true), "topmost: unchanged choice keeps the state");
+            Check(!PcWindowOptions.TopmostAfterChange("off", "off", false), "topmost: saving other options keeps a Ctrl+T off");
+            Check(PcWindowOptions.TopmostAfterChange("on", "last", true) && !PcWindowOptions.TopmostAfterChange("off", "last", false), "topmost: back to last keeps the state");
             string files = Path.Combine(root, "files");
             string backups = Path.Combine(root, "backups-test");
             Directory.CreateDirectory(files);

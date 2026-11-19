@@ -16,7 +16,10 @@ export class PcWindowSettings {
 
   start() {
     this.root.appendChild(el('h2', '', this.i18n.t('settings.nav.pc')));
-    Object.keys(choices).forEach((name) => this.addSelect(name));
+    Object.keys(choices).forEach((name) => {
+      this.addSelect(name);
+      if (name === 'startTopmost') this.root.appendChild(el('p', 'settings-note', this.i18n.t('pc.startTopmost.hint')));
+    });
     this.addRange();
     ['autoHideBar', 'showInfo', 'confirmClose'].forEach((name) => this.addCheck(name));
     this.runtime = el('p', '', this.i18n.t('pc.runtimeUnavailable'));

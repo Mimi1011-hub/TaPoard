@@ -45,6 +45,19 @@ class PcWindowOptions
         };
     }
 
+    // The settings page sets "Always on top" to on / off: the open window follows at once, but only
+    // when that choice changed (saving another option must not undo a Ctrl+T switch).
+    internal static bool TopmostAfterChange(string before, string after, bool current)
+    {
+        if (before == after)
+            return current;
+        if (after == "on")
+            return true;
+        if (after == "off")
+            return false;
+        return current;
+    }
+
     static string OneOf(string value, string fallback, params string[] allowed)
     {
         return Array.IndexOf(allowed, value) >= 0 ? value : fallback;

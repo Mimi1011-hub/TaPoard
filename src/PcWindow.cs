@@ -213,7 +213,8 @@ static class PcWindowService
         RememberIfExternal(GetForegroundWindow());
         foregroundProc = delegate(IntPtr hook, uint e, IntPtr hwnd, int obj, int child, uint thread, uint time)
         {
-            RememberIfExternal(hwnd);
+            if (RememberIfExternal(hwnd))
+                RunOnWindow(w => w.ReassertTopmost());
         };
         foregroundHook = SetWinEventHook(3, 3, IntPtr.Zero, foregroundProc, 0, 0, 0);
     }
@@ -225,16 +226,17 @@ static class PcWindowService
         foregroundHook = IntPtr.Zero;
     }
 
-    static void RememberIfExternal(IntPtr hwnd)
+    static bool RememberIfExternal(IntPtr hwnd)
     {
         if (hwnd == IntPtr.Zero)
-            return;
+            return false;
         uint pid;
         GetWindowThreadProcessId(hwnd, out pid);
         if (pid == ProcessId)
-            return;
+            return false;
         lock (Sync)
             lastExternal = hwnd;
+        return true;
     }
 
     delegate void WinEventProc(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time);
@@ -728,6 +730,7 @@ sealed class PcWindow : Form
     internal void ApplyOptions(PcWindowOptions next)
     {
         bool topmost = options.topmost;
+        string startTopmostBefore = options.startTopmost;
         int x = options.x,
             y = options.y,
             w = options.width,
@@ -736,13 +739,20 @@ sealed class PcWindow : Form
             wasMaximized = options.maximized;
         options = PcWindowOptions.Normalize(next.Clone());
         // The page edits preferences only; the live window state stays the window's own.
-        options.topmost = topmost;
+        // Changing "Always on top" in the settings applies to the open window at once.
+        options.topmost = PcWindowOptions.TopmostAfterChange(startTopmostBefore, options.startTopmost, topmost);
+        bool topmostChanged = options.topmost != topmost;
         options.x = x;
         options.y = y;
         options.width = w;
         options.height = h;
         options.hasBounds = hasBounds;
         options.maximized = wasMaximized;
+        if (topmostChanged)
+        {
+            ApplyTopmost();
+            PersistState();
+        }
         ApplyLayered();
         LayoutChildren();
         PushPageState();
@@ -957,9 +967,58 @@ sealed class PcWindow : Form
         if (!options.topmost || !IsHandleCreated || IsTopmostNow())
             return;
         if ((DateTime.UtcNow - lastTopmostRepair).TotalMilliseconds < 300)
+        {
+            ScheduleTopmostCheck(false);
             return;
+        }
         lastTopmostRepair = DateTime.UtcNow;
         BeginInvoke(new MethodInvoker(ApplyTopmost));
+    }
+
+    System.Windows.Forms.Timer topmostTimer;
+    bool reassertWanted;
+    DateTime lastReassert = DateTime.MinValue;
+
+    // One short re-check after a repair was skipped, so "always on top" is never left dropped.
+    void ScheduleTopmostCheck(bool reassert)
+    {
+        if (IsDisposed)
+            return;
+        reassertWanted = reassertWanted || reassert;
+        if (topmostTimer == null)
+        {
+            topmostTimer = new System.Windows.Forms.Timer { Interval = 400 };
+            topmostTimer.Tick += delegate
+            {
+                topmostTimer.Stop();
+                bool force = reassertWanted;
+                reassertWanted = false;
+                if (IsDisposed || !IsHandleCreated || !options.topmost || WindowState == FormWindowState.Minimized)
+                    return;
+                if (force || !IsTopmostNow())
+                {
+                    lastReassert = DateTime.UtcNow;
+                    ApplyTopmost();
+                }
+            };
+        }
+        if (!topmostTimer.Enabled)
+            topmostTimer.Start();
+    }
+
+    // Another always-on-top app was used and may now cover this window: take the top of the
+    // topmost band back without taking the keyboard.
+    internal void ReassertTopmost()
+    {
+        if (IsDisposed || !IsHandleCreated || !options.topmost || WindowState == FormWindowState.Minimized)
+            return;
+        if ((DateTime.UtcNow - lastReassert).TotalMilliseconds < 500)
+        {
+            ScheduleTopmostCheck(true);
+            return;
+        }
+        lastReassert = DateTime.UtcNow;
+        ApplyTopmost();
     }
 
     // Brings the window above other apps without taking the keyboard from them.
